@@ -44,6 +44,25 @@ return [
             'transaction_mode' => 'DEFERRED',
         ],
 
+        'import_mysql' => [
+            'driver' => 'mysql',
+            'host' => env('IMPORT_DB_HOST', '127.0.0.1'),
+            'port' => env('IMPORT_DB_PORT', '3306'),
+            'database' => env('IMPORT_DB_DATABASE', 'incident_db'),
+            'username' => env('IMPORT_DB_USERNAME', 'root'),
+            'password' => env('IMPORT_DB_PASSWORD', ''),
+            'unix_socket' => env('IMPORT_DB_SOCKET', ''),
+            'charset' => env('IMPORT_DB_CHARSET', 'utf8mb4'),
+            'collation' => env('IMPORT_DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('IMPORT_MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),

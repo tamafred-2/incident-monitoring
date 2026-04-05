@@ -2,9 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Support\MySqlToSqliteSync;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,15 +16,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        if (DB::getDefaultConnection() === 'sqlite') {
+            app(MySqlToSqliteSync::class)->sync();
 
-        User::factory()->create([
-            'first_name' => 'Test',
-            'surname' => 'User',
-            'middle_name' => null,
-            'extension' => null,
-            'full_name' => User::formatFullName('Test', 'User'),
-            'email' => 'test@example.com',
+            return;
+        }
+
+        $this->call([
+            XamppIncidentDbSeeder::class,
         ]);
     }
 }
