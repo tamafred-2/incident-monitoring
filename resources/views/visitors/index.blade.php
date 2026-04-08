@@ -64,7 +64,11 @@
                         <input type="hidden" name="view" value="{{ $historyView }}">
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Subdivision Filter</label>
-                            <select name="subdivision_id" class="mt-1 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <select
+                                x-ref="subdivisionFilter"
+                                name="subdivision_id"
+                                class="mt-1 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                            >
                                 <option value="">All subdivisions</option>
                                 @foreach ($subdivisions as $subdivision)
                                     <option value="{{ $subdivision->subdivision_id }}" @selected($filterSubdivision === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
@@ -72,6 +76,13 @@
                             </select>
                         </div>
                         <button class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Apply</button>
+                        <button
+                            type="button"
+                            @click="$refs.subdivisionFilter.value = ''; $el.form.requestSubmit()"
+                            class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                        >
+                            Clear
+                        </button>
                     </form>
                 </div>
             @endif
@@ -263,7 +274,7 @@
                             <p class="mt-1 text-sm text-slate-500">Browse previous visitor records, statuses, and timestamps.</p>
                         </div>
 
-                        <form method="GET" action="{{ route('visitors.index') }}" class="flex items-end gap-3">
+                        <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
                             @if ($filterSubdivision)
                                 <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                             @endif
@@ -272,7 +283,6 @@
                                 <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">View</label>
                                 <select
                                     name="view"
-                                    onchange="this.form.submit()"
                                     class="mt-1 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
                                 >
                                     <option value="active" @selected($historyView === 'active')>Active</option>
@@ -280,6 +290,23 @@
                                     <option value="all" @selected($historyView === 'all')>All</option>
                                 </select>
                             </div>
+
+                            <button
+                                type="submit"
+                                class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
+                            >
+                                Apply
+                            </button>
+
+                            <a
+                                href="{{ route('visitors.index', array_filter([
+                                    'tab' => 'history',
+                                    'subdivision_id' => $filterSubdivision,
+                                ], fn ($value) => filled($value))) }}"
+                                class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                                Clear
+                            </a>
                         </form>
                     </div>
                     <div class="overflow-x-auto">

@@ -69,4 +69,33 @@
     .sidebar-primary-button:hover {
         background-color: #27364d;
     }
+
+    .sidebar-brand {
+        @apply flex min-w-0 items-center text-white;
+    }
+
+    .sidebar-brand-mobile {
+        @apply flex-1 justify-start gap-3;
+    }
+
+    .sidebar-brand-desktop {
+        @apply flex-col justify-center gap-3 text-center;
+    }
+
+    .sidebar-brand-mark {
+        @apply h-12 w-12 flex-none rounded-full bg-transparent p-0.5 shadow-sm ring-1 ring-white/15;
+        object-fit: contain;
+    }
+
+    .sidebar-brand-mark-desktop {
+        @apply h-16 w-16 p-0.5;
+    }
+
+    .sidebar-brand-text {
+        @apply min-w-0 text-sm font-semibold tracking-[0.18em] text-white;
+    }
+
+    .sidebar-brand-text-desktop {
+        @apply text-base;
+    }
 }

@@ -16,7 +16,6 @@
             'title' => 'Monitoring',
             'items' => array_values(array_filter([
                 ['label' => 'Incidents', 'href' => route('incidents.index'), 'active' => 'incidents.index'],
-                $user->hasRole(['security', 'staff', 'investigator']) ? ['label' => 'Report Incident', 'href' => route('incidents.create'), 'active' => 'incidents.create'] : null,
                 $user->hasRole(['staff', 'investigator']) ? ['label' => 'Residents', 'href' => route('residents.index'), 'active' => 'residents.*'] : null,
                 $user->hasRole(['security', 'staff', 'investigator']) ? ['label' => 'Visitors', 'href' => route('visitors.index'), 'active' => 'visitors.*'] : null,
             ])),
@@ -37,15 +36,10 @@
     sectionOpenState: {{ \Illuminate\Support\Js::from($sectionOpenState) }}
 })">
     <div class="sticky top-0 z-30 border-b border-white/10 bg-[var(--shell-sidebar)] text-white lg:hidden">
-        <div class="flex items-center justify-between px-4 py-4">
-            <a href="{{ route('dashboard') }}" class="flex items-center gap-3">
-                <div class="rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
-                    <x-application-logo class="h-8 w-8 fill-current text-white" />
-                </div>
-                <div>
-                    <p class="text-[11px] uppercase tracking-[0.24em] text-[var(--shell-sidebar-muted)]">Monitoring</p>
-                    <p class="text-sm font-semibold text-white">Subdivision Incident & Visitor Monitoring</p>
-                </div>
+        <div class="flex items-center justify-between gap-3 px-4 py-4">
+            <a href="{{ route('dashboard') }}" class="sidebar-brand sidebar-brand-mobile">
+                <img src="{{ asset('imgsrc/logo.png') }}" alt="Logo" class="sidebar-brand-mark">
+                <span class="sidebar-brand-text">DO&Ntilde;A MARIA DIZON</span>
             </a>
 
             <button
@@ -74,16 +68,9 @@
         class="sidebar-panel fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col transition duration-200 ease-out lg:translate-x-0"
     >
         <div class="border-b border-white/10 px-6 py-7">
-            <a href="{{ route('dashboard') }}" class="flex items-start gap-4">
-                <div class="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
-                    <x-application-logo class="h-9 w-9 fill-current text-white" />
-                </div>
-                <div>
-                    <p class="text-[11px] uppercase tracking-[0.24em] text-[var(--shell-sidebar-muted)]">Monitoring</p>
-                    <h1 class="mt-2 text-lg font-semibold leading-snug text-white">
-                        Subdivision Incident & Visitor Monitoring
-                    </h1>
-                </div>
+            <a href="{{ route('dashboard') }}" class="sidebar-brand sidebar-brand-desktop">
+                <img src="{{ asset('imgsrc/logo.png') }}" alt="Logo" class="sidebar-brand-mark sidebar-brand-mark-desktop">
+                <span class="sidebar-brand-text sidebar-brand-text-desktop">DO&Ntilde;A MARIA DIZON</span>
             </a>
         </div>
 
