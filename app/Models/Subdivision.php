@@ -43,9 +43,13 @@ class Subdivision extends Model
         return $this->hasMany(Resident::class, 'subdivision_id', 'subdivision_id');
     }
 
+    public function houses(): HasMany
+    {
+        return $this->hasMany(House::class, 'subdivision_id', 'subdivision_id');
+    }
+
     public function visitors(): HasMany
     {
         return $this->hasMany(Visitor::class, 'subdivision_id', 'subdivision_id');
     }
-
 }

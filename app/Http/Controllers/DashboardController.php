@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Incident;
+use App\Models\House;
+use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
 use App\Support\VisitorActivityFeed;
@@ -32,6 +34,16 @@ class DashboardController extends Controller
             fn ($query) => $query->where('subdivision_id', $allowedId)
         )->count();
 
+        $totalResidents = Resident::when(
+            !$user->isAdmin(),
+            fn ($query) => $query->where('subdivision_id', $allowedId)
+        )->count();
+
+        $totalHouses = House::when(
+            !$user->isAdmin(),
+            fn ($query) => $query->where('subdivision_id', $allowedId)
+        )->count();
+
         $visitorsToday = Visitor::when(
             !$user->isAdmin(),
             fn ($query) => $query->where('subdivision_id', $allowedId)
@@ -56,13 +68,18 @@ class DashboardController extends Controller
         $breakdown = $user->isAdmin()
             ? Subdivision::withCount([
                 'incidents',
+                'residents',
+                'houses',
                 'visitors as visitors_inside_count' => fn ($query) => $query->where('status', 'Inside'),
+                'houses as occupied_houses_count' => fn ($query) => $query->whereHas('residents'),
             ])->orderBy('subdivision_name')->get()
             : collect();
 
         return view('dashboard', compact(
             'totalSubdivisions',
             'totalIncidents',
+            'totalResidents',
+            'totalHouses',
             'visitorsToday',
             'visitorsInside',
             'insideVisitors',

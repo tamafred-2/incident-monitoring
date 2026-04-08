@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\House;
 use App\Models\Subdivision;
 use App\Models\Visitor;
 use Illuminate\Database\Eloquent\Builder;
@@ -33,6 +34,13 @@ class VisitorController extends Controller
         $subdivisions = $user->isAdmin()
             ? Subdivision::where('status', 'Active')->orderBy('subdivision_name')->get()
             : collect();
+        $housesBySubdivision = House::query()
+            ->select('subdivision_id', 'block', 'lot')
+            ->orderBy('block')
+            ->orderBy('lot')
+            ->get()
+            ->groupBy('subdivision_id')
+            ->map(fn ($houses) => $houses->map(fn (House $house) => $house->display_address)->values()->all());
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
         $insideVisitors = Visitor::query()
             ->with('subdivision')
@@ -54,7 +62,8 @@ class VisitorController extends Controller
             'filterSubdivision',
             'historyView',
             'effectiveSubdivision',
-            'insideVisitors'
+            'insideVisitors',
+            'housesBySubdivision',
         ));
     }
 
@@ -81,6 +90,7 @@ class VisitorController extends Controller
             'company' => ['nullable', 'string', 'max:150'],
             'purpose' => ['nullable', 'string'],
             'host_employee' => ['nullable', 'string', 'max:150'],
+            'house_address_or_unit' => ['nullable', 'string', 'max:120'],
         ]);
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
@@ -88,17 +98,33 @@ class VisitorController extends Controller
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
 
+        if (!empty($data['house_address_or_unit'])) {
+            $normalizedAddress = strtoupper(trim($data['house_address_or_unit']));
+
+            $houseExists = House::query()
+                ->where('subdivision_id', $subdivisionId)
+                ->get()
+                ->contains(fn (House $house) => strtoupper($house->display_address) === $normalizedAddress);
+
+            if (!$houseExists) {
+                return back()->withErrors([
+                    'house_address_or_unit' => 'Please select a valid house / unit for the chosen subdivision.',
+                ])->withInput();
+            }
+        }
+
         Visitor::create([
             'subdivision_id' => $subdivisionId,
             'surname' => $data['surname'],
             'first_name' => $data['first_name'],
-            'middle_initials' => $data['middle_initials'] ?: null,
-            'extension' => $data['extension'] ?: null,
-            'phone' => $data['phone'] ?: null,
-            'id_number' => $data['id_number'] ?: null,
-            'company' => $data['company'] ?: null,
-            'purpose' => $data['purpose'] ?: null,
-            'host_employee' => $data['host_employee'] ?: null,
+            'middle_initials' => $data['middle_initials'] ?? null,
+            'extension' => $data['extension'] ?? null,
+            'phone' => $data['phone'] ?? null,
+            'id_number' => $data['id_number'] ?? null,
+            'company' => $data['company'] ?? null,
+            'purpose' => $data['purpose'] ?? null,
+            'host_employee' => $data['host_employee'] ?? null,
+            'house_address_or_unit' => $data['house_address_or_unit'] ?? null,
             'check_in' => now(),
             'check_out' => null,
             'status' => 'Inside',

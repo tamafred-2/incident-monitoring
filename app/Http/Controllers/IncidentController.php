@@ -233,6 +233,7 @@ class IncidentController extends Controller
         }
 
         $resident = Resident::query()
+            ->with('house')
             ->where('resident_code', trim($data['code']))
             ->where('subdivision_id', (int) $data['subdivision_id'])
             ->first();
@@ -255,7 +256,7 @@ class IncidentController extends Controller
             'success' => true,
             'resident_id' => (int) $resident->resident_id,
             'full_name' => $resident->full_name,
-            'address_or_unit' => $resident->address_or_unit ?? '',
+            'address_or_unit' => $resident->display_address ?? '',
         ]);
     }
 

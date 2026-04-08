@@ -12,7 +12,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.alerts')
 
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
                 <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <p class="text-sm text-slate-500">Total Subdivisions</p>
                     <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalSubdivisions }}</p>
@@ -20,6 +20,14 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <p class="text-sm text-slate-500">Total Incidents</p>
                     <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalIncidents }}</p>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-sm text-slate-500">Total Residents</p>
+                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalResidents }}</p>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-sm text-slate-500">Managed Houses</p>
+                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalHouses }}</p>
                 </div>
                 <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <p class="text-sm text-slate-500">Visitors Today</p>
@@ -102,6 +110,9 @@
                                 <thead class="bg-slate-50">
                                     <tr>
                                         <th class="px-6 py-3 text-left font-semibold text-slate-600">Subdivision</th>
+                                        <th class="px-6 py-3 text-left font-semibold text-slate-600">Residents</th>
+                                        <th class="px-6 py-3 text-left font-semibold text-slate-600">Houses</th>
+                                        <th class="px-6 py-3 text-left font-semibold text-slate-600">Occupied Houses</th>
                                         <th class="px-6 py-3 text-left font-semibold text-slate-600">Incidents</th>
                                         <th class="px-6 py-3 text-left font-semibold text-slate-600">Visitors Inside</th>
                                     </tr>
@@ -110,6 +121,9 @@
                                     @foreach ($breakdown as $subdivision)
                                         <tr>
                                             <td class="px-6 py-4 font-medium text-slate-900">{{ $subdivision->subdivision_name }}</td>
+                                            <td class="px-6 py-4 text-slate-700">{{ $subdivision->residents_count }}</td>
+                                            <td class="px-6 py-4 text-slate-700">{{ $subdivision->houses_count }}</td>
+                                            <td class="px-6 py-4 text-slate-700">{{ $subdivision->occupied_houses_count }}</td>
                                             <td class="px-6 py-4 text-slate-700">{{ $subdivision->incidents_count }}</td>
                                             <td class="px-6 py-4 text-slate-700">{{ $subdivision->visitors_inside_count }}</td>
                                         </tr>

@@ -87,6 +87,12 @@
                                         @endif
                                         <td class="px-6 py-4">
                                             <div class="flex flex-wrap items-center gap-3">
+                                                <a
+                                                    href="{{ route('subdivisions.show', array_merge(['subdivision' => $subdivision], array_filter(['q' => $filterQ, 'status' => $filterStatus, 'view' => $filterView !== 'active' ? $filterView : null], static fn ($value) => $value !== null && $value !== ''))) }}"
+                                                    class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                                                >
+                                                    View
+                                                </a>
                                                 @if (!$subdivision->trashed())
                                                     <button
                                                         type="button"
@@ -309,6 +315,7 @@
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Address</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Contact</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Status</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-slate-600">Action</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 bg-white">
@@ -318,10 +325,18 @@
                                         <td class="px-6 py-4 text-slate-600">{{ $subdivision->address ?: '-' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $subdivision->contact_person ?: '-' }}</td>
                                         <td class="px-6 py-4">{{ $subdivision->status }}</td>
+                                        <td class="px-6 py-4">
+                                            <a
+                                                href="{{ route('subdivisions.show', $subdivision) }}"
+                                                class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                                            >
+                                                View
+                                            </a>
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="px-6 py-10 text-center text-slate-500">No subdivision assigned.</td>
+                                        <td colspan="5" class="px-6 py-10 text-center text-slate-500">No subdivision assigned.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

@@ -14,6 +14,7 @@ class Resident extends Model
 
     protected $fillable = [
         'subdivision_id',
+        'house_id',
         'full_name',
         'phone',
         'email',
@@ -32,8 +33,18 @@ class Resident extends Model
         return $this->belongsTo(Subdivision::class, 'subdivision_id', 'subdivision_id')->withTrashed();
     }
 
+    public function house(): BelongsTo
+    {
+        return $this->belongsTo(House::class, 'house_id', 'house_id');
+    }
+
     public function incidents(): HasMany
     {
         return $this->hasMany(Incident::class, 'verified_resident_id', 'resident_id');
+    }
+
+    public function getDisplayAddressAttribute(): ?string
+    {
+        return $this->house?->display_address ?: $this->address_or_unit;
     }
 }

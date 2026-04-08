@@ -51,6 +51,20 @@ class SubdivisionController extends Controller
         ));
     }
 
+    public function show(Request $request, Subdivision $subdivision): View
+    {
+        if (!$request->user()->isAdmin() && !$request->user()->canAccessSubdivision($subdivision->subdivision_id)) {
+            abort(403);
+        }
+
+        $subdivision->loadCount(['users', 'residents', 'visitors', 'incidents', 'houses']);
+
+        return view('subdivisions.show', [
+            'subdivision' => $subdivision,
+            'indexContext' => $this->indexContext($request),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

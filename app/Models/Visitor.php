@@ -28,6 +28,7 @@ class Visitor extends Model
         'company',
         'purpose',
         'host_employee',
+        'house_address_or_unit',
         'check_in',
         'check_out',
         'status',

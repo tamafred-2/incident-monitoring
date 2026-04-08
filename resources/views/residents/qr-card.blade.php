@@ -12,8 +12,8 @@
             <p class="text-xs font-semibold uppercase tracking-[0.3em] text-sky-700">Resident ID</p>
             <h1 class="mt-3 text-2xl font-bold">{{ $resident->full_name }}</h1>
             <p class="mt-2 text-sm text-slate-500">{{ $resident->subdivision->subdivision_name ?? '' }}</p>
-            @if ($resident->address_or_unit)
-                <p class="mt-1 text-sm text-slate-600">{{ $resident->address_or_unit }}</p>
+            @if ($resident->display_address)
+                <p class="mt-1 text-sm text-slate-600">{{ $resident->display_address }}</p>
             @endif
         </div>
 
