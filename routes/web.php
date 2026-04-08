@@ -39,6 +39,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
     Route::get('/incidents/create', [IncidentController::class, 'create'])->middleware('role:security,staff,investigator')->name('incidents.create');
     Route::post('/incidents', [IncidentController::class, 'store'])->middleware('role:security,staff,investigator')->name('incidents.store');
+    Route::get('/incidents/{incidentId}', [IncidentController::class, 'show'])->name('incidents.show');
+    Route::get('/incidents/{incidentId}/edit', [IncidentController::class, 'edit'])->middleware('role:admin')->name('incidents.edit');
+    Route::put('/incidents/{incidentId}', [IncidentController::class, 'update'])->middleware('role:admin')->name('incidents.update');
+    Route::delete('/incidents/{incidentId}', [IncidentController::class, 'destroy'])->middleware('role:admin')->name('incidents.destroy');
+    Route::post('/incidents/{incidentId}/restore', [IncidentController::class, 'restore'])->middleware('role:admin')->name('incidents.restore');
+    Route::delete('/incidents/{incidentId}/force', [IncidentController::class, 'forceDelete'])->middleware('role:admin')->name('incidents.force-delete');
     Route::get('/residents', [ResidentController::class, 'index'])->middleware('role:staff,investigator')->name('residents.index');
     Route::get('/residents/{resident}/qr-card', [ResidentController::class, 'qrCard'])->middleware(['role:staff,investigator', 'subdivision'])->name('residents.qr-card');
     Route::get('/visitors', [VisitorController::class, 'index'])->middleware('role:security,staff,investigator')->name('visitors.index');
