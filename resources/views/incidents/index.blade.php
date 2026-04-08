@@ -6,9 +6,14 @@
                 <p class="mt-1 text-sm text-slate-500">Incident reporting, resident verification, and proof-photo uploads now live in Laravel.</p>
             </div>
             @if (auth()->user()->hasRole(['security', 'staff', 'investigator']))
-                <a href="{{ route('incidents.create', $filterSubdivision ? ['subdivision_id' => $filterSubdivision] : []) }}" class="inline-flex items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">
+                <button
+                    type="button"
+                    x-data
+                    x-on:click="$dispatch('open-modal', 'report-incident')"
+                    class="inline-flex items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
+                >
                     Report Incident
-                </a>
+                </button>
             @endif
         </div>
     </x-slot>
@@ -86,6 +91,10 @@
                     </table>
                 </div>
             </div>
+
+            @if (auth()->user()->hasRole(['security', 'staff', 'investigator']))
+                @include('incidents.partials.report-modal')
+            @endif
         </div>
     </div>
 </x-app-layout>

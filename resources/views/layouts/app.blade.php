@@ -19,19 +19,27 @@
             @include('layouts.navigation')
 
             <div class="lg:pl-72">
-                @if (auth()->user()?->isAdmin())
+                @isset($header)
+                    <header class="border-b border-slate-200/80 bg-transparent">
+                        <div class="mx-auto flex max-w-7xl items-start justify-between gap-6 px-4 py-8 sm:px-6 lg:px-8">
+                            <div class="min-w-0 flex-1">
+                                {{ $header }}
+                            </div>
+
+                            @if (auth()->user()?->isAdmin())
+                                <div class="shrink-0">
+                                    @include('layouts.admin-visitor-notifications')
+                                </div>
+                            @endif
+                        </div>
+                    </header>
+                @endisset
+
+                @if (! isset($header) && auth()->user()?->isAdmin())
                     <div class="mx-auto flex max-w-7xl justify-end px-4 pt-6 sm:px-6 lg:px-8">
                         @include('layouts.admin-visitor-notifications')
                     </div>
                 @endif
-
-                @isset($header)
-                    <header class="border-b border-slate-200/80 bg-transparent">
-                        <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                        {{ $header }}
-                        </div>
-                    </header>
-                @endisset
 
                 <main class="pb-10">
                     {{ $slot }}

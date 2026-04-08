@@ -33,19 +33,29 @@ class IncidentController extends Controller
         $subdivisions = $user->isAdmin()
             ? Subdivision::orderBy('subdivision_name')->get()
             : collect();
-
-        return view('incidents.index', compact('incidents', 'subdivisions', 'filterSubdivision'));
-    }
-
-    public function create(Request $request): View
-    {
-        $user = $request->user();
-        $subdivisions = $user->isAdmin()
+        $reportSubdivisions = $user->isAdmin()
             ? Subdivision::where('status', 'Active')->orderBy('subdivision_name')->get()
             : collect();
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
+        $openReportModal = $request->boolean('report');
 
-        return view('incidents.create', compact('subdivisions', 'effectiveSubdivision'));
+        return view('incidents.index', compact(
+            'incidents',
+            'subdivisions',
+            'filterSubdivision',
+            'reportSubdivisions',
+            'effectiveSubdivision',
+            'openReportModal',
+        ));
+    }
+
+    public function create(Request $request): RedirectResponse
+    {
+        $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
+        $context = $this->routeContext($request, $effectiveSubdivision);
+        $context['report'] = 1;
+
+        return redirect()->route('incidents.index', $context);
     }
 
     public function store(Request $request): RedirectResponse
