@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Incident extends Model
 {
+    use SoftDeletes;
+
     protected $primaryKey = 'incident_id';
 
     public const UPDATED_AT = null;
@@ -19,6 +22,8 @@ class Incident extends Model
         'category',
         'location',
         'incident_date',
+        'reported_at',
+        'resolved_at',
         'status',
         'proof_photo_path',
         'reported_by',
@@ -37,6 +42,8 @@ class Incident extends Model
     {
         return [
             'incident_date' => 'datetime',
+            'reported_at' => 'datetime',
+            'resolved_at' => 'datetime',
             'verified_at' => 'datetime',
             'created_at' => 'datetime',
         ];
