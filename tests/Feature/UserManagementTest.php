@@ -10,6 +10,27 @@ class UserManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_user_detail_page_can_be_viewed(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'subdivision_id' => null,
+        ]);
+
+        $targetUser = User::factory()->create([
+            'role' => 'staff',
+            'surname' => 'Cruz',
+            'first_name' => 'Ana',
+            'subdivision_id' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('users.show', $targetUser))
+            ->assertOk()
+            ->assertSee('User Details')
+            ->assertSee($targetUser->full_name);
+    }
+
     public function test_user_deletion_uses_soft_deletes(): void
     {
         $admin = User::factory()->create([

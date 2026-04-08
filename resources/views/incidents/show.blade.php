@@ -53,8 +53,8 @@
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Report Summary</h4>
                         <dl class="mt-4 space-y-3 text-sm">
                             @php
-                                $incidentDate = optional($incident->incident_date);
-                                $reportedAt = optional($incident->reported_at);
+                                $incidentDate = $incident->incident_date;
+                                $reportedAt = $incident->reported_at;
                                 $sameIncidentAndReportedDate = $incidentDate && $reportedAt
                                     ? $incidentDate->equalTo($reportedAt)
                                     : false;

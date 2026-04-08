@@ -11,6 +11,29 @@ class SubdivisionManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_subdivision_detail_page_can_be_viewed(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'subdivision_id' => null,
+        ]);
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Sample Subdivision',
+            'address' => 'Sample Address',
+            'contact_person' => 'Sample Contact',
+            'contact_number' => '1234567',
+            'email' => 'sample@example.com',
+            'status' => 'Active',
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('subdivisions.show', $subdivision))
+            ->assertOk()
+            ->assertSee('Subdivision Details')
+            ->assertSee('Sample Subdivision');
+    }
+
     public function test_subdivision_deletion_uses_soft_deletes(): void
     {
         $admin = User::factory()->create([

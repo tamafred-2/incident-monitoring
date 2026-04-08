@@ -14,7 +14,7 @@
                 <form method="GET" action="{{ route('residents.index') }}" class="grid gap-4 md:grid-cols-[1fr_180px_220px_auto]">
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Search</label>
-                        <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, code, address"
+                        <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, code, address, house"
                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                     </div>
                     <div>
@@ -47,7 +47,8 @@
                         <thead class="bg-slate-50">
                             <tr>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Name</th>
-                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Address / Unit</th>
+                                <th class="px-6 py-3 text-left font-semibold text-slate-600">House</th>
+                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Legacy Address</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Code</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Status</th>
                                 @if ($subdivisions->isNotEmpty())
@@ -60,6 +61,7 @@
                             @forelse ($residents as $resident)
                                 <tr>
                                     <td class="px-6 py-4 font-medium text-slate-900">{{ $resident->full_name }}</td>
+                                    <td class="px-6 py-4 text-slate-600">{{ $resident->house?->display_address ?: '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $resident->address_or_unit ?: '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600"><code>{{ $resident->resident_code }}</code></td>
                                     <td class="px-6 py-4 text-slate-600">{{ $resident->status }}</td>
@@ -74,7 +76,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $subdivisions->isNotEmpty() ? 6 : 5 }}" class="px-6 py-10 text-center text-slate-500">No residents found.</td>
+                                    <td colspan="{{ $subdivisions->isNotEmpty() ? 7 : 6 }}" class="px-6 py-10 text-center text-slate-500">No residents found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

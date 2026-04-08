@@ -90,6 +90,12 @@
                                     @endif
                                     <td class="px-6 py-4">
                                         <div class="flex flex-wrap items-center gap-3">
+                                            <a
+                                                href="{{ route('users.show', array_merge(['user' => $user], array_filter(['q' => $filterQ, 'role' => $filterRole, 'subdivision_id' => $filterSubdivision, 'view' => $filterView !== 'active' ? $filterView : null], static fn ($value) => $value !== null && $value !== ''))) }}"
+                                                class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                                            >
+                                                View
+                                            </a>
                                             @if (!$user->trashed())
                                                 <button
                                                     type="button"

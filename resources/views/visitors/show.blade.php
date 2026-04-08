@@ -91,6 +91,10 @@
                                 <dd class="text-right font-medium text-slate-900">{{ $visitor->host_employee ?: '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">House / Unit</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ $visitor->house_address_or_unit ?: '-' }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Phone</dt>
                                 <dd class="text-right font-medium text-slate-900">{{ $visitor->phone ?: '-' }}</dd>
                             </div>

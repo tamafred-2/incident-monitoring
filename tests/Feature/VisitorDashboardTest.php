@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\House;
+use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Models\Visitor;
@@ -87,5 +89,43 @@ class VisitorDashboardTest extends TestCase
             ->assertSee('Visitor Details')
             ->assertSee('Jose P. Santos Jr.')
             ->assertSee('Delivery');
+    }
+
+    public function test_dashboard_shows_house_and_resident_overview_counts(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'subdivision_id' => null,
+        ]);
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Central Park',
+            'status' => 'Active',
+        ]);
+
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '1',
+            'lot' => '6',
+        ]);
+
+        Resident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'full_name' => 'Mara Lopez',
+            'resident_code' => 'RES-2001',
+            'status' => 'Active',
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->get(route('dashboard'));
+
+        $response
+            ->assertOk()
+            ->assertSee('Total Residents')
+            ->assertSee('Managed Houses')
+            ->assertSee('Occupied Houses')
+            ->assertSee('Central Park');
     }
 }

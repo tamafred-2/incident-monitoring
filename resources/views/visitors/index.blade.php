@@ -21,7 +21,18 @@
     </x-slot>
 
     <div class="py-10">
-        <div x-data="{ activeTab: '{{ $defaultVisitorTab }}' }" class="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
+        <div
+            x-data="{
+                activeTab: '{{ $defaultVisitorTab }}',
+                housesBySubdivision: {{ \Illuminate\Support\Js::from($housesBySubdivision) }},
+                selectedSubdivision: '{{ old('subdivision_id', $effectiveSubdivision) }}',
+                selectedHouse: @js(old('house_address_or_unit', '')),
+                get availableHouses() {
+                    return this.housesBySubdivision[this.selectedSubdivision] || [];
+                }
+            }"
+            class="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8"
+        >
             @include('partials.alerts')
 
             <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -115,7 +126,12 @@
                             @if ($subdivisions->isNotEmpty())
                                 <div class="max-w-md">
                                     <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                                    <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
+                                    <select
+                                        name="subdivision_id"
+                                        x-model="selectedSubdivision"
+                                        class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                        required
+                                    >
                                         <option value="">Select subdivision</option>
                                         @foreach ($subdivisions as $subdivision)
                                             <option value="{{ $subdivision->subdivision_id }}" @selected(old('subdivision_id', $effectiveSubdivision) == $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
@@ -187,6 +203,16 @@
                                     <label class="block text-sm font-medium text-slate-700">Host / Employee</label>
                                     <input type="text" name="host_employee" value="{{ old('host_employee') }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                                 </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">House / Unit</label>
+                                    <select name="house_address_or_unit" x-model="selectedHouse" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                        <option value="">Select house / unit</option>
+                                        <template x-for="house in availableHouses" :key="house">
+                                            <option :value="house" x-text="house"></option>
+                                        </template>
+                                    </select>
+                                    <p class="mt-1 text-xs text-slate-500">Optional check against the subdivision's managed block and lot records.</p>
+                                </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-slate-700">Purpose</label>
                                     <textarea name="purpose" rows="3" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('purpose') }}</textarea>
@@ -220,6 +246,7 @@
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Name</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Company</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Host</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-slate-600">House / Unit</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Checked In</th>
                                     @if ($subdivisions->isNotEmpty())
                                         <th class="px-6 py-3 text-left font-semibold text-slate-600">Subdivision</th>
@@ -235,6 +262,7 @@
                                         <td class="px-6 py-4 font-medium text-slate-900">{{ $visitor->full_name }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $visitor->company ?: '-' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $visitor->host_employee ?: '-' }}</td>
+                                        <td class="px-6 py-4 text-slate-600">{{ $visitor->house_address_or_unit ?: '-' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ optional($visitor->check_in)->format('M j, Y H:i') }}</td>
                                         @if ($subdivisions->isNotEmpty())
                                             <td class="px-6 py-4 text-slate-600">{{ $visitor->subdivision->subdivision_name ?? '-' }}</td>
@@ -251,7 +279,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ $subdivisions->isNotEmpty() ? (auth()->user()->hasRole('security') ? 6 : 5) : (auth()->user()->hasRole('security') ? 5 : 4) }}" class="px-6 py-10 text-center text-slate-500">No visitors are currently inside.</td>
+                                        <td colspan="{{ $subdivisions->isNotEmpty() ? (auth()->user()->hasRole('security') ? 7 : 6) : (auth()->user()->hasRole('security') ? 6 : 5) }}" class="px-6 py-10 text-center text-slate-500">No visitors are currently inside.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -318,6 +346,7 @@
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Company</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Purpose</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Host</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-slate-600">House / Unit</th>
                                     @if ($subdivisions->isNotEmpty())
                                         <th class="px-6 py-3 text-left font-semibold text-slate-600">Subdivision</th>
                                     @endif
@@ -340,6 +369,7 @@
                                         <td class="px-6 py-4 text-slate-600">{{ $visitor->company ?: '-' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ \Illuminate\Support\Str::limit($visitor->purpose ?: '-', 40) }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $visitor->host_employee ?: '-' }}</td>
+                                        <td class="px-6 py-4 text-slate-600">{{ $visitor->house_address_or_unit ?: '-' }}</td>
                                         @if ($subdivisions->isNotEmpty())
                                             <td class="px-6 py-4 text-slate-600">{{ $visitor->subdivision->subdivision_name ?? '-' }}</td>
                                         @endif
@@ -383,7 +413,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ $subdivisions->isNotEmpty() ? (auth()->user()->hasRole('security') ? ($historyView !== 'active' ? 11 : 10) : ($historyView !== 'active' ? 10 : 9)) : (auth()->user()->hasRole('security') ? ($historyView !== 'active' ? 10 : 9) : ($historyView !== 'active' ? 9 : 8)) }}" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
+                                        <td colspan="{{ $subdivisions->isNotEmpty() ? (auth()->user()->hasRole('security') ? ($historyView !== 'active' ? 12 : 11) : ($historyView !== 'active' ? 11 : 10)) : (auth()->user()->hasRole('security') ? ($historyView !== 'active' ? 11 : 10) : ($historyView !== 'active' ? 10 : 9)) }}" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

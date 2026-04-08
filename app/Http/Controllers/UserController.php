@@ -60,6 +60,16 @@ class UserController extends Controller
         ));
     }
 
+    public function show(Request $request, User $user): View
+    {
+        $user->load('subdivision');
+
+        return view('users.show', [
+            'managedUser' => $user,
+            'indexContext' => $this->indexContext($request),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([

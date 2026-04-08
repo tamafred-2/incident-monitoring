@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\House;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Models\Visitor;
@@ -137,6 +138,78 @@ class VisitorManagementTest extends TestCase
 
         $this->assertDatabaseMissing('visitors', [
             'visitor_id' => $visitor->visitor_id,
+        ]);
+    }
+
+    public function test_security_can_check_in_visitor_with_valid_house_unit(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Northview',
+            'status' => 'Active',
+        ]);
+
+        $security = User::factory()->create([
+            'role' => 'security',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '3',
+            'lot' => '12',
+        ]);
+
+        $response = $this
+            ->actingAs($security)
+            ->post(route('visitors.store'), [
+                'subdivision_id' => $subdivision->subdivision_id,
+                'surname' => 'Cruz',
+                'first_name' => 'Ana',
+                'house_address_or_unit' => 'Block 3 Lot 12',
+                'host_employee' => 'Homeowner',
+            ]);
+
+        $response->assertRedirect(route('visitors.index', [
+            'tab' => 'history',
+            'view' => 'active',
+        ]));
+
+        $this->assertDatabaseHas('visitors', [
+            'surname' => 'Cruz',
+            'first_name' => 'Ana',
+            'house_address_or_unit' => 'Block 3 Lot 12',
+        ]);
+    }
+
+    public function test_security_cannot_check_in_visitor_with_invalid_house_unit(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Southridge',
+            'status' => 'Active',
+        ]);
+
+        $security = User::factory()->create([
+            'role' => 'security',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $response = $this
+            ->actingAs($security)
+            ->from(route('visitors.index'))
+            ->post(route('visitors.store'), [
+                'subdivision_id' => $subdivision->subdivision_id,
+                'surname' => 'Rivera',
+                'first_name' => 'Toni',
+                'house_address_or_unit' => 'BLK 9 LOT 99',
+            ]);
+
+        $response
+            ->assertRedirect(route('visitors.index'))
+            ->assertSessionHasErrors('house_address_or_unit');
+
+        $this->assertDatabaseMissing('visitors', [
+            'surname' => 'Rivera',
+            'first_name' => 'Toni',
         ]);
     }
 }

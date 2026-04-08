@@ -18,14 +18,18 @@ class ResidentController extends Controller
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
 
         $query = Resident::query()
-            ->with('subdivision')
+            ->with(['subdivision', 'house'])
             ->orderBy('full_name');
 
         if ($filterQ !== '') {
             $query->where(function ($builder) use ($filterQ) {
                 $builder->where('full_name', 'like', "%{$filterQ}%")
                     ->orWhere('resident_code', 'like', "%{$filterQ}%")
-                    ->orWhere('address_or_unit', 'like', "%{$filterQ}%");
+                    ->orWhere('address_or_unit', 'like', "%{$filterQ}%")
+                    ->orWhereHas('house', function ($houseQuery) use ($filterQ) {
+                        $houseQuery->where('block', 'like', "%{$filterQ}%")
+                            ->orWhere('lot', 'like', "%{$filterQ}%");
+                    });
             });
         }
 
@@ -59,7 +63,7 @@ class ResidentController extends Controller
             abort(403);
         }
 
-        $resident->load('subdivision');
+        $resident->load(['subdivision', 'house']);
 
         return view('residents.qr-card', [
             'resident' => $resident,

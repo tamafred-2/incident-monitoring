@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HouseController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ResidentController;
@@ -23,13 +24,20 @@ Route::middleware('auth')->group(function () {
     Route::delete('/admin/visitor-notifications', [DashboardController::class, 'clearNotifications'])->middleware('role:admin')->name('admin.visitor-notifications.clear-all');
 
     Route::get('/subdivisions', [SubdivisionController::class, 'index'])->name('subdivisions.index');
+    Route::get('/subdivisions/{subdivision}', [SubdivisionController::class, 'show'])->name('subdivisions.show');
     Route::post('/subdivisions', [SubdivisionController::class, 'store'])->middleware('role:admin')->name('subdivisions.store');
     Route::put('/subdivisions/{subdivision}', [SubdivisionController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('subdivisions.update');
     Route::delete('/subdivisions/{subdivision}', [SubdivisionController::class, 'destroy'])->middleware(['role:admin', 'subdivision'])->name('subdivisions.destroy');
     Route::post('/subdivisions/{subdivisionId}/restore', [SubdivisionController::class, 'restore'])->middleware('role:admin')->name('subdivisions.restore');
     Route::delete('/subdivisions/{subdivisionId}/force', [SubdivisionController::class, 'forceDelete'])->middleware('role:admin')->name('subdivisions.force-delete');
+    Route::get('/houses', [HouseController::class, 'index'])->middleware('role:admin')->name('houses.index');
+    Route::get('/houses/{house}', [HouseController::class, 'show'])->middleware('role:admin')->name('houses.show');
+    Route::post('/houses', [HouseController::class, 'store'])->middleware('role:admin')->name('houses.store');
+    Route::put('/houses/{house}', [HouseController::class, 'update'])->middleware('role:admin')->name('houses.update');
+    Route::delete('/houses/{house}', [HouseController::class, 'destroy'])->middleware('role:admin')->name('houses.destroy');
 
     Route::get('/users', [UserController::class, 'index'])->middleware('role:admin')->name('users.index');
+    Route::get('/users/{user}', [UserController::class, 'show'])->middleware('role:admin')->name('users.show');
     Route::post('/users', [UserController::class, 'store'])->middleware('role:admin')->name('users.store');
     Route::put('/users/{user}', [UserController::class, 'update'])->middleware('role:admin')->name('users.update');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('role:admin')->name('users.destroy');
