@@ -28,7 +28,7 @@
                     <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
                         <option value="">Select subdivision</option>
                         @foreach ($reportSubdivisions as $subdivision)
-                            <option value="{{ $subdivision->subdivision_id }}" @selected((int) old('subdivision_id', $filterSubdivision ?: $effectiveSubdivision) === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
+                            <option value="{{ $subdivision->subdivision_id }}" @selected((int) old('subdivision_id', auth()->user()->isAdmin() ? '' : ($filterSubdivision ?: $effectiveSubdivision)) === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
                         @endforeach
                     </select>
                 </div>

@@ -15,12 +15,29 @@ class VisitorController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
         $historyView = $this->resolveHistoryView($request->query('view'));
 
         $query = Visitor::query()
             ->with('subdivision')
             ->orderByDesc('check_in');
+
+        if ($filterQ !== '') {
+            $query->where(function (Builder $builder) use ($filterQ) {
+                $builder->where('surname', 'like', "%{$filterQ}%")
+                    ->orWhere('first_name', 'like', "%{$filterQ}%")
+                    ->orWhere('middle_initials', 'like', "%{$filterQ}%")
+                    ->orWhere('extension', 'like', "%{$filterQ}%")
+                    ->orWhere('phone', 'like', "%{$filterQ}%")
+                    ->orWhere('id_number', 'like', "%{$filterQ}%")
+                    ->orWhere('company', 'like', "%{$filterQ}%")
+                    ->orWhere('purpose', 'like', "%{$filterQ}%")
+                    ->orWhere('host_employee', 'like', "%{$filterQ}%")
+                    ->orWhere('house_address_or_unit', 'like', "%{$filterQ}%")
+                    ->orWhere('status', 'like', "%{$filterQ}%");
+            });
+        }
 
         $this->applyHistoryViewScope($query, $historyView);
 
@@ -45,6 +62,24 @@ class VisitorController extends Controller
         $insideVisitors = Visitor::query()
             ->with('subdivision')
             ->when(
+                $filterQ !== '',
+                function (Builder $builder) use ($filterQ) {
+                    $builder->where(function (Builder $query) use ($filterQ) {
+                        $query->where('surname', 'like', "%{$filterQ}%")
+                            ->orWhere('first_name', 'like', "%{$filterQ}%")
+                            ->orWhere('middle_initials', 'like', "%{$filterQ}%")
+                            ->orWhere('extension', 'like', "%{$filterQ}%")
+                            ->orWhere('phone', 'like', "%{$filterQ}%")
+                            ->orWhere('id_number', 'like', "%{$filterQ}%")
+                            ->orWhere('company', 'like', "%{$filterQ}%")
+                            ->orWhere('purpose', 'like', "%{$filterQ}%")
+                            ->orWhere('host_employee', 'like', "%{$filterQ}%")
+                            ->orWhere('house_address_or_unit', 'like', "%{$filterQ}%")
+                            ->orWhere('status', 'like', "%{$filterQ}%");
+                    });
+                }
+            )
+            ->when(
                 !$user->isAdmin(),
                 fn ($builder) => $builder->where('subdivision_id', $user->allowedSubdivisionId())
             )
@@ -59,6 +94,7 @@ class VisitorController extends Controller
         return view('visitors.index', compact(
             'visitors',
             'subdivisions',
+            'filterQ',
             'filterSubdivision',
             'historyView',
             'effectiveSubdivision',
@@ -241,6 +277,11 @@ class VisitorController extends Controller
             'tab' => $tab,
             'view' => $this->resolveHistoryView($request->input('view', $request->query('view'))),
         ];
+
+        $filterQ = trim((string) $request->input('q', $request->query('q', '')));
+        if ($filterQ !== '') {
+            $context['q'] = $filterQ;
+        }
 
         if ($request->user()->isAdmin() && $subdivisionId) {
             $context['subdivision_id'] = (int) $subdivisionId;

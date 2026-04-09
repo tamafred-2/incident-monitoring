@@ -212,4 +212,47 @@ class VisitorManagementTest extends TestCase
             'first_name' => 'Toni',
         ]);
     }
+
+    public function test_security_can_search_visitors_from_monitoring(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Northview',
+            'status' => 'Active',
+        ]);
+
+        $security = User::factory()->create([
+            'role' => 'security',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        Visitor::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'surname' => 'Cruz',
+            'first_name' => 'Ana',
+            'company' => 'Alpha Services',
+            'host_employee' => 'Mr. Santos',
+            'check_in' => now(),
+            'status' => 'Inside',
+        ]);
+
+        Visitor::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'surname' => 'Reyes',
+            'first_name' => 'Tom',
+            'company' => 'Beta Logistics',
+            'host_employee' => 'Ms. Dela Cruz',
+            'check_in' => now(),
+            'status' => 'Checked Out',
+        ]);
+
+        $response = $this
+            ->actingAs($security)
+            ->get(route('visitors.index', ['q' => 'Alpha']));
+
+        $response
+            ->assertOk()
+            ->assertSee('Alpha Services')
+            ->assertDontSee('Beta Logistics')
+            ->assertSee('value="Alpha"', false);
+    }
 }

@@ -146,7 +146,7 @@
                 </div>
 
                 <x-modal name="create-subdivision" :show="$errors->any() && old('edit_subdivision_id') === null" maxWidth="2xl" focusable>
-                    <div class="bg-white p-6 sm:p-8">
+                    <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-subdivision') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden])').forEach(i => i.value = ''); $el.querySelectorAll('textarea').forEach(t => t.value = ''); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); }); }">
                         <div class="flex items-start justify-between gap-4">
                             <div>
                                 <h3 class="text-lg font-semibold text-slate-900">Add Subdivision</h3>

@@ -60,7 +60,8 @@ class IncidentManagementTest extends TestCase
             ->assertSee('North gate camera stopped recording overnight.')
             ->assertSee('Date Reported')
             ->assertSee('Date Resolved')
-            ->assertSee('uploads/incidents/example-one.jpg', false);
+            ->assertSee('uploads/incidents/example-one.jpg', false)
+            ->assertSee('openPreview(', false);
     }
 
     public function test_incident_deletion_uses_soft_deletes(): void
