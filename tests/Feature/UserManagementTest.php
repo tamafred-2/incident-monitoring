@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\House;
+use App\Models\Resident;
+use App\Models\Subdivision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -29,6 +32,90 @@ class UserManagementTest extends TestCase
             ->assertOk()
             ->assertSee('User Details')
             ->assertSee($targetUser->full_name);
+    }
+
+    public function test_admin_can_create_resident_account_linked_to_resident_record(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'subdivision_id' => null,
+        ]);
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Lakeside',
+            'status' => 'Active',
+        ]);
+
+        $resident = Resident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => House::create([
+                'subdivision_id' => $subdivision->subdivision_id,
+                'block' => '1',
+                'lot' => '3',
+            ])->house_id,
+            'full_name' => 'Mia Santos',
+            'resident_code' => 'RES-5001',
+            'status' => 'Active',
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->post(route('users.store'), [
+                'surname' => 'Santos',
+                'first_name' => 'Mia',
+                'middle_name' => '',
+                'extension' => '',
+                'email' => 'mia@example.com',
+                'role' => 'resident',
+                'resident_id' => $resident->resident_id,
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+            ]);
+
+        $response
+            ->assertRedirect(route('users.index'))
+            ->assertSessionHas('success', 'User created successfully.');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'mia@example.com',
+            'role' => 'resident',
+            'resident_id' => $resident->resident_id,
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+    }
+
+    public function test_admin_cannot_create_resident_account_without_house_linked_resident_record(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'subdivision_id' => null,
+        ]);
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Green Meadows',
+            'status' => 'Active',
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->post(route('users.store'), [
+                'surname' => 'Lopez',
+                'first_name' => 'Carla',
+                'middle_name' => '',
+                'extension' => '',
+                'email' => 'carla@example.com',
+                'role' => 'resident',
+                'resident_id' => '',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+            ]);
+
+        $response
+            ->assertSessionHasErrors('resident_id');
+
+        $this->assertDatabaseMissing('users', [
+            'email' => 'carla@example.com',
+        ]);
     }
 
     public function test_user_deletion_uses_soft_deletes(): void

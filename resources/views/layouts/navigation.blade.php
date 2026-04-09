@@ -7,7 +7,7 @@
             'title' => 'Overview',
             'items' => array_values(array_filter([
                 ['label' => 'Dashboard', 'href' => route('dashboard'), 'active' => 'dashboard'],
-                ['label' => 'Subdivisions', 'href' => route('subdivisions.index'), 'active' => 'subdivisions.*'],
+                !$user->isResident() ? ['label' => 'Subdivisions', 'href' => route('subdivisions.index'), 'active' => 'subdivisions.*'] : null,
                 $user->isAdmin() ? ['label' => 'Houses', 'href' => route('houses.index'), 'active' => 'houses.*'] : null,
                 $user->isAdmin() ? ['label' => 'Users', 'href' => route('users.index'), 'active' => 'users.*'] : null,
             ])),
