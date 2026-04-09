@@ -17,7 +17,21 @@
     </x-slot>
 
     <div class="py-10">
-        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div
+            x-data="{
+                previewImage: null,
+                previewLabel: '',
+                openPreview(url, label) {
+                    this.previewImage = url;
+                    this.previewLabel = label || 'Proof image preview';
+                },
+                closePreview() {
+                    this.previewImage = null;
+                    this.previewLabel = '';
+                }
+            }"
+            class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8"
+        >
             @include('partials.alerts')
 
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -99,15 +113,14 @@
                         @if ($proofPhotos->isNotEmpty())
                             <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach ($proofPhotos as $photo)
-                                    <a
-                                        href="{{ $photo['url'] }}"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <button
+                                        type="button"
+                                        @click="openPreview('{{ $photo['url'] }}', 'Existing proof image {{ $loop->iteration }}')"
                                         class="overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:shadow-md"
                                     >
                                         <img src="{{ $photo['url'] }}" alt="Existing proof image {{ $loop->iteration }}" class="h-40 w-full object-cover">
                                         <div class="px-4 py-3 text-sm font-medium text-slate-700">Proof image {{ $loop->iteration }}</div>
-                                    </a>
+                                    </button>
                                 @endforeach
                             </div>
                         @else
@@ -134,6 +147,31 @@
                         <button class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Save Changes</button>
                     </div>
                 </form>
+            </div>
+
+            <div
+                x-cloak
+                x-show="previewImage"
+                x-on:keydown.escape.window="closePreview()"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closePreview()"></div>
+                <div class="relative w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+                    <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                        <h3 class="text-base font-semibold text-slate-900" x-text="previewLabel || 'Proof image preview'"></h3>
+                        <button
+                            type="button"
+                            @click="closePreview()"
+                            class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                            Close
+                        </button>
+                    </div>
+                    <div class="bg-slate-100 p-4">
+                        <img :src="previewImage" :alt="previewLabel || 'Proof image preview'" class="max-h-[75vh] w-full rounded-2xl object-contain">
+                    </div>
+                </div>
             </div>
         </div>
     </div>

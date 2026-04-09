@@ -7,7 +7,21 @@
     </x-slot>
 
     <div class="py-10">
-        <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
+        <div
+            x-data="{
+                previewImage: null,
+                previewLabel: '',
+                openPreview(url, label) {
+                    this.previewImage = url;
+                    this.previewLabel = label || 'Proof image preview';
+                },
+                closePreview() {
+                    this.previewImage = null;
+                    this.previewLabel = '';
+                }
+            }"
+            class="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8"
+        >
             @include('partials.alerts')
 
             @if ($subdivisions->isNotEmpty())
@@ -114,12 +128,11 @@
                                     <td class="px-6 py-4 text-slate-600">{{ $incident->verifiedResident?->full_name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600">
                                         @if ($incident->proofPhotos->isNotEmpty())
-                                            <a
-                                                href="{{ asset($incident->proofPhotos->first()->photo_path) }}"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                            <button
+                                                type="button"
+                                                @click="openPreview('{{ asset($incident->proofPhotos->first()->photo_path) }}', 'Proof image for {{ addslashes($incident->title) }}')"
                                                 class="group relative block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
-                                                title="Open proof images"
+                                                title="Preview proof images"
                                             >
                                                 <img
                                                     src="{{ asset($incident->proofPhotos->first()->photo_path) }}"
@@ -131,21 +144,20 @@
                                                         +{{ $incident->proofPhotos->count() - 1 }}
                                                     </span>
                                                 @endif
-                                            </a>
+                                            </button>
                                         @elseif ($incident->proof_photo_path)
-                                            <a
-                                                href="{{ asset($incident->proof_photo_path) }}"
-                                                target="_blank"
-                                                rel="noopener noreferrer"
+                                            <button
+                                                type="button"
+                                                @click="openPreview('{{ asset($incident->proof_photo_path) }}', 'Proof image for {{ addslashes($incident->title) }}')"
                                                 class="group relative block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
-                                                title="Open proof image"
+                                                title="Preview proof image"
                                             >
                                                 <img
                                                     src="{{ asset($incident->proof_photo_path) }}"
                                                     alt="Proof image for {{ $incident->title }}"
                                                     class="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                                                 >
-                                            </a>
+                                            </button>
                                         @else
                                             -
                                         @endif
@@ -304,6 +316,31 @@
                     @endif
                 @endforeach
             @endif
+
+            <div
+                x-cloak
+                x-show="previewImage"
+                x-on:keydown.escape.window="closePreview()"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closePreview()"></div>
+                <div class="relative w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+                    <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                        <h3 class="text-base font-semibold text-slate-900" x-text="previewLabel || 'Proof image preview'"></h3>
+                        <button
+                            type="button"
+                            @click="closePreview()"
+                            class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                            Close
+                        </button>
+                    </div>
+                    <div class="bg-slate-100 p-4">
+                        <img :src="previewImage" :alt="previewLabel || 'Proof image preview'" class="max-h-[75vh] w-full rounded-2xl object-contain">
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </x-app-layout>
