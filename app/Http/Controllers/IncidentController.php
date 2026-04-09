@@ -20,18 +20,39 @@ class IncidentController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
+        $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
         $historyView = $this->resolveHistoryView($request->query('view'));
 
         $query = Incident::query()
-            ->with(['subdivision', 'verifiedResident', 'proofPhotos'])
+            ->with(['subdivision', 'verifiedResident', 'proofPhotos', 'reporter'])
             ->orderByDesc('incident_date');
+
+        if ($filterQ !== '') {
+            $query->where(function (Builder $builder) use ($filterQ) {
+                $builder->where('title', 'like', "%{$filterQ}%")
+                    ->orWhere('description', 'like', "%{$filterQ}%")
+                    ->orWhere('category', 'like', "%{$filterQ}%")
+                    ->orWhere('location', 'like', "%{$filterQ}%")
+                    ->orWhere('status', 'like', "%{$filterQ}%")
+                    ->orWhereHas('verifiedResident', function (Builder $residentQuery) use ($filterQ) {
+                        $residentQuery->where('full_name', 'like', "%{$filterQ}%")
+                            ->orWhere('resident_code', 'like', "%{$filterQ}%");
+                    })
+                    ->orWhereHas('reporter', function (Builder $reporterQuery) use ($filterQ) {
+                        $reporterQuery->where('full_name', 'like', "%{$filterQ}%")
+                            ->orWhere('email', 'like', "%{$filterQ}%");
+                    });
+            });
+        }
 
         if ($user->isAdmin()) {
             $this->applyHistoryViewScope($query, $historyView);
         }
 
-        if (!$user->isAdmin()) {
+        if ($user->isResident()) {
+            $query->where('reported_by', $user->user_id);
+        } elseif (!$user->isAdmin()) {
             $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
             $query->where('subdivision_id', $filterSubdivision);
@@ -47,16 +68,19 @@ class IncidentController extends Controller
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
         $openReportModal = $request->boolean('report');
         $incidentCategories = $this->incidentCategories();
+        $residentReporter = $user->isResident() ? $user->loadMissing('resident.house') : null;
 
         return view('incidents.index', compact(
             'incidents',
             'subdivisions',
+            'filterQ',
             'filterSubdivision',
             'reportSubdivisions',
             'effectiveSubdivision',
             'openReportModal',
             'historyView',
             'incidentCategories',
+            'residentReporter',
         ));
     }
 
@@ -83,14 +107,16 @@ class IncidentController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate($this->incidentValidationRules());
+        $data = $request->validate($this->incidentValidationRules($request->user()->isResident()));
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
         if (!$subdivisionId) {
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
 
-        [$verifiedResidentId, $verificationMethod, $verifiedAt] = $this->resolveVerificationData($data, $subdivisionId);
+        [$verifiedResidentId, $verificationMethod, $verifiedAt] = $request->user()->isResident()
+            ? $this->resolveResidentAccountVerificationData($request->user(), $subdivisionId)
+            : $this->resolveVerificationData($data, $subdivisionId);
         $proofPhotoPaths = $this->storeProofPhotos($request);
 
         $incident = Incident::create([
@@ -100,9 +126,9 @@ class IncidentController extends Controller
             'category' => $this->resolveCategory($data),
             'location' => $data['location'] ?: null,
             'incident_date' => $data['incident_date'],
-            'reported_at' => $data['reported_at'],
-            'resolved_at' => $this->resolveResolvedAt($data, null),
-            'status' => $data['status'],
+            'reported_at' => $request->user()->isResident() ? now() : $data['reported_at'],
+            'resolved_at' => $request->user()->isResident() ? null : $this->resolveResolvedAt($data, null),
+            'status' => $request->user()->isResident() ? 'Open' : $data['status'],
             'proof_photo_path' => $proofPhotoPaths[0] ?? null,
             'reported_by' => $request->user()->user_id,
             'verified_resident_id' => $verifiedResidentId,
@@ -133,7 +159,7 @@ class IncidentController extends Controller
     public function update(Request $request, int $incidentId): RedirectResponse
     {
         $incident = $this->findIncidentOrFail($request, $incidentId);
-        $data = $request->validate($this->incidentValidationRules(false));
+        $data = $request->validate($this->incidentValidationRules(false, false));
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
         if (!$subdivisionId) {
@@ -260,7 +286,7 @@ class IncidentController extends Controller
         ]);
     }
 
-    private function incidentValidationRules(bool $includeVerification = true): array
+    private function incidentValidationRules(bool $forResident = false, bool $includeVerification = true): array
     {
         $rules = [
             'subdivision_id' => ['nullable', 'integer'],
@@ -270,12 +296,17 @@ class IncidentController extends Controller
             'category_other' => ['nullable', 'string', 'max:100', 'required_if:category,Other'],
             'location' => ['nullable', 'string', 'max:150'],
             'incident_date' => ['required', 'date'],
-            'reported_at' => ['required', 'date'],
-            'resolved_at' => ['nullable', 'date', 'after_or_equal:reported_at'],
-            'status' => ['required', 'in:Open,Under Investigation,Resolved,Closed'],
             'proof_photos' => ['nullable', 'array', 'max:10'],
             'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ];
+
+        if ($forResident) {
+            return $rules;
+        }
+
+        $rules['reported_at'] = ['required', 'date'];
+        $rules['resolved_at'] = ['nullable', 'date', 'after_or_equal:reported_at'];
+        $rules['status'] = ['required', 'in:Open,Under Investigation,Resolved,Closed'];
 
         if ($includeVerification) {
             $rules['verified_resident_id'] = ['nullable', 'integer'];
@@ -356,6 +387,11 @@ class IncidentController extends Controller
         $context = [];
 
         if ($request->user()->isAdmin()) {
+            $filterQ = trim((string) $request->input('q', $request->query('q', '')));
+            if ($filterQ !== '') {
+                $context['q'] = $filterQ;
+            }
+
             $subdivisionId = (int) $request->input('subdivision_id', $request->query('subdivision_id', 0));
             if ($subdivisionId > 0) {
                 $context['subdivision_id'] = $subdivisionId;
@@ -438,9 +474,24 @@ class IncidentController extends Controller
 
         $incident = $query->findOrFail($incidentId);
 
-        abort_unless($request->user()->canAccessSubdivision($incident->subdivision_id), 403);
+        if ($request->user()->isResident()) {
+            abort_unless((int) $incident->reported_by === (int) $request->user()->user_id, 403);
+        } else {
+            abort_unless($request->user()->canAccessSubdivision($incident->subdivision_id), 403);
+        }
 
         return $incident;
+    }
+
+    private function resolveResidentAccountVerificationData($user, int $subdivisionId): array
+    {
+        $resident = $user->resident;
+
+        if (!$resident || (int) $resident->subdivision_id !== $subdivisionId || $resident->status !== 'Active') {
+            return [null, null, null];
+        }
+
+        return [$resident->resident_id, 'resident_account', now()];
     }
 
     private function proofPhotosFor(Incident $incident): Collection

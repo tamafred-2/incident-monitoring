@@ -20,6 +20,7 @@ class DashboardController extends Controller
         $user = $request->user();
         $allowedId = $user->allowedSubdivisionId();
         $insidePerPage = (int) $request->query('inside_per_page', 5);
+        $isResidentDashboard = $user->isResident();
 
         if (!in_array($insidePerPage, [5, 10], true)) {
             $insidePerPage = 5;
@@ -30,40 +31,54 @@ class DashboardController extends Controller
             : ($allowedId ? 1 : 0);
 
         $totalIncidents = Incident::when(
-            !$user->isAdmin(),
-            fn ($query) => $query->where('subdivision_id', $allowedId)
+            $isResidentDashboard,
+            fn ($query) => $query->where('reported_by', $user->user_id),
+            fn ($query) => $query->when(
+                !$user->isAdmin(),
+                fn ($innerQuery) => $innerQuery->where('subdivision_id', $allowedId)
+            )
         )->count();
 
-        $totalResidents = Resident::when(
-            !$user->isAdmin(),
-            fn ($query) => $query->where('subdivision_id', $allowedId)
-        )->count();
-
-        $totalHouses = House::when(
-            !$user->isAdmin(),
-            fn ($query) => $query->where('subdivision_id', $allowedId)
-        )->count();
-
-        $visitorsToday = Visitor::when(
-            !$user->isAdmin(),
-            fn ($query) => $query->where('subdivision_id', $allowedId)
-        )->whereDate('check_in', now()->toDateString())->count();
-
-        $visitorsInside = Visitor::when(
-            !$user->isAdmin(),
-            fn ($query) => $query->where('subdivision_id', $allowedId)
-        )->where('status', 'Inside')->count();
-
-        $insideVisitors = Visitor::query()
-            ->with('subdivision')
-            ->when(
+        $totalResidents = $isResidentDashboard
+            ? ($user->resident ? 1 : 0)
+            : Resident::when(
                 !$user->isAdmin(),
                 fn ($query) => $query->where('subdivision_id', $allowedId)
-            )
-            ->where('status', 'Inside')
-            ->orderByDesc('check_in')
-            ->paginate($insidePerPage)
-            ->withQueryString();
+            )->count();
+
+        $totalHouses = $isResidentDashboard
+            ? ($user->resident?->house_id ? 1 : 0)
+            : House::when(
+                !$user->isAdmin(),
+                fn ($query) => $query->where('subdivision_id', $allowedId)
+            )->count();
+
+        $visitorsToday = $isResidentDashboard
+            ? 0
+            : Visitor::when(
+                !$user->isAdmin(),
+                fn ($query) => $query->where('subdivision_id', $allowedId)
+            )->whereDate('check_in', now()->toDateString())->count();
+
+        $visitorsInside = $isResidentDashboard
+            ? 0
+            : Visitor::when(
+                !$user->isAdmin(),
+                fn ($query) => $query->where('subdivision_id', $allowedId)
+            )->where('status', 'Inside')->count();
+
+        $insideVisitors = $isResidentDashboard
+            ? Visitor::query()->whereRaw('1 = 0')->paginate($insidePerPage)
+            : Visitor::query()
+                ->with('subdivision')
+                ->when(
+                    !$user->isAdmin(),
+                    fn ($query) => $query->where('subdivision_id', $allowedId)
+                )
+                ->where('status', 'Inside')
+                ->orderByDesc('check_in')
+                ->paginate($insidePerPage)
+                ->withQueryString();
 
         $breakdown = $user->isAdmin()
             ? Subdivision::withCount([
@@ -75,7 +90,20 @@ class DashboardController extends Controller
             ])->orderBy('subdivision_name')->get()
             : collect();
 
+        $residentOpenIncidents = $isResidentDashboard
+            ? Incident::where('reported_by', $user->user_id)
+                ->whereIn('status', ['Open', 'Under Investigation'])
+                ->count()
+            : 0;
+
+        $residentResolvedIncidents = $isResidentDashboard
+            ? Incident::where('reported_by', $user->user_id)
+                ->whereIn('status', ['Resolved', 'Closed'])
+                ->count()
+            : 0;
+
         return view('dashboard', compact(
+            'isResidentDashboard',
             'totalSubdivisions',
             'totalIncidents',
             'totalResidents',
@@ -84,7 +112,9 @@ class DashboardController extends Controller
             'visitorsInside',
             'insideVisitors',
             'insidePerPage',
-            'breakdown'
+            'breakdown',
+            'residentOpenIncidents',
+            'residentResolvedIncidents'
         ));
     }
 

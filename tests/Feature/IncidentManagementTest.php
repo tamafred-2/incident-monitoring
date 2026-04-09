@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Incident;
 use App\Models\IncidentPhoto;
+use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -186,5 +187,124 @@ class IncidentManagementTest extends TestCase
         $this->assertDatabaseMissing('incidents', [
             'incident_id' => $incident->incident_id,
         ]);
+    }
+
+    public function test_resident_can_submit_complaint_and_only_see_own_incidents(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Harbor View',
+            'status' => 'Active',
+        ]);
+
+        $residentRecord = Resident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'full_name' => 'Ana Cruz',
+            'resident_code' => 'RES-9001',
+            'status' => 'Active',
+        ]);
+
+        $residentUser = User::factory()->create([
+            'role' => 'resident',
+            'subdivision_id' => $subdivision->subdivision_id,
+            'resident_id' => $residentRecord->resident_id,
+        ]);
+
+        $otherReporter = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'title' => 'Other resident issue',
+            'incident_date' => now(),
+            'reported_at' => now(),
+            'status' => 'Open',
+            'reported_by' => $otherReporter->user_id,
+        ]);
+
+        $storeResponse = $this
+            ->actingAs($residentUser)
+            ->post(route('incidents.store'), [
+                'title' => 'Water leak in kitchen',
+                'description' => 'The pipe under the sink is leaking.',
+                'category' => 'Property Damage',
+                'location' => 'Kitchen',
+                'incident_date' => now()->format('Y-m-d H:i:s'),
+            ]);
+
+        $storeResponse
+            ->assertRedirect(route('incidents.index'))
+            ->assertSessionHas('success', 'Incident reported successfully.');
+
+        $this->assertDatabaseHas('incidents', [
+            'title' => 'Water leak in kitchen',
+            'reported_by' => $residentUser->user_id,
+            'verified_resident_id' => $residentRecord->resident_id,
+            'status' => 'Open',
+        ]);
+
+        $indexResponse = $this
+            ->actingAs($residentUser)
+            ->get(route('incidents.index'));
+
+        $indexResponse
+            ->assertOk()
+            ->assertSee('Water leak in kitchen')
+            ->assertDontSee('Other resident issue');
+    }
+
+    public function test_admin_can_search_incidents_from_index(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Silver Oaks',
+            'status' => 'Active',
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $reporter = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+            'first_name' => 'Paula',
+            'surname' => 'Reyes',
+            'email' => 'paula@example.com',
+        ]);
+
+        Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'title' => 'Gate sensor offline',
+            'description' => 'Sensor needs calibration.',
+            'category' => 'Security',
+            'location' => 'Main gate',
+            'incident_date' => now(),
+            'reported_at' => now(),
+            'status' => 'Open',
+            'reported_by' => $reporter->user_id,
+        ]);
+
+        Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'title' => 'Garden lights flickering',
+            'description' => 'Electrical issue near the park.',
+            'category' => 'Safety',
+            'location' => 'Central park',
+            'incident_date' => now(),
+            'reported_at' => now(),
+            'status' => 'Under Investigation',
+            'reported_by' => $reporter->user_id,
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->get(route('incidents.index', ['q' => 'sensor']));
+
+        $response
+            ->assertOk()
+            ->assertSee('Gate sensor offline')
+            ->assertDontSee('Garden lights flickering')
+            ->assertSee('value="sensor"', false);
     }
 }

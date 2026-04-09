@@ -1,20 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Incidents</h2>
-                <p class="mt-1 text-sm text-slate-500">Incident reporting, resident verification, and proof-photo uploads now live in Laravel.</p>
-            </div>
-            @if (auth()->user()->hasRole(['security', 'staff', 'investigator']))
-                <button
-                    type="button"
-                    x-data
-                    x-on:click="$dispatch('open-modal', 'report-incident')"
-                    class="inline-flex items-center rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
-                >
-                    Report Incident
-                </button>
-            @endif
+        <div>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Incidents</h2>
+            <p class="mt-1 text-sm text-slate-500">Incident reporting, resident verification, and proof-photo uploads now live in Laravel.</p>
         </div>
     </x-slot>
 
@@ -24,10 +12,20 @@
 
             @if ($subdivisions->isNotEmpty())
                 <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <form method="GET" action="{{ route('incidents.index') }}" class="flex flex-wrap items-end gap-4">
+                    <form method="GET" action="{{ route('incidents.index') }}" class="grid gap-4 md:grid-cols-[1fr_220px_180px_auto] md:items-end">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Search</label>
+                            <input
+                                type="search"
+                                name="q"
+                                value="{{ $filterQ }}"
+                                placeholder="Title, reporter, category, status"
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                            >
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                            <select name="subdivision_id" class="mt-1 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                                 <option value="">All subdivisions</option>
                                 @foreach ($subdivisions as $subdivision)
                                     <option value="{{ $subdivision->subdivision_id }}" @selected($filterSubdivision === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
@@ -36,14 +34,38 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">View</label>
-                            <select name="view" class="mt-1 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <select name="view" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                                 <option value="active" @selected($historyView === 'active')>Active</option>
                                 <option value="deleted" @selected($historyView === 'deleted')>Deleted</option>
                                 <option value="all" @selected($historyView === 'all')>All</option>
                             </select>
                         </div>
-                        <button class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Apply</button>
+                        <div class="flex flex-wrap items-end gap-3 md:justify-end">
+                            <button class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Apply</button>
+                            <a href="{{ route('incidents.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Clear</a>
+                            @if (auth()->user()->hasRole(['security', 'staff', 'investigator', 'resident']))
+                                <button
+                                    type="button"
+                                    x-data
+                                    x-on:click="$dispatch('open-modal', 'report-incident')"
+                                    class="inline-flex items-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                                >
+                                    Report Incident
+                                </button>
+                            @endif
+                        </div>
                     </form>
+                </div>
+            @elseif (auth()->user()->hasRole(['security', 'staff', 'investigator', 'resident']))
+                <div class="flex justify-end">
+                    <button
+                        type="button"
+                        x-data
+                        x-on:click="$dispatch('open-modal', 'report-incident')"
+                        class="inline-flex items-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                    >
+                        Report Incident
+                    </button>
                 </div>
             @endif
 
@@ -75,6 +97,7 @@
                                         <a
                                             href="{{ route('incidents.show', array_filter([
                                                 'incidentId' => $incident->incident_id,
+                                                'q' => $filterQ ?: null,
                                                 'subdivision_id' => $filterSubdivision ?: null,
                                                 'view' => $historyView !== 'active' ? $historyView : null,
                                             ])) }}"
@@ -137,6 +160,7 @@
                                             <a
                                                 href="{{ route('incidents.show', array_filter([
                                                     'incidentId' => $incident->incident_id,
+                                                    'q' => $filterQ ?: null,
                                                     'subdivision_id' => $filterSubdivision ?: null,
                                                     'view' => $historyView !== 'active' ? $historyView : null,
                                                 ])) }}"
@@ -149,6 +173,7 @@
                                                 @if ($incident->trashed())
                                                     <form method="POST" action="{{ route('incidents.restore', $incident->incident_id) }}">
                                                         @csrf
+                                                        <input type="hidden" name="q" value="{{ $filterQ }}">
                                                         <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                                         <input type="hidden" name="view" value="{{ $historyView }}">
                                                         <button class="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50">Restore</button>
@@ -165,6 +190,7 @@
                                                     <a
                                                         href="{{ route('incidents.edit', array_filter([
                                                             'incidentId' => $incident->incident_id,
+                                                            'q' => $filterQ ?: null,
                                                             'subdivision_id' => $filterSubdivision ?: null,
                                                             'view' => $historyView !== 'active' ? $historyView : null,
                                                         ])) }}"
@@ -195,7 +221,7 @@
                 </div>
             </div>
 
-            @if (auth()->user()->hasRole(['security', 'staff', 'investigator']))
+            @if (auth()->user()->hasRole(['security', 'staff', 'investigator', 'resident']))
                 @include('incidents.partials.report-modal')
             @endif
 
@@ -221,6 +247,7 @@
                                 <form method="POST" action="{{ route('incidents.destroy', $incident->incident_id) }}" class="mt-6 flex flex-wrap justify-end gap-3">
                                     @csrf
                                     @method('DELETE')
+                                    <input type="hidden" name="q" value="{{ $filterQ }}">
                                     <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                     <input type="hidden" name="view" value="{{ $historyView }}">
 
@@ -257,6 +284,7 @@
                                 <form method="POST" action="{{ route('incidents.force-delete', $incident->incident_id) }}" class="mt-6 flex flex-wrap justify-end gap-3">
                                     @csrf
                                     @method('DELETE')
+                                    <input type="hidden" name="q" value="{{ $filterQ }}">
                                     <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                     <input type="hidden" name="view" value="{{ $historyView }}">
 

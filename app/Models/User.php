@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
+use App\Models\Resident;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -35,6 +36,7 @@ class User extends Authenticatable
         'password',
         'role',
         'subdivision_id',
+        'resident_id',
     ];
 
     /**
@@ -112,6 +114,11 @@ class User extends Authenticatable
         return $this->belongsTo(Subdivision::class, 'subdivision_id', 'subdivision_id')->withTrashed();
     }
 
+    public function resident(): BelongsTo
+    {
+        return $this->belongsTo(Resident::class, 'resident_id', 'resident_id');
+    }
+
     public function reportedIncidents(): HasMany
     {
         return $this->hasMany(Incident::class, 'reported_by', 'user_id');
@@ -120,6 +127,11 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function isResident(): bool
+    {
+        return $this->role === 'resident';
     }
 
     public function hasRole(string|array $roles): bool

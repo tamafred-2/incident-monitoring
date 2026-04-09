@@ -21,7 +21,7 @@
                         <label class="block text-sm font-medium text-slate-700">Role</label>
                         <select name="role" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                             <option value="">All</option>
-                            @foreach (['admin', 'security', 'staff', 'investigator'] as $role)
+                            @foreach (['admin', 'security', 'staff', 'investigator', 'resident'] as $role)
                                 <option value="{{ $role }}" @selected($filterRole === $role)>{{ ucfirst($role) }}</option>
                             @endforeach
                         </select>

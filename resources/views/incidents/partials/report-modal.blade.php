@@ -18,6 +18,9 @@
 
         <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4 md:grid-cols-2">
             @csrf
+            @php
+                $residentUser = auth()->user()?->isResident();
+            @endphp
 
             @if ($reportSubdivisions->isNotEmpty())
                 <div class="md:col-span-2">
@@ -33,6 +36,7 @@
                 <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">
             @endif
 
+            @if (!$residentUser)
             <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div class="flex flex-col gap-3">
                     <div>
@@ -51,6 +55,10 @@
                     <p id="verify_error" class="hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"></p>
                 </div>
             </div>
+            @else
+                <input type="hidden" name="reported_at" value="{{ now()->format('Y-m-d\TH:i') }}">
+                <input type="hidden" name="status" value="Open">
+            @endif
 
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-slate-700">Title</label>
@@ -91,22 +99,24 @@
                 <label class="block text-sm font-medium text-slate-700">Incident Date & Time</label>
                 <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
             </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700">Date Reported</label>
-                <input type="datetime-local" name="reported_at" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700">Status</label>
-                <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-status-select>
-                    @foreach (['Open', 'Under Investigation', 'Resolved', 'Closed'] as $status)
-                        <option value="{{ $status }}" @selected(old('status', 'Open') === $status)>{{ $status }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="md:col-span-2 @if (!in_array(old('status', 'Open'), ['Resolved', 'Closed'], true)) hidden @endif" data-resolved-wrapper>
-                <label class="block text-sm font-medium text-slate-700">Date Resolved</label>
-                <input type="datetime-local" name="resolved_at" value="{{ old('resolved_at') }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-resolved-input>
-            </div>
+            @if (!$residentUser)
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Date Reported</label>
+                    <input type="datetime-local" name="reported_at" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Status</label>
+                    <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-status-select>
+                        @foreach (['Open', 'Under Investigation', 'Resolved', 'Closed'] as $status)
+                            <option value="{{ $status }}" @selected(old('status', 'Open') === $status)>{{ $status }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="md:col-span-2 @if (!in_array(old('status', 'Open'), ['Resolved', 'Closed'], true)) hidden @endif" data-resolved-wrapper>
+                    <label class="block text-sm font-medium text-slate-700">Date Resolved</label>
+                    <input type="datetime-local" name="resolved_at" value="{{ old('resolved_at') }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-resolved-input>
+                </div>
+            @endif
             <div class="md:col-span-2" data-proof-preview-root>
                 <label class="block text-sm font-medium text-slate-700">Proof Photos</label>
                 <input

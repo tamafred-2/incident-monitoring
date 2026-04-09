@@ -32,16 +32,20 @@
     <input type="email" name="email" required autocomplete="new-password" value="{{ old('email', $user?->email ?? '') }}"
            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
 </div>
+@php
+    $selectedResidentId = (string) old('resident_id', $user?->resident_id ?? '');
+@endphp
+
 <div x-data="{ role: '{{ old('role', $user?->role ?? '') }}' }">
     <label class="block text-sm font-medium text-slate-700">Role</label>
     <select name="role" x-model="role" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
         <option value="">Select Role</option>
-        @foreach (['admin', 'security', 'staff', 'investigator'] as $role)
+        @foreach (['admin', 'security', 'staff', 'investigator', 'resident'] as $role)
             <option value="{{ $role }}" @selected(old('role', $user?->role ?? '') === $role)>{{ ucfirst($role) }}</option>
         @endforeach
     </select>
 
-    <div x-show="role !== 'admin'" x-cloak class="mt-4">
+    <div x-show="role !== 'admin' && role !== 'resident'" x-cloak class="mt-4">
         <label class="block text-sm font-medium text-slate-700">Subdivision</label>
         <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
             <option value="" @selected(old('subdivision_id', $user?->subdivision_id ?? '') === '')>Select Subdivision</option>
@@ -52,6 +56,19 @@
                 </option>
             @endforeach
         </select>
+    </div>
+
+    <div x-show="role === 'resident'" x-cloak class="mt-4">
+        <label class="block text-sm font-medium text-slate-700">Resident Linked To House</label>
+        <select name="resident_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+            <option value="">Select resident with house</option>
+            @foreach ($residents as $resident)
+                <option value="{{ $resident->resident_id }}" @selected($selectedResidentId === (string) $resident->resident_id)>
+                    {{ $resident->full_name }} - {{ $resident->subdivision?->subdivision_name ?? 'No subdivision' }}{{ $resident->house?->display_address ? ' - ' . $resident->house->display_address : '' }}
+                </option>
+            @endforeach
+        </select>
+        <p class="mt-1 text-xs text-slate-500">This list comes from existing Resident records that are already assigned to a managed house. The subdivision for the account will come from that house.</p>
     </div>
 </div>
 <div>

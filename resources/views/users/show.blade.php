@@ -61,8 +61,16 @@
                                 <dd class="text-right font-medium text-slate-900">{{ ucfirst($managedUser->role) }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Linked Resident</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ $managedUser->resident?->full_name ?? 'Not linked' }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Subdivision</dt>
                                 <dd class="text-right font-medium text-slate-900">{{ $managedUser->role === 'admin' ? 'All' : ($managedUser->subdivision?->subdivision_name ?? 'Unassigned') }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Resident House</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ $managedUser->resident?->house?->display_address ?? 'Not linked' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Archived</dt>

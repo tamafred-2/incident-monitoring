@@ -12,34 +12,69 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.alerts')
 
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Total Subdivisions</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalSubdivisions }}</p>
+            @if ($isResidentDashboard)
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Your Subdivision</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalSubdivisions }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Your Complaints</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalIncidents }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Open Complaints</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $residentOpenIncidents }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Resolved Complaints</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $residentResolvedIncidents }}</p>
+                    </div>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Total Incidents</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalIncidents }}</p>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Total Residents</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalResidents }}</p>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Managed Houses</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalHouses }}</p>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Visitors Today</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $visitorsToday }}</p>
-                </div>
-                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-sm text-slate-500">Visitors Inside</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $visitorsInside }}</p>
-                </div>
-            </div>
 
-            <div class="mt-8 grid gap-8 xl:grid-cols-2">
+                <div class="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-900">Resident Overview</h3>
+                    <p class="mt-2 text-sm text-slate-500">Use the Incidents page to submit a complaint and track only the reports tied to your account.</p>
+                    <div class="mt-6 grid gap-4 md:grid-cols-2">
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                            <p class="text-sm text-slate-500">Linked Resident Record</p>
+                            <p class="mt-2 text-lg font-semibold text-slate-900">{{ auth()->user()->resident?->full_name ?? 'Not linked' }}</p>
+                        </div>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                            <p class="text-sm text-slate-500">Linked House</p>
+                            <p class="mt-2 text-lg font-semibold text-slate-900">{{ auth()->user()->resident?->house?->display_address ?? 'Not assigned' }}</p>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Total Subdivisions</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalSubdivisions }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Total Incidents</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalIncidents }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Total Residents</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalResidents }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Managed Houses</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalHouses }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Visitors Today</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $visitorsToday }}</p>
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <p class="text-sm text-slate-500">Visitors Inside</p>
+                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $visitorsInside }}</p>
+                    </div>
+                </div>
+
+                <div class="mt-8 grid gap-8 xl:grid-cols-2">
                 <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div class="flex flex-col gap-4 border-b border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -134,6 +169,7 @@
                     </div>
                 @endif
             </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

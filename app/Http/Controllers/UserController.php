@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -35,7 +36,7 @@ class UserController extends Controller
             });
         }
 
-        if (in_array($filterRole, ['admin', 'security', 'staff', 'investigator'], true)) {
+        if (in_array($filterRole, ['admin', 'security', 'staff', 'investigator', 'resident'], true)) {
             $query->where('role', $filterRole);
         }
 
@@ -49,10 +50,17 @@ class UserController extends Controller
 
         $users = $query->get();
         $subdivisions = Subdivision::orderBy('subdivision_name')->get();
+        $residents = Resident::query()
+            ->with(['subdivision', 'house'])
+            ->where('status', 'Active')
+            ->whereNotNull('house_id')
+            ->orderBy('full_name')
+            ->get();
 
         return view('users.index', compact(
             'users',
             'subdivisions',
+            'residents',
             'filterQ',
             'filterRole',
             'filterSubdivision',
@@ -62,7 +70,7 @@ class UserController extends Controller
 
     public function show(Request $request, User $user): View
     {
-        $user->load('subdivision');
+        $user->load(['subdivision', 'resident.house']);
 
         return view('users.show', [
             'managedUser' => $user,
@@ -78,17 +86,37 @@ class UserController extends Controller
             'middle_name' => ['nullable', 'string', 'max:100'],
             'extension' => ['nullable', 'string', 'max:20'],
             'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
-            'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator'])],
+            'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator', 'resident'])],
             'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
+            'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', Rule::unique('users', 'resident_id')],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        if ($data['role'] !== 'admin' && empty($data['subdivision_id'])) {
+        if ($data['role'] === 'resident') {
+            $resident = Resident::query()->find($data['resident_id'] ?? null);
+
+            if (!$resident) {
+                return back()->withErrors(['resident_id' => 'Please select a resident record that is already assigned to a house.'])->withInput();
+            }
+
+            if ($resident->status !== 'Active') {
+                return back()->withErrors(['resident_id' => 'Only active resident records can be linked to resident accounts.'])->withInput();
+            }
+
+            if (!$resident->house_id) {
+                return back()->withErrors(['resident_id' => 'The selected resident must be assigned to a house before creating a resident account.'])->withInput();
+            }
+
+            $data['subdivision_id'] = $resident->house?->subdivision_id ?? $resident->subdivision_id;
+        } elseif ($data['role'] !== 'admin' && empty($data['subdivision_id'])) {
             return back()->withErrors(['subdivision_id' => 'Please select a subdivision for non-admin users.'])->withInput();
         }
 
         if ($data['role'] === 'admin') {
             $data['subdivision_id'] = null;
+            $data['resident_id'] = null;
+        } elseif ($data['role'] !== 'resident') {
+            $data['resident_id'] = null;
         }
 
         User::create($data);
@@ -105,8 +133,9 @@ class UserController extends Controller
             'middle_name' => ['nullable', 'string', 'max:100'],
             'extension' => ['nullable', 'string', 'max:20'],
             'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->user_id, 'user_id')],
-            'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator'])],
+            'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator', 'resident'])],
             'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
+            'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', Rule::unique('users', 'resident_id')->ignore($user->user_id, 'user_id')],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
@@ -114,12 +143,31 @@ class UserController extends Controller
             return back()->withErrors(['role' => 'Cannot remove the last administrator.'])->withInput();
         }
 
-        if ($data['role'] !== 'admin' && empty($data['subdivision_id'])) {
+        if ($data['role'] === 'resident') {
+            $resident = Resident::query()->find($data['resident_id'] ?? null);
+
+            if (!$resident) {
+                return back()->withErrors(['resident_id' => 'Please select a resident record that is already assigned to a house.'])->withInput();
+            }
+
+            if ($resident->status !== 'Active') {
+                return back()->withErrors(['resident_id' => 'Only active resident records can be linked to resident accounts.'])->withInput();
+            }
+
+            if (!$resident->house_id) {
+                return back()->withErrors(['resident_id' => 'The selected resident must be assigned to a house before creating a resident account.'])->withInput();
+            }
+
+            $data['subdivision_id'] = $resident->house?->subdivision_id ?? $resident->subdivision_id;
+        } elseif ($data['role'] !== 'admin' && empty($data['subdivision_id'])) {
             return back()->withErrors(['subdivision_id' => 'Please select a subdivision for non-admin users.'])->withInput();
         }
 
         if ($data['role'] === 'admin') {
             $data['subdivision_id'] = null;
+            $data['resident_id'] = null;
+        } elseif ($data['role'] !== 'resident') {
+            $data['resident_id'] = null;
         }
 
         if (empty($data['password'])) {
