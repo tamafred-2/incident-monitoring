@@ -181,15 +181,16 @@ class IncidentController extends Controller
             'status' => $data['status'],
         ]);
 
-        $proofPhotoPaths = $this->storeProofPhotos($request);
-        if ($proofPhotoPaths !== []) {
-            $this->syncIncidentPhotoRecords($incident, $proofPhotoPaths, true);
-        } else {
-            $existingProofPhotos = $this->proofPhotosFor($incident->fresh('proofPhotos'));
-            $incident->forceFill([
-                'proof_photo_path' => $existingProofPhotos->first()['path'] ?? $incident->proof_photo_path,
-            ])->save();
+        $existingPhotoPaths = $this->proofPhotosFor($incident->fresh('proofPhotos'))->pluck('path')->all();
+        $removablePaths = $this->resolveRemovablePhotoPaths($request, $existingPhotoPaths);
+        foreach ($removablePaths as $path) {
+            $this->deleteProofPhoto($path);
         }
+
+        $remainingPhotoPaths = array_values(array_diff($existingPhotoPaths, $removablePaths));
+        $proofPhotoPaths = $this->storeProofPhotos($request);
+        $allPhotoPaths = array_values(array_unique(array_merge($remainingPhotoPaths, $proofPhotoPaths)));
+        $this->syncIncidentPhotoRecords($incident, $allPhotoPaths, false);
 
         return redirect()->route('incidents.show', array_merge(
             ['incidentId' => $incident->incident_id],
@@ -308,6 +309,8 @@ class IncidentController extends Controller
             'incident_date' => ['required', 'date'],
             'proof_photos' => ['nullable', 'array', 'max:10'],
             'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'remove_photo_paths' => ['nullable', 'array', 'max:10'],
+            'remove_photo_paths.*' => ['string', 'max:255'],
         ];
 
         if ($forResident) {
@@ -459,6 +462,36 @@ class IncidentController extends Controller
         $incident->forceFill([
             'proof_photo_path' => $allPaths[0] ?? null,
         ])->save();
+    }
+
+    private function resolveRemovablePhotoPaths(Request $request, array $existingPaths): array
+    {
+        $requestedPaths = $request->input('remove_photo_paths', []);
+        if (!is_array($requestedPaths) || $requestedPaths === []) {
+            return [];
+        }
+
+        $allowed = array_fill_keys($existingPaths, true);
+        $removable = [];
+
+        foreach ($requestedPaths as $path) {
+            if (!is_string($path)) {
+                continue;
+            }
+
+            $normalizedPath = trim($path);
+            if (!str_starts_with($normalizedPath, 'uploads/incidents/')) {
+                continue;
+            }
+
+            if (!isset($allowed[$normalizedPath])) {
+                continue;
+            }
+
+            $removable[] = $normalizedPath;
+        }
+
+        return array_values(array_unique($removable));
     }
 
     private function resolveHistoryView(?string $view): string

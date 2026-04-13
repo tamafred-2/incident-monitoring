@@ -27,15 +27,47 @@
     <div class="py-10">
         <div
             x-data="{
-                previewImage: null,
-                previewLabel: '',
-                openPreview(url, label) {
-                    this.previewImage = url;
-                    this.previewLabel = label || 'Proof image preview';
+                proofImageList: @js($proofPhotos->values()->map(fn ($photo, $index) => [
+                    'path' => $photo['path'],
+                    'url' => $photo['url'],
+                    'label' => 'Proof image ' . ($index + 1) . ' for ' . $incident->title,
+                ])->all()),
+                previewImages: [],
+                previewIndex: 0,
+                openPreview(images, startIndex = 0) {
+                    if (!Array.isArray(images) || images.length === 0) {
+                        return;
+                    }
+
+                    this.previewImages = images;
+                    this.previewIndex = Math.min(Math.max(startIndex, 0), images.length - 1);
+                },
+                nextPreview() {
+                    if (this.previewImages.length < 2) {
+                        return;
+                    }
+
+                    this.previewIndex = (this.previewIndex + 1) % this.previewImages.length;
+                },
+                prevPreview() {
+                    if (this.previewImages.length < 2) {
+                        return;
+                    }
+
+                    this.previewIndex = (this.previewIndex - 1 + this.previewImages.length) % this.previewImages.length;
+                },
+                currentPreview() {
+                    return this.previewImages[this.previewIndex] || null;
+                },
+                currentPreviewUrl() {
+                    return this.currentPreview() ? this.currentPreview().url : '';
+                },
+                currentPreviewLabel() {
+                    return this.currentPreview() ? this.currentPreview().label : 'Proof image preview';
                 },
                 closePreview() {
-                    this.previewImage = null;
-                    this.previewLabel = '';
+                    this.previewImages = [];
+                    this.previewIndex = 0;
                 }
             }"
             class="mx-auto flex max-w-6xl flex-col gap-6 px-4 sm:px-6 lg:px-8"
@@ -138,7 +170,7 @@
                             @foreach ($proofPhotos as $photo)
                                 <button
                                     type="button"
-                                    @click="openPreview('{{ $photo['url'] }}', 'Proof image {{ $loop->iteration }} for {{ addslashes($incident->title) }}')"
+                                    @click="openPreview(proofImageList, {{ $loop->index }})"
                                     class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:-translate-y-0.5 hover:shadow-md"
                                 >
                                     <img
@@ -160,25 +192,62 @@
 
             <div
                 x-cloak
-                x-show="previewImage"
+                x-show="previewImages.length"
                 x-on:keydown.escape.window="closePreview()"
+                x-on:keydown.arrow-right.window="nextPreview()"
+                x-on:keydown.arrow-left.window="prevPreview()"
                 class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6"
                 style="display: none;"
             >
                 <div class="absolute inset-0" @click="closePreview()"></div>
                 <div class="relative w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl">
                     <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-                        <h3 class="text-base font-semibold text-slate-900" x-text="previewLabel || 'Proof image preview'"></h3>
-                        <button
-                            type="button"
-                            @click="closePreview()"
-                            class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                        >
-                            Close
-                        </button>
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-900" x-text="currentPreviewLabel()"></h3>
+                            <p x-show="previewImages.length > 1" class="mt-1 text-xs text-slate-500" x-text="(previewIndex + 1) + ' of ' + previewImages.length"></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button
+                                x-show="previewImages.length > 1"
+                                type="button"
+                                @click="prevPreview()"
+                                class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                x-show="previewImages.length > 1"
+                                type="button"
+                                @click="nextPreview()"
+                                class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                                Next
+                            </button>
+                            <button
+                                type="button"
+                                @click="closePreview()"
+                                class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                     <div class="bg-slate-100 p-4">
-                        <img :src="previewImage" :alt="previewLabel || 'Proof image preview'" class="max-h-[75vh] w-full rounded-2xl object-contain">
+                        <img :src="currentPreviewUrl()" :alt="currentPreviewLabel()" class="max-h-[75vh] w-full rounded-2xl object-contain">
+                    </div>
+                    <div x-show="previewImages.length > 1" class="border-t border-slate-200 bg-white px-4 py-3">
+                        <div class="flex gap-2 overflow-x-auto pb-1">
+                            <template x-for="(image, index) in previewImages" :key="(image.path || image.url) + ':' + index">
+                                <button
+                                    type="button"
+                                    @click="previewIndex = index"
+                                    class="shrink-0 overflow-hidden rounded-xl border"
+                                    :class="previewIndex === index ? 'border-sky-500 ring-2 ring-sky-200' : 'border-slate-200'"
+                                >
+                                    <img :src="image.url" :alt="image.label || ('Proof image ' + (index + 1))" class="h-16 w-16 object-cover">
+                                </button>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </div>

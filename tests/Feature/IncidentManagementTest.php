@@ -63,7 +63,8 @@ class IncidentManagementTest extends TestCase
             ->assertSee('Date Reported')
             ->assertSee('Date Resolved')
             ->assertSee('uploads/incidents/example-one.jpg', false)
-            ->assertSee('openPreview(', false);
+            ->assertSee('openPreview(', false)
+            ->assertSee('nextPreview()', false);
     }
 
     public function test_incident_deletion_uses_soft_deletes(): void
@@ -354,5 +355,92 @@ class IncidentManagementTest extends TestCase
         $this->actingAs($reporter)
             ->get(route('incidents.photos.show', ['path' => $incidentPhoto->photo_path]))
             ->assertOk();
+    }
+
+    public function test_admin_can_remove_existing_incident_proof_photo_when_updating(): void
+    {
+        Storage::fake('public');
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Willow Creek',
+            'status' => 'Active',
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $reporter = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $firstPath = 'uploads/incidents/willow-one.jpg';
+        $secondPath = 'uploads/incidents/willow-two.jpg';
+
+        Storage::disk('public')->put($firstPath, 'first-image');
+        Storage::disk('public')->put($secondPath, 'second-image');
+
+        $incident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'title' => 'Loose ceiling panel',
+            'description' => 'Panel is hanging near the lobby lights.',
+            'category' => 'Safety',
+            'location' => 'Lobby',
+            'incident_date' => now()->subHours(2),
+            'reported_at' => now()->subHour(),
+            'status' => 'Open',
+            'proof_photo_path' => $firstPath,
+            'reported_by' => $reporter->user_id,
+        ]);
+
+        IncidentPhoto::create([
+            'incident_id' => $incident->incident_id,
+            'photo_path' => $firstPath,
+            'sort_order' => 0,
+        ]);
+
+        IncidentPhoto::create([
+            'incident_id' => $incident->incident_id,
+            'photo_path' => $secondPath,
+            'sort_order' => 1,
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->put(route('incidents.update', ['incidentId' => $incident->incident_id]), [
+                'subdivision_id' => $subdivision->subdivision_id,
+                'title' => 'Loose ceiling panel',
+                'description' => 'Panel is hanging near the lobby lights.',
+                'category' => 'Safety',
+                'location' => 'Lobby',
+                'incident_date' => now()->subHours(2)->format('Y-m-d H:i:s'),
+                'reported_at' => now()->subHour()->format('Y-m-d H:i:s'),
+                'status' => 'Open',
+                'remove_photo_paths' => [$firstPath],
+            ]);
+
+        $response
+            ->assertRedirect(route('incidents.show', [
+                'incidentId' => $incident->incident_id,
+                'subdivision_id' => $subdivision->subdivision_id,
+            ]))
+            ->assertSessionHas('success', 'Incident updated successfully.');
+
+        Storage::disk('public')->assertMissing($firstPath);
+        Storage::disk('public')->assertExists($secondPath);
+
+        $this->assertDatabaseMissing('incident_photos', [
+            'incident_id' => $incident->incident_id,
+            'photo_path' => $firstPath,
+        ]);
+
+        $this->assertDatabaseHas('incident_photos', [
+            'incident_id' => $incident->incident_id,
+            'photo_path' => $secondPath,
+            'sort_order' => 0,
+        ]);
+
+        $this->assertSame($secondPath, $incident->fresh()->proof_photo_path);
     }
 }

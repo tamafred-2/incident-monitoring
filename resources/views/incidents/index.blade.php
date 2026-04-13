@@ -9,15 +9,42 @@
     <div class="py-10">
         <div
             x-data="{
-                previewImage: null,
-                previewLabel: '',
-                openPreview(url, label) {
-                    this.previewImage = url;
-                    this.previewLabel = label || 'Proof image preview';
+                previewImages: [],
+                previewIndex: 0,
+                openPreview(images, startIndex = 0) {
+                    if (!Array.isArray(images) || images.length === 0) {
+                        return;
+                    }
+
+                    this.previewImages = images;
+                    this.previewIndex = Math.min(Math.max(startIndex, 0), images.length - 1);
+                },
+                nextPreview() {
+                    if (this.previewImages.length < 2) {
+                        return;
+                    }
+
+                    this.previewIndex = (this.previewIndex + 1) % this.previewImages.length;
+                },
+                prevPreview() {
+                    if (this.previewImages.length < 2) {
+                        return;
+                    }
+
+                    this.previewIndex = (this.previewIndex - 1 + this.previewImages.length) % this.previewImages.length;
+                },
+                currentPreview() {
+                    return this.previewImages[this.previewIndex] || null;
+                },
+                currentPreviewUrl() {
+                    return this.currentPreview() ? this.currentPreview().url : '';
+                },
+                currentPreviewLabel() {
+                    return this.currentPreview() ? this.currentPreview().label : 'Proof image preview';
                 },
                 closePreview() {
-                    this.previewImage = null;
-                    this.previewLabel = '';
+                    this.previewImages = [];
+                    this.previewIndex = 0;
                 }
             }"
             class="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8"
@@ -127,38 +154,43 @@
                                     <td class="px-6 py-4 text-slate-600">{{ $incident->status }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $incident->verifiedResident?->full_name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600">
-                                        @if ($incident->proofPhotos->isNotEmpty())
-                                            @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proofPhotos->first()->photo_path]))
+                                        @php
+                                            $proofGallery = $incident->proofPhotos
+                                                ->map(fn ($photo, $index) => [
+                                                    'path' => $photo->photo_path,
+                                                    'url' => route('incidents.photos.show', ['path' => $photo->photo_path]),
+                                                    'label' => 'Proof image ' . ($index + 1) . ' for ' . $incident->title,
+                                                ])
+                                                ->values();
+
+                                            if ($proofGallery->isEmpty() && $incident->proof_photo_path) {
+                                                $proofGallery = collect([[
+                                                    'path' => $incident->proof_photo_path,
+                                                    'url' => route('incidents.photos.show', ['path' => $incident->proof_photo_path]),
+                                                    'label' => 'Proof image for ' . $incident->title,
+                                                ]]);
+                                            }
+
+                                            $coverImage = $proofGallery->first();
+                                        @endphp
+
+                                        @if ($coverImage)
                                             <button
                                                 type="button"
-                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ addslashes($incident->title) }}')"
+                                                @click="openPreview(@js($proofGallery->all()), 0)"
                                                 class="group relative block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
                                                 title="Preview proof images"
                                             >
                                                 <img
-                                                    src="{{ $proofPhotoUrl }}"
-                                                    alt="Proof image for {{ $incident->title }}"
+                                                    src="{{ $coverImage['url'] }}"
+                                                    alt="{{ $coverImage['label'] }}"
                                                     class="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                                                 >
-                                                @if ($incident->proofPhotos->count() > 1)
+                                                @if ($proofGallery->count() > 1)
                                                     <span class="absolute bottom-1 right-1 rounded-full bg-slate-900/80 px-2 py-0.5 text-[11px] font-semibold text-white">
-                                                        +{{ $incident->proofPhotos->count() - 1 }}
+                                                        +{{ $proofGallery->count() - 1 }}
                                                     </span>
                                                 @endif
-                                            </button>
-                                        @elseif ($incident->proof_photo_path)
-                                            @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proof_photo_path]))
-                                            <button
-                                                type="button"
-                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ addslashes($incident->title) }}')"
-                                                class="group relative block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
-                                                title="Preview proof image"
-                                            >
-                                                <img
-                                                    src="{{ $proofPhotoUrl }}"
-                                                    alt="Proof image for {{ $incident->title }}"
-                                                    class="h-full w-full object-cover transition duration-200 group-hover:scale-105"
-                                                >
                                             </button>
                                         @else
                                             -
@@ -321,25 +353,69 @@
 
             <div
                 x-cloak
-                x-show="previewImage"
+                x-show="previewImages.length"
                 x-on:keydown.escape.window="closePreview()"
+                x-on:keydown.arrow-right.window="nextPreview()"
+                x-on:keydown.arrow-left.window="prevPreview()"
                 class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6"
                 style="display: none;"
             >
                 <div class="absolute inset-0" @click="closePreview()"></div>
                 <div class="relative w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-2xl">
                     <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-                        <h3 class="text-base font-semibold text-slate-900" x-text="previewLabel || 'Proof image preview'"></h3>
+                        <p x-show="previewImages.length > 1" class="text-xs text-slate-500" x-text="(previewIndex + 1) + ' of ' + previewImages.length"></p>
                         <button
                             type="button"
                             @click="closePreview()"
-                            class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
+                            aria-label="Close preview"
+                            title="Close preview"
                         >
-                            Close
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                <path d="M5 5l10 10M15 5 5 15" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
                         </button>
                     </div>
-                    <div class="bg-slate-100 p-4">
-                        <img :src="previewImage" :alt="previewLabel || 'Proof image preview'" class="max-h-[75vh] w-full rounded-2xl object-contain">
+                    <div class="relative bg-slate-100 p-4">
+                        <button
+                            x-show="previewImages.length > 1"
+                            type="button"
+                            @click="prevPreview()"
+                            class="absolute left-6 top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white/95 p-3 text-slate-700 shadow-sm transition hover:bg-white"
+                            aria-label="Previous image"
+                            title="Previous image"
+                        >
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                <path d="M12.5 4.5 7 10l5.5 5.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </button>
+                        <img :src="currentPreviewUrl()" :alt="currentPreviewLabel()" class="max-h-[75vh] w-full rounded-2xl object-contain">
+                        <button
+                            x-show="previewImages.length > 1"
+                            type="button"
+                            @click="nextPreview()"
+                            class="absolute right-6 top-1/2 z-10 -translate-y-1/2 rounded-full border border-slate-200 bg-white/95 p-3 text-slate-700 shadow-sm transition hover:bg-white"
+                            aria-label="Next image"
+                            title="Next image"
+                        >
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                <path d="M7.5 4.5 13 10l-5.5 5.5" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div x-show="previewImages.length > 1" class="border-t border-slate-200 bg-white px-4 py-3">
+                        <div class="flex gap-2 overflow-x-auto pb-1">
+                            <template x-for="(image, index) in previewImages" :key="(image.path || image.url) + ':' + index">
+                                <button
+                                    type="button"
+                                    @click="previewIndex = index"
+                                    class="shrink-0 overflow-hidden rounded-xl border"
+                                    :class="previewIndex === index ? 'border-sky-500 ring-2 ring-sky-200' : 'border-slate-200'"
+                                >
+                                    <img :src="image.url" :alt="image.label || ('Proof image ' + (index + 1))" class="h-16 w-16 object-cover">
+                                </button>
+                            </template>
+                        </div>
                     </div>
                 </div>
             </div>
