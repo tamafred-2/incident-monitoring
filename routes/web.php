@@ -47,6 +47,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
     Route::get('/incidents/create', [IncidentController::class, 'create'])->middleware('role:security,staff,investigator,resident')->name('incidents.create');
     Route::post('/incidents', [IncidentController::class, 'store'])->middleware('role:security,staff,investigator,resident')->name('incidents.store');
+    Route::get('/incident-photos/{path}', [IncidentController::class, 'photo'])
+        ->where('path', '.*')
+        ->name('incidents.photos.show');
     Route::get('/incidents/{incidentId}', [IncidentController::class, 'show'])->name('incidents.show');
     Route::get('/incidents/{incidentId}/edit', [IncidentController::class, 'edit'])->middleware('role:admin')->name('incidents.edit');
     Route::put('/incidents/{incidentId}', [IncidentController::class, 'update'])->middleware('role:admin')->name('incidents.update');
