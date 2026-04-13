@@ -128,14 +128,15 @@
                                     <td class="px-6 py-4 text-slate-600">{{ $incident->verifiedResident?->full_name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600">
                                         @if ($incident->proofPhotos->isNotEmpty())
+                                            @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proofPhotos->first()->photo_path]))
                                             <button
                                                 type="button"
-                                                @click="openPreview('{{ asset($incident->proofPhotos->first()->photo_path) }}', 'Proof image for {{ addslashes($incident->title) }}')"
+                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ addslashes($incident->title) }}')"
                                                 class="group relative block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
                                                 title="Preview proof images"
                                             >
                                                 <img
-                                                    src="{{ asset($incident->proofPhotos->first()->photo_path) }}"
+                                                    src="{{ $proofPhotoUrl }}"
                                                     alt="Proof image for {{ $incident->title }}"
                                                     class="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                                                 >
@@ -146,14 +147,15 @@
                                                 @endif
                                             </button>
                                         @elseif ($incident->proof_photo_path)
+                                            @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proof_photo_path]))
                                             <button
                                                 type="button"
-                                                @click="openPreview('{{ asset($incident->proof_photo_path) }}', 'Proof image for {{ addslashes($incident->title) }}')"
+                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ addslashes($incident->title) }}')"
                                                 class="group relative block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
                                                 title="Preview proof image"
                                             >
                                                 <img
-                                                    src="{{ asset($incident->proof_photo_path) }}"
+                                                    src="{{ $proofPhotoUrl }}"
                                                     alt="Proof image for {{ $incident->title }}"
                                                     class="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                                                 >

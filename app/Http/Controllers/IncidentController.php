@@ -12,8 +12,11 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class IncidentController extends Controller
 {
@@ -230,10 +233,7 @@ class IncidentController extends Controller
         $proofPhotos = $this->proofPhotosFor($incident->load('proofPhotos'));
 
         foreach ($proofPhotos as $photo) {
-            $absolutePath = public_path($photo['path']);
-            if (File::exists($absolutePath)) {
-                File::delete($absolutePath);
-            }
+            $this->deleteProofPhoto($photo['path']);
         }
 
         IncidentPhoto::query()->where('incident_id', $incident->incident_id)->delete();
@@ -284,6 +284,16 @@ class IncidentController extends Controller
             'full_name' => $resident->full_name,
             'address_or_unit' => $resident->display_address ?? '',
         ]);
+    }
+
+    public function photo(Request $request, string $path): BinaryFileResponse
+    {
+        abort_unless(str_starts_with($path, 'uploads/incidents/'), 404);
+
+        $absolutePath = $this->proofPhotoAbsolutePath($path);
+        abort_unless($absolutePath !== null, 404);
+
+        return response()->file($absolutePath);
     }
 
     private function incidentValidationRules(bool $forResident = false, bool $includeVerification = true): array
@@ -413,15 +423,19 @@ class IncidentController extends Controller
             return [];
         }
 
-        $directory = public_path('uploads/incidents');
-        File::ensureDirectoryExists($directory);
-
         $paths = [];
 
         foreach ($files as $file) {
             $filename = 'incident_' . now()->format('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $file->getClientOriginalExtension();
-            $file->move($directory, $filename);
-            $paths[] = 'uploads/incidents/' . $filename;
+            $storedPath = $file->storeAs('uploads/incidents', $filename, 'public');
+
+            if (!is_string($storedPath)) {
+                throw ValidationException::withMessages([
+                    'proof_photos' => 'Unable to save uploaded proof photos. Please try again.',
+                ]);
+            }
+
+            $paths[] = $storedPath;
         }
 
         return $paths;
@@ -512,7 +526,30 @@ class IncidentController extends Controller
             ->filter()
             ->unique()
             ->values()
-            ->map(fn (string $path) => ['path' => $path, 'url' => asset($path)]);
+            ->map(fn (string $path) => ['path' => $path, 'url' => route('incidents.photos.show', ['path' => $path])]);
+    }
+
+    private function proofPhotoAbsolutePath(string $path): ?string
+    {
+        if (Storage::disk('public')->exists($path)) {
+            return Storage::disk('public')->path($path);
+        }
+
+        $legacyPath = public_path($path);
+
+        return File::exists($legacyPath) ? $legacyPath : null;
+    }
+
+    private function deleteProofPhoto(string $path): void
+    {
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+
+        $legacyPath = public_path($path);
+        if (File::exists($legacyPath)) {
+            File::delete($legacyPath);
+        }
     }
 
     private function incidentCategories(): array

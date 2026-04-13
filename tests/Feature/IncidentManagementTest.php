@@ -8,6 +8,8 @@ use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class IncidentManagementTest extends TestCase
@@ -307,5 +309,50 @@ class IncidentManagementTest extends TestCase
             ->assertSee('Gate sensor offline')
             ->assertDontSee('Garden lights flickering')
             ->assertSee('value="sensor"', false);
+    }
+
+    public function test_incident_photo_uploads_are_stored_on_the_public_disk_and_served_through_the_app(): void
+    {
+        Storage::fake('public');
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Pine Crest',
+            'status' => 'Active',
+        ]);
+
+        $reporter = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $photo = UploadedFile::fake()->create('incident-proof.jpg', 128, 'image/jpeg');
+
+        $response = $this
+            ->actingAs($reporter)
+            ->post(route('incidents.store'), [
+                'subdivision_id' => $subdivision->subdivision_id,
+                'title' => 'Fence damage near clubhouse',
+                'description' => 'A wooden panel is broken near the side entrance.',
+                'category' => 'Property Damage',
+                'location' => 'Clubhouse side entrance',
+                'incident_date' => now()->subMinutes(20)->format('Y-m-d H:i:s'),
+                'reported_at' => now()->format('Y-m-d H:i:s'),
+                'status' => 'Open',
+                'proof_photos' => [$photo],
+            ]);
+
+        $response
+            ->assertRedirect(route('incidents.index'))
+            ->assertSessionHas('success', 'Incident reported successfully.');
+
+        $incident = Incident::query()->latest('incident_id')->firstOrFail();
+        $incidentPhoto = IncidentPhoto::query()->where('incident_id', $incident->incident_id)->firstOrFail();
+
+        Storage::disk('public')->assertExists($incidentPhoto->photo_path);
+        $this->assertSame($incidentPhoto->photo_path, $incident->proof_photo_path);
+
+        $this->actingAs($reporter)
+            ->get(route('incidents.photos.show', ['path' => $incidentPhoto->photo_path]))
+            ->assertOk();
     }
 }
