@@ -2,6 +2,7 @@
     'resident' => null,
     'subdivisions' => collect(),
     'houses' => collect(),
+    'withAccount' => true,
 ])
 
 @php
@@ -78,13 +79,23 @@
         <div class="mt-4 grid gap-4 md:grid-cols-2">
             <div>
                 <label class="block text-sm font-medium text-slate-700">Resident Code</label>
-                <input
-                    type="text"
-                    name="resident_code"
-                    required
-                    value="{{ old('resident_code', $resident?->resident_code ?? '') }}"
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
-                >
+                @if ($resident?->resident_code)
+                    <input
+                        type="text"
+                        value="{{ $resident->resident_code }}"
+                        disabled
+                        class="mt-1 w-full rounded-xl border-slate-200 bg-slate-50 text-sm text-slate-500 shadow-sm cursor-not-allowed"
+                    >
+                    <p class="mt-1 text-xs text-slate-400">Auto-generated, cannot be changed.</p>
+                @else
+                    <input
+                        type="text"
+                        value=""
+                        disabled
+                        placeholder="Will be generated on save"
+                        class="mt-1 w-full rounded-xl border-slate-200 bg-slate-50 text-sm text-slate-400 shadow-sm cursor-not-allowed"
+                    >
+                @endif
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700">Status</label>
@@ -189,4 +200,51 @@
             >
         </div>
     </section>
+
+    @if ($withAccount)
+        <section class="rounded-2xl border border-slate-200 bg-white p-5">
+            <div class="mb-4">
+                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Account Access</h4>
+                @if ($resident?->user)
+                    <p class="mt-1 text-sm text-slate-500">Linked account: <span class="font-medium text-slate-700">{{ $resident->user->email }}</span></p>
+                @else
+                    <p class="mt-1 text-sm text-slate-500">Optionally create a login account for this resident.</p>
+                @endif
+            </div>
+
+            @if (!$resident?->user)
+                <div
+                    x-data="{ createAccount: {{ old('account_email') ? 'true' : 'false' }} }"
+                    class="space-y-4"
+                >
+                    <label class="flex cursor-pointer items-center gap-3">
+                        <input type="checkbox" x-model="createAccount" class="rounded border-slate-300 text-sky-600 shadow-sm focus:ring-sky-500">
+                        <span class="text-sm font-medium text-slate-700">Create login account</span>
+                    </label>
+
+                    <div x-show="createAccount" x-cloak class="grid gap-4 md:grid-cols-2">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Login Email</label>
+                            <input
+                                type="email"
+                                name="account_email"
+                                value="{{ old('account_email') }}"
+                                :required="createAccount"
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Password</label>
+                            <input
+                                type="password"
+                                name="account_password"
+                                :required="createAccount"
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                            >
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </section>
+    @endif
 </div>

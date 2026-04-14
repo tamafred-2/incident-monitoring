@@ -63,12 +63,8 @@
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-slate-700">Title</label>
-                        <input type="text" name="title" value="{{ old('title') }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                    </div>
-                    <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">Description</label>
-                        <textarea name="description" rows="4" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description') }}</textarea>
+                        <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description') }}</textarea>
                     </div>
                     @php
                         $selectedCategory = old('category');

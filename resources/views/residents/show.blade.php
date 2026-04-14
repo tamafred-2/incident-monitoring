@@ -96,7 +96,7 @@
                             <table class="min-w-full divide-y divide-slate-200 text-sm">
                                 <thead class="bg-slate-50">
                                     <tr>
-                                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Title</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Report ID</th>
                                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Category</th>
                                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
                                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Reported By</th>
@@ -106,8 +106,8 @@
                                     @foreach ($resident->incidents->sortByDesc('created_at')->take(5) as $incident)
                                         <tr>
                                             <td class="px-4 py-3 font-medium text-slate-900">
-                                                <a href="{{ route('incidents.show', $incident->incident_id) }}" class="hover:text-sky-700">
-                                                    {{ $incident->title }}
+                                                <a href="{{ route('incidents.show', $incident->incident_id) }}" class="hover:text-sky-700 font-mono">
+                                                    {{ $incident->report_id }}
                                                 </a>
                                             </td>
                                             <td class="px-4 py-3 text-slate-600">{{ $incident->category ?: '-' }}</td>

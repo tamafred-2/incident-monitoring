@@ -62,9 +62,11 @@ class SqliteDemoSeeder extends Seeder
                 'phone' => '09179998877',
                 'email' => 'resident@example.com',
                 'address_or_unit' => $house->display_address,
-                'resident_code' => 'RES-1001',
                 'status' => 'Active',
             ]);
+
+            // Set a predictable code for demo/testing
+            $resident->forceFill(['resident_code' => 'E7FC90'])->save();
 
             $admin = User::create([
                 'surname' => 'Administrator',
@@ -123,8 +125,9 @@ class SqliteDemoSeeder extends Seeder
             ]);
 
             Incident::create([
+                'report_id' => '54F4BB2E',
                 'subdivision_id' => $subdivision->subdivision_id,
-                'title' => 'Streetlight outage near clubhouse',
+                'house_id' => $house->house_id,
                 'description' => 'The lamp post beside the clubhouse entrance has been off since last night.',
                 'category' => 'Safety',
                 'location' => 'Clubhouse entrance',
@@ -235,7 +238,7 @@ class SqliteDemoSeeder extends Seeder
 
         DB::statement('DROP TABLE users_old');
         DB::statement('CREATE UNIQUE INDEX users_email_unique ON users (email)');
-        DB::statement('CREATE UNIQUE INDEX users_resident_id_unique ON users (resident_id)');
+        DB::statement('CREATE UNIQUE INDEX users_resident_id_active_unique ON users (resident_id) WHERE deleted_at IS NULL');
         DB::statement('CREATE INDEX users_email_index ON users (email)');
         DB::statement('CREATE INDEX users_role_index ON users (role)');
         DB::statement('CREATE INDEX users_subdivision_id_index ON users (subdivision_id)');

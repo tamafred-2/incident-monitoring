@@ -190,7 +190,11 @@ class ResidentManagementTest extends TestCase
 
         Incident::create([
             'subdivision_id' => $subdivision->subdivision_id,
-            'title' => 'Noise complaint',
+            'house_id' => House::create([
+                'subdivision_id' => $subdivision->subdivision_id,
+                'block' => '9',
+                'lot' => '9',
+            ])->house_id,
             'description' => 'Loud music after hours',
             'category' => 'Noise',
             'location' => 'Clubhouse',

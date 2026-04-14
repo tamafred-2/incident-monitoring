@@ -25,7 +25,7 @@
             @if ($reportSubdivisions->isNotEmpty())
                 <div class="md:col-span-2">
                     <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                    <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
+                    <select name="subdivision_id" id="report_subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
                         <option value="">Select subdivision</option>
                         @foreach ($reportSubdivisions as $subdivision)
                             <option value="{{ $subdivision->subdivision_id }}" @selected((int) old('subdivision_id', auth()->user()->isAdmin() ? '' : ($filterSubdivision ?: $effectiveSubdivision)) === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
@@ -33,8 +33,18 @@
                     </select>
                 </div>
             @elseif ($effectiveSubdivision)
-                <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">
+                <input type="hidden" name="subdivision_id" id="report_subdivision_id" value="{{ $effectiveSubdivision }}">
             @endif
+
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700">House</label>
+                <select name="house_id" id="report_house_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
+                    <option value="">Select house</option>
+                    @foreach ($houses as $house)
+                        <option value="{{ $house->house_id }}" @selected((int) old('house_id') === $house->house_id)>{{ $house->display_address }}</option>
+                    @endforeach
+                </select>
+            </div>
 
             @if (!$residentUser)
             <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -61,12 +71,8 @@
             @endif
 
             <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700">Title</label>
-                <input type="text" name="title" value="{{ old('title') }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-            </div>
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700">Description</label>
-                <textarea name="description" rows="4" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description') }}</textarea>
+                <label class="block text-sm font-medium text-slate-700">Description <span class="text-rose-500">*</span></label>
+                <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description') }}</textarea>
             </div>
             @php
                 $selectedCategory = old('category');
@@ -118,16 +124,17 @@
                 </div>
             @endif
             <div class="md:col-span-2" data-proof-preview-root>
-                <label class="block text-sm font-medium text-slate-700">Proof Photos</label>
+                <label class="block text-sm font-medium text-slate-700">Proof Photos <span class="text-rose-500">*</span></label>
                 <input
                     type="file"
                     name="proof_photos[]"
                     accept="image/*"
                     multiple
+                    required
                     class="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
                     data-proof-input
                 >
-                <p class="mt-2 text-xs text-slate-500" data-proof-help>You can upload up to 10 images. Accepted formats: JPG, PNG, WEBP, GIF. Max size: 5 MB each.</p>
+                <p class="mt-2 text-xs text-slate-500" data-proof-help>At least 1 image required. Up to 10. Accepted: JPG, PNG, WEBP, GIF. Max 5 MB each.</p>
                 <div class="mt-4 hidden grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-proof-preview-list></div>
             </div>
 
@@ -460,6 +467,39 @@
                 verifiedDisplay.textContent = 'Resident verification will be kept on submit.';
                 verifiedDisplay.classList.remove('hidden');
                 clearButton.classList.remove('hidden');
+            }
+
+            // Reload houses when subdivision changes
+            var subdivisionSelect = document.getElementById('report_subdivision_id');
+            var houseSelect = document.getElementById('report_house_id');
+
+            if (subdivisionSelect && houseSelect) {
+                subdivisionSelect.addEventListener('change', function () {
+                    var subdivId = subdivisionSelect.value;
+                    houseSelect.innerHTML = '<option value="">Loading...</option>';
+
+                    if (!subdivId) {
+                        houseSelect.innerHTML = '<option value="">Select house</option>';
+                        return;
+                    }
+
+                    fetch('/api/houses-by-subdivision?subdivision_id=' + encodeURIComponent(subdivId), {
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            houseSelect.innerHTML = '<option value="">Select house</option>';
+                            data.forEach(function (h) {
+                                var opt = document.createElement('option');
+                                opt.value = h.house_id;
+                                opt.textContent = h.display_address;
+                                houseSelect.appendChild(opt);
+                            });
+                        })
+                        .catch(function () {
+                            houseSelect.innerHTML = '<option value="">Failed to load houses</option>';
+                        });
+                });
             }
         })();
     </script>

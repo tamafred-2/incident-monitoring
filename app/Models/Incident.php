@@ -16,8 +16,9 @@ class Incident extends Model
     public const UPDATED_AT = null;
 
     protected $fillable = [
+        'report_id',
         'subdivision_id',
-        'title',
+        'house_id',
         'description',
         'category',
         'location',
@@ -32,6 +33,15 @@ class Incident extends Model
         'verification_method',
         'verified_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $incident) {
+            if (empty($incident->report_id)) {
+                $incident->report_id = strtoupper(bin2hex(random_bytes(4)));
+            }
+        });
+    }
 
     public function getRouteKeyName(): string
     {
@@ -54,9 +64,19 @@ class Incident extends Model
         return $this->belongsTo(Subdivision::class, 'subdivision_id', 'subdivision_id')->withTrashed();
     }
 
+    public function house(): BelongsTo
+    {
+        return $this->belongsTo(House::class, 'house_id', 'house_id');
+    }
+
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reported_by', 'user_id')->withTrashed();
+    }
+
+    public function assignedStaff(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to', 'user_id')->withTrashed();
     }
 
     public function verifiedResident(): BelongsTo

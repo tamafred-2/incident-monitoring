@@ -53,9 +53,36 @@
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-slate-700">Title</label>
-                        <input type="text" name="title" value="{{ old('title', $incident->title) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                        <label class="block text-sm font-medium text-slate-700">House</label>
+                        <select name="house_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
+                            <option value="">Select house</option>
+                            @foreach ($houses as $house)
+                                <option value="{{ $house->house_id }}" @selected((int) old('house_id', $incident->house_id) === $house->house_id)>{{ $house->display_address }}</option>
+                            @endforeach
+                        </select>
                     </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700">Report ID</label>
+                        <input type="text" value="{{ $incident->report_id }}" disabled class="mt-1 w-full rounded-xl border-slate-200 bg-slate-50 text-sm text-slate-500 shadow-sm">
+                    </div>
+                    @if (auth()->user()->isAdmin())
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700">Assign Staff</label>
+                            <select name="assigned_to" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                <option value="">Unassigned</option>
+                                @foreach ($assignableStaff as $assignee)
+                                    <option value="{{ $assignee->user_id }}" @selected((int) old('assigned_to', $incident->assigned_to) === (int) $assignee->user_id)>
+                                        {{ $assignee->full_name }} - {{ ucfirst($assignee->role) }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @else
+                        <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600">
+                            Status verification mode for assigned staff. Report details are shown for reference; saving will only update the incident status and resolved date.
+                        </div>
+                    @endif
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">Description</label>
                         <textarea name="description" rows="4" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description', $incident->description) }}</textarea>

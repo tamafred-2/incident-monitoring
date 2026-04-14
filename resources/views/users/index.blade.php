@@ -152,7 +152,7 @@
             </div>
 
             <x-modal name="create-user" :show="$errors->any() && old('edit_user_id') === null" maxWidth="2xl" focusable>
-                <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-user') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden])').forEach(i => i.value = ''); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); }); }">
+                <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-user') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden]):not([type=radio]):not([type=checkbox])').forEach(i => i.value = ''); $el.querySelectorAll('input[type=radio], input[type=checkbox]').forEach(i => i.checked = false); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); const residentNew = $el.querySelector('input[name=&quot;resident_mode&quot;][value=&quot;new&quot;]'); const residentExisting = $el.querySelector('input[name=&quot;resident_mode&quot;][value=&quot;existing&quot;]'); if (residentNew) residentNew.checked = true; if (residentExisting) residentExisting.checked = false; const existingSection = $el.querySelector('#resident-existing-section'); const newSection = $el.querySelector('#resident-new-section'); if (existingSection) existingSection.style.display = 'none'; if (newSection) newSection.style.display = 'block'; }); }">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900">Add User</h3>
@@ -172,7 +172,9 @@
 
                     <form method="POST" action="{{ route('users.store') }}" class="mt-6 space-y-4">
                         @csrf
-                        @include('users.partials.form-fields')
+                        @include('users.partials.form-fields', [
+                            'allowExistingResidentLink' => false,
+                        ])
 
                         <div class="flex flex-wrap gap-3 pt-2">
                             <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
@@ -217,6 +219,8 @@
 
                             @include('users.partials.form-fields', [
                                 'user' => $user,
+                                'allowExistingResidentLink' => true,
+                                'lockResidentRecord' => true,
                                 'passwordLabel' => 'New Password',
                                 'passwordConfirmationLabel' => 'Confirm New Password',
                                 'passwordRequired' => false,

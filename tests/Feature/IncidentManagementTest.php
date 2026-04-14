@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\House;
 use App\Models\Incident;
 use App\Models\IncidentPhoto;
 use App\Models\Resident;
@@ -32,9 +33,15 @@ class IncidentManagementTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
         ]);
 
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '1',
+            'lot' => '2',
+        ]);
+
         $incident = Incident::create([
             'subdivision_id' => $subdivision->subdivision_id,
-            'title' => 'Broken gate camera',
+            'house_id' => $house->house_id,
             'description' => 'North gate camera stopped recording overnight.',
             'category' => 'Security',
             'location' => 'North gate',
@@ -58,7 +65,7 @@ class IncidentManagementTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Broken gate camera')
+            ->assertSee($incident->report_id)
             ->assertSee('North gate camera stopped recording overnight.')
             ->assertSee('Date Reported')
             ->assertSee('Date Resolved')
@@ -82,9 +89,15 @@ class IncidentManagementTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
         ]);
 
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '2',
+            'lot' => '4',
+        ]);
+
         $incident = Incident::create([
             'subdivision_id' => $subdivision->subdivision_id,
-            'title' => 'Unauthorized parking',
+            'house_id' => $house->house_id,
             'incident_date' => now(),
             'reported_at' => now(),
             'status' => 'Open',
@@ -122,9 +135,15 @@ class IncidentManagementTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
         ]);
 
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '3',
+            'lot' => '6',
+        ]);
+
         $incident = Incident::create([
             'subdivision_id' => $subdivision->subdivision_id,
-            'title' => 'Lobby glass damage',
+            'house_id' => $house->house_id,
             'incident_date' => now(),
             'reported_at' => now(),
             'status' => 'Under Investigation',
@@ -165,9 +184,15 @@ class IncidentManagementTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
         ]);
 
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '5',
+            'lot' => '8',
+        ]);
+
         $incident = Incident::create([
             'subdivision_id' => $subdivision->subdivision_id,
-            'title' => 'Basement leak',
+            'house_id' => $house->house_id,
             'incident_date' => now(),
             'reported_at' => now(),
             'resolved_at' => now(),
@@ -206,6 +231,12 @@ class IncidentManagementTest extends TestCase
             'status' => 'Active',
         ]);
 
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '2',
+            'lot' => '9',
+        ]);
+
         $residentUser = User::factory()->create([
             'role' => 'resident',
             'subdivision_id' => $subdivision->subdivision_id,
@@ -219,7 +250,8 @@ class IncidentManagementTest extends TestCase
 
         Incident::create([
             'subdivision_id' => $subdivision->subdivision_id,
-            'title' => 'Other resident issue',
+            'house_id' => $house->house_id,
+            'description' => 'Other resident issue',
             'incident_date' => now(),
             'reported_at' => now(),
             'status' => 'Open',
@@ -229,19 +261,26 @@ class IncidentManagementTest extends TestCase
         $storeResponse = $this
             ->actingAs($residentUser)
             ->post(route('incidents.store'), [
-                'title' => 'Water leak in kitchen',
                 'description' => 'The pipe under the sink is leaking.',
+                'house_id' => $house->house_id,
                 'category' => 'Property Damage',
                 'location' => 'Kitchen',
                 'incident_date' => now()->format('Y-m-d H:i:s'),
+                'proof_photos' => [UploadedFile::fake()->create('resident-proof.jpg', 128, 'image/jpeg')],
             ]);
 
         $storeResponse
             ->assertRedirect(route('incidents.index'))
             ->assertSessionHas('success', 'Incident reported successfully.');
 
+        $createdIncident = Incident::query()
+            ->where('reported_by', $residentUser->user_id)
+            ->latest('incident_id')
+            ->firstOrFail();
+
         $this->assertDatabaseHas('incidents', [
-            'title' => 'Water leak in kitchen',
+            'description' => 'The pipe under the sink is leaking.',
+            'house_id' => $house->house_id,
             'reported_by' => $residentUser->user_id,
             'verified_resident_id' => $residentRecord->resident_id,
             'status' => 'Open',
@@ -253,7 +292,7 @@ class IncidentManagementTest extends TestCase
 
         $indexResponse
             ->assertOk()
-            ->assertSee('Water leak in kitchen')
+            ->assertSee($createdIncident->report_id)
             ->assertDontSee('Other resident issue');
     }
 
@@ -276,10 +315,16 @@ class IncidentManagementTest extends TestCase
             'email' => 'paula@example.com',
         ]);
 
-        Incident::create([
+        $house = House::create([
             'subdivision_id' => $subdivision->subdivision_id,
-            'title' => 'Gate sensor offline',
+            'block' => '1',
+            'lot' => '1',
+        ]);
+
+        $matchingIncident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
             'description' => 'Sensor needs calibration.',
+            'house_id' => $house->house_id,
             'category' => 'Security',
             'location' => 'Main gate',
             'incident_date' => now(),
@@ -290,8 +335,8 @@ class IncidentManagementTest extends TestCase
 
         Incident::create([
             'subdivision_id' => $subdivision->subdivision_id,
-            'title' => 'Garden lights flickering',
             'description' => 'Electrical issue near the park.',
+            'house_id' => $house->house_id,
             'category' => 'Safety',
             'location' => 'Central park',
             'incident_date' => now(),
@@ -306,7 +351,7 @@ class IncidentManagementTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Gate sensor offline')
+            ->assertSee($matchingIncident->report_id)
             ->assertDontSee('Garden lights flickering')
             ->assertSee('value="sensor"', false);
     }
@@ -325,14 +370,20 @@ class IncidentManagementTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
         ]);
 
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '3',
+            'lot' => '3',
+        ]);
+
         $photo = UploadedFile::fake()->create('incident-proof.jpg', 128, 'image/jpeg');
 
         $response = $this
             ->actingAs($reporter)
             ->post(route('incidents.store'), [
                 'subdivision_id' => $subdivision->subdivision_id,
-                'title' => 'Fence damage near clubhouse',
                 'description' => 'A wooden panel is broken near the side entrance.',
+                'house_id' => $house->house_id,
                 'category' => 'Property Damage',
                 'location' => 'Clubhouse side entrance',
                 'incident_date' => now()->subMinutes(20)->format('Y-m-d H:i:s'),
@@ -354,5 +405,145 @@ class IncidentManagementTest extends TestCase
         $this->actingAs($reporter)
             ->get(route('incidents.photos.show', ['path' => $incidentPhoto->photo_path]))
             ->assertOk();
+    }
+
+    public function test_admin_can_assign_incident_to_staff(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Rose Park',
+            'status' => 'Active',
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $staff = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+        $reporter = User::factory()->create([
+            'role' => 'security',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '4',
+            'lot' => '4',
+        ]);
+
+        $incident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Garage gate stuck halfway open.',
+            'incident_date' => now(),
+            'reported_at' => now(),
+            'status' => 'Open',
+            'reported_by' => $reporter->user_id,
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->put(route('incidents.update', $incident->incident_id), [
+                'subdivision_id' => $subdivision->subdivision_id,
+                'house_id' => $house->house_id,
+                'description' => 'Garage gate stuck halfway open.',
+                'category' => '',
+                'location' => '',
+                'incident_date' => now()->format('Y-m-d H:i:s'),
+                'reported_at' => now()->format('Y-m-d H:i:s'),
+                'status' => 'Open',
+                'assigned_to' => $staff->user_id,
+            ]);
+
+        $response->assertRedirect(route('incidents.show', [
+            'incidentId' => $incident->incident_id,
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]));
+
+        $this->assertDatabaseHas('incidents', [
+            'incident_id' => $incident->incident_id,
+            'assigned_to' => $staff->user_id,
+            'status' => 'Under Investigation',
+        ]);
+    }
+
+    public function test_assigned_staff_can_update_incident_status(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Elm Gardens',
+            'status' => 'Active',
+        ]);
+
+        $staff = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+        $reporter = User::factory()->create([
+            'role' => 'security',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '8',
+            'lot' => '1',
+        ]);
+
+        $incident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Broken sidewalk tile near clubhouse.',
+            'incident_date' => now(),
+            'reported_at' => now(),
+            'status' => 'Under Investigation',
+            'reported_by' => $reporter->user_id,
+            'assigned_to' => $staff->user_id,
+        ]);
+
+        $response = $this
+            ->actingAs($staff)
+            ->put(route('incidents.update', $incident->incident_id), [
+                'status' => 'Resolved',
+                'resolved_at' => now()->format('Y-m-d H:i:s'),
+            ]);
+
+        $response->assertRedirect(route('incidents.show', ['incidentId' => $incident->incident_id]));
+
+        $this->assertDatabaseHas('incidents', [
+            'incident_id' => $incident->incident_id,
+            'status' => 'Resolved',
+            'assigned_to' => $staff->user_id,
+        ]);
+    }
+
+    public function test_incident_can_be_viewed_by_report_id_route(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Birch Square',
+            'status' => 'Active',
+        ]);
+
+        $staff = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '6',
+            'lot' => '6',
+        ]);
+
+        $incident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Perimeter light is flickering.',
+            'incident_date' => now(),
+            'reported_at' => now(),
+            'status' => 'Open',
+            'reported_by' => $staff->user_id,
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('incidents.show-by-report', $incident->report_id))
+            ->assertOk()
+            ->assertSee($incident->report_id)
+            ->assertSee('Perimeter light is flickering.');
     }
 }

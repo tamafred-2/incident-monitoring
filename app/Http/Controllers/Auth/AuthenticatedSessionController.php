@@ -28,6 +28,11 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if ($request->user()?->requires_password_change) {
+            return redirect()->route('profile.edit')
+                ->with('warning', 'Please change your password before continuing.');
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

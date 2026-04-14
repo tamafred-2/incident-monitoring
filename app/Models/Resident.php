@@ -22,9 +22,21 @@ class Resident extends Model
         'phone',
         'email',
         'address_or_unit',
-        'resident_code',
         'status',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $resident) {
+            if (empty($resident->resident_code)) {
+                do {
+                    $code = strtoupper(bin2hex(random_bytes(3)));
+                } while (static::where('resident_code', $code)->exists());
+
+                $resident->resident_code = $code;
+            }
+        });
+    }
 
     public function getRouteKeyName(): string
     {
@@ -54,6 +66,18 @@ class Resident extends Model
     public function getDisplayAddressAttribute(): ?string
     {
         return $this->house?->display_address ?: $this->address_or_unit;
+    }
+
+    public static function normalizeResidentCode(?string $code): ?string
+    {
+        if ($code === null) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim($code));
+        $normalized = preg_replace('/^RES[-:\s]*/', '', $normalized);
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     public function getNamePartsAttribute(): array
