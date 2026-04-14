@@ -84,7 +84,29 @@ class ResidentController extends Controller
     {
         $data = $this->validateResident($request);
 
-        Resident::create($data);
+        $resident = Resident::create($data);
+
+        if ($request->filled('account_email')) {
+            $accountData = $request->validate([
+                'account_email' => ['required', 'email', 'max:100', 'unique:users,email'],
+                'account_password' => ['required', 'string', 'min:8'],
+            ]);
+
+            $nameParts = $resident->name_parts;
+
+            User::create([
+                'surname' => $nameParts['surname'],
+                'first_name' => $nameParts['first_name'],
+                'middle_name' => $nameParts['middle_name'],
+                'extension' => $nameParts['extension'],
+                'email' => $accountData['account_email'],
+                'password' => $accountData['account_password'],
+                'requires_password_change' => true,
+                'role' => 'resident',
+                'subdivision_id' => $resident->subdivision_id,
+                'resident_id' => $resident->resident_id,
+            ]);
+        }
 
         return redirect()->route('residents.index')
             ->with('success', 'Resident created successfully.');
@@ -145,7 +167,7 @@ class ResidentController extends Controller
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
             'house_id' => ['nullable', 'integer', 'exists:houses,house_id'],
             'address_or_unit' => ['nullable', 'string', 'max:150'],
-            'resident_code' => ['required', 'string', 'max:64', Rule::unique('residents', 'resident_code')->ignore($resident?->resident_id, 'resident_id')],
+            'resident_code' => ['nullable', 'string', 'max:64', Rule::unique('residents', 'resident_code')->ignore($resident?->resident_id, 'resident_id')],
             'status' => ['required', Rule::in(['Active', 'Inactive'])],
         ]);
 
@@ -168,7 +190,6 @@ class ResidentController extends Controller
             'phone' => $data['phone'] ?: null,
             'email' => $data['email'] ?: null,
             'address_or_unit' => $house?->display_address ?? ($data['address_or_unit'] ?: null),
-            'resident_code' => trim($data['resident_code']),
             'status' => $data['status'],
         ];
     }

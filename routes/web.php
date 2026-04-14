@@ -16,7 +16,7 @@ Route::get('/', function () {
         : redirect()->route('login');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/admin/visitor-notifications', [DashboardController::class, 'notifications'])->middleware('role:admin')->name('admin.visitor-notifications.index');
     Route::post('/admin/visitor-notifications/read-all', [DashboardController::class, 'markNotificationsRead'])->middleware('role:admin')->name('admin.visitor-notifications.read-all');
@@ -50,9 +50,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/incident-photos/{path}', [IncidentController::class, 'photo'])
         ->where('path', '.*')
         ->name('incidents.photos.show');
+    Route::get('/incidents/report/{reportId}', [IncidentController::class, 'showByReportId'])->name('incidents.show-by-report');
+    Route::get('/incidents/{incidentId}/qr-card', [IncidentController::class, 'qrCard'])->name('incidents.qr-card');
     Route::get('/incidents/{incidentId}', [IncidentController::class, 'show'])->name('incidents.show');
-    Route::get('/incidents/{incidentId}/edit', [IncidentController::class, 'edit'])->middleware('role:admin')->name('incidents.edit');
-    Route::put('/incidents/{incidentId}', [IncidentController::class, 'update'])->middleware('role:admin')->name('incidents.update');
+    Route::get('/incidents/{incidentId}/edit', [IncidentController::class, 'edit'])->middleware('role:admin,security,staff,investigator')->name('incidents.edit');
+    Route::put('/incidents/{incidentId}', [IncidentController::class, 'update'])->middleware('role:admin,security,staff,investigator')->name('incidents.update');
     Route::delete('/incidents/{incidentId}', [IncidentController::class, 'destroy'])->middleware('role:admin')->name('incidents.destroy');
     Route::post('/incidents/{incidentId}/restore', [IncidentController::class, 'restore'])->middleware('role:admin')->name('incidents.restore');
     Route::delete('/incidents/{incidentId}/force', [IncidentController::class, 'forceDelete'])->middleware('role:admin')->name('incidents.force-delete');
@@ -73,6 +75,10 @@ Route::middleware('auth')->group(function () {
     Route::match(['get', 'post'], '/api/verify_resident.php', [IncidentController::class, 'verifyResident'])
         ->middleware('role:security,staff,investigator')
         ->name('api.verify-resident');
+
+    Route::get('/api/houses-by-subdivision', [IncidentController::class, 'housesBySubdivision'])
+        ->middleware('role:security,staff,investigator,resident')
+        ->name('api.houses-by-subdivision');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

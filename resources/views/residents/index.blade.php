@@ -128,7 +128,7 @@
 
             @if (auth()->user()->isAdmin())
                 <x-modal name="create-resident" :show="$errors->any() && old('edit_resident_id') === null" maxWidth="3xl" focusable>
-                    <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-resident') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden])').forEach(i => i.value = ''); $el.querySelectorAll('textarea').forEach(t => t.value = ''); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); }); }">
+                    <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-resident') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden]):not([type=checkbox])').forEach(i => i.value = ''); $el.querySelectorAll('input[type=checkbox]').forEach(i => i.checked = false); $el.querySelectorAll('textarea').forEach(t => t.value = ''); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); }); }">
                         <div class="flex items-start justify-between gap-4">
                             <div>
                                 <h3 class="text-lg font-semibold text-slate-900">Add Resident</h3>
@@ -148,7 +148,12 @@
 
                         <form method="POST" action="{{ route('residents.store') }}" class="mt-6 space-y-4">
                             @csrf
-                            @include('residents.partials.form-fields', ['subdivisions' => $subdivisions, 'houses' => $houses])
+                            @include('residents.partials.form-fields', [
+                                'resident' => null,
+                                'subdivisions' => $subdivisions,
+                                'houses' => $houses,
+                                'withAccount' => true,
+                            ])
 
                             <div class="flex flex-wrap gap-3 pt-2">
                                 <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">

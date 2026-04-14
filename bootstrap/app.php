@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
             'subdivision' => \App\Http\Middleware\EnsureSubdivisionAccess::class,
+            'password.change' => \App\Http\Middleware\EnsurePasswordChange::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

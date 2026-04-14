@@ -7,6 +7,13 @@
             </div>
             <div class="flex flex-wrap gap-3">
                 <a
+                    href="{{ route('incidents.qr-card', ['incidentId' => $incident->incident_id]) }}"
+                    target="_blank"
+                    class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                >
+                    Report QR
+                </a>
+                <a
                     href="{{ route('incidents.index', $indexContext) }}"
                     class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
@@ -46,9 +53,12 @@
                 <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Incident</p>
-                        <h3 class="mt-2 text-2xl font-semibold text-slate-900">{{ $incident->title }}</h3>
+                        <h3 class="mt-2 text-2xl font-semibold text-slate-900 font-mono">{{ $incident->report_id }}</h3>
                         <p class="mt-2 text-sm text-slate-500">
                             Subdivision: {{ $incident->subdivision->subdivision_name ?? '-' }}
+                            @if ($incident->house)
+                                &mdash; {{ $incident->house->display_address }}
+                            @endif
                         </p>
                     </div>
 
@@ -104,6 +114,10 @@
                                 <dt class="text-slate-500">Reported By</dt>
                                 <dd class="text-right font-medium text-slate-900">{{ $incident->reporter?->full_name ?? '-' }}</dd>
                             </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Assigned Staff</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ $incident->assignedStaff?->full_name ?? '-' }}</dd>
+                            </div>
                         </dl>
                     </div>
 
@@ -138,12 +152,12 @@
                             @foreach ($proofPhotos as $photo)
                                 <button
                                     type="button"
-                                    @click="openPreview('{{ $photo['url'] }}', 'Proof image {{ $loop->iteration }} for {{ addslashes($incident->title) }}')"
+                                    @click="openPreview('{{ $photo['url'] }}', 'Proof image {{ $loop->iteration }} for {{ $incident->report_id }}')"
                                     class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:-translate-y-0.5 hover:shadow-md"
                                 >
                                     <img
                                         src="{{ $photo['url'] }}"
-                                        alt="Proof image {{ $loop->iteration }} for {{ $incident->title }}"
+                                        alt="Proof image {{ $loop->iteration }} for {{ $incident->report_id }}"
                                         class="h-56 w-full object-cover"
                                     >
                                     <div class="px-4 py-3 text-sm font-medium text-slate-700">

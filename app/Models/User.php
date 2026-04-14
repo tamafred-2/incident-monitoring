@@ -34,6 +34,7 @@ class User extends Authenticatable
         'extension',
         'email',
         'password',
+        'requires_password_change',
         'role',
         'subdivision_id',
         'resident_id',
@@ -103,6 +104,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'requires_password_change' => 'boolean',
             'visitor_notifications_read_at' => 'datetime',
             'visitor_notifications_cleared_at' => 'datetime',
             'visitor_notification_read_keys' => 'array',

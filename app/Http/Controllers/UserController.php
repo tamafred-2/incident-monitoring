@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Unique;
 use Illuminate\View\View;
 
 class UserController extends Controller
@@ -51,16 +53,22 @@ class UserController extends Controller
         $users = $query->get();
         $subdivisions = Subdivision::orderBy('subdivision_name')->get();
         $residents = Resident::query()
-            ->with(['subdivision', 'house'])
+            ->with(['subdivision', 'house', 'user'])
             ->where('status', 'Active')
-            ->whereNotNull('house_id')
             ->orderBy('full_name')
+            ->get();
+        $houses = \App\Models\House::query()
+            ->with('subdivision')
+            ->orderBy('subdivision_id')
+            ->orderBy('block')
+            ->orderBy('lot')
             ->get();
 
         return view('users.index', compact(
             'users',
             'subdivisions',
             'residents',
+            'houses',
             'filterQ',
             'filterRole',
             'filterSubdivision',
@@ -80,34 +88,73 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'surname' => ['required', 'string', 'max:100'],
-            'first_name' => ['required', 'string', 'max:100'],
-            'middle_name' => ['nullable', 'string', 'max:100'],
-            'extension' => ['nullable', 'string', 'max:20'],
-            'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
-            'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator', 'resident'])],
-            'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
-            'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', Rule::unique('users', 'resident_id')],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
+        $data = $request->validate(
+            [
+                'surname' => ['required', 'string', 'max:100'],
+                'first_name' => ['required', 'string', 'max:100'],
+                'middle_name' => ['nullable', 'string', 'max:100'],
+                'extension' => ['nullable', 'string', 'max:20'],
+                'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
+                'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator', 'resident'])],
+                'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
+                'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', $this->residentUniqueRule()],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
+            ],
+            [
+                'resident_id.unique' => 'This resident already has an active linked account.',
+            ]
+        );
 
         if ($data['role'] === 'resident') {
-            $resident = Resident::query()->find($data['resident_id'] ?? null);
+            $residentMode = $request->input('resident_mode');
 
-            if (!$resident) {
-                return back()->withErrors(['resident_id' => 'Please select a resident record that is already assigned to a house.'])->withInput();
+            if (!in_array($residentMode, ['existing', 'new'], true)) {
+                $residentMode = $request->filled('new_resident_subdivision_id') ? 'new' : 'existing';
             }
 
-            if ($resident->status !== 'Active') {
-                return back()->withErrors(['resident_id' => 'Only active resident records can be linked to resident accounts.'])->withInput();
-            }
+            if ($residentMode === 'new') {
+                $residentData = $request->validate([
+                    'new_resident_subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
+                    'new_resident_house_id' => ['nullable', 'integer', 'exists:houses,house_id'],
+                    'new_resident_phone' => ['nullable', 'string', 'max:20'],
+                ]);
 
-            if (!$resident->house_id) {
-                return back()->withErrors(['resident_id' => 'The selected resident must be assigned to a house before creating a resident account.'])->withInput();
-            }
+                $house = null;
+                if (!empty($residentData['new_resident_house_id'])) {
+                    $house = House::query()->find($residentData['new_resident_house_id']);
 
-            $data['subdivision_id'] = $resident->house?->subdivision_id ?? $resident->subdivision_id;
+                    if (!$house || (int) $house->subdivision_id !== (int) $residentData['new_resident_subdivision_id']) {
+                        return back()->withErrors([
+                            'new_resident_house_id' => 'The selected house does not belong to the selected subdivision.',
+                        ])->withInput();
+                    }
+                }
+
+                $resident = Resident::create([
+                    'subdivision_id' => $residentData['new_resident_subdivision_id'],
+                    'house_id' => $house?->house_id,
+                    'full_name' => User::formatFullName($data['first_name'], $data['surname'], $data['middle_name'] ?? null, $data['extension'] ?? null),
+                    'phone' => $residentData['new_resident_phone'] ?: null,
+                    'email' => $data['email'],
+                    'address_or_unit' => $house?->display_address,
+                    'status' => 'Active',
+                ]);
+
+                $data['resident_id'] = $resident->resident_id;
+                $data['subdivision_id'] = $resident->subdivision_id;
+            } else {
+                if (empty($data['resident_id'])) {
+                    return back()->withErrors(['resident_id' => 'Please select a resident from the list.'])->withInput();
+                }
+
+                $resident = Resident::query()->find($data['resident_id']);
+
+                if (!$resident || $resident->status !== 'Active') {
+                    return back()->withErrors(['resident_id' => 'The selected resident is inactive or no longer exists.'])->withInput();
+                }
+
+                $data['subdivision_id'] = $resident->subdivision_id;
+            }
         } elseif ($data['role'] !== 'admin' && empty($data['subdivision_id'])) {
             return back()->withErrors(['subdivision_id' => 'Please select a subdivision for non-admin users.'])->withInput();
         }
@@ -119,7 +166,11 @@ class UserController extends Controller
             $data['resident_id'] = null;
         }
 
-        User::create($data);
+        $user = User::create($data);
+
+        if ($user->role === 'resident') {
+            $user->forceFill(['requires_password_change' => true])->save();
+        }
 
         return redirect()->route('users.index')
             ->with('success', 'User created successfully.');
@@ -127,17 +178,22 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        $data = $request->validate([
-            'surname' => ['required', 'string', 'max:100'],
-            'first_name' => ['required', 'string', 'max:100'],
-            'middle_name' => ['nullable', 'string', 'max:100'],
-            'extension' => ['nullable', 'string', 'max:20'],
-            'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->user_id, 'user_id')],
-            'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator', 'resident'])],
-            'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
-            'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', Rule::unique('users', 'resident_id')->ignore($user->user_id, 'user_id')],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
-        ]);
+        $data = $request->validate(
+            [
+                'surname' => ['required', 'string', 'max:100'],
+                'first_name' => ['required', 'string', 'max:100'],
+                'middle_name' => ['nullable', 'string', 'max:100'],
+                'extension' => ['nullable', 'string', 'max:20'],
+                'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->user_id, 'user_id')],
+                'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator', 'resident'])],
+                'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
+                'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', $this->residentUniqueRule($user)],
+                'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            ],
+            [
+                'resident_id.unique' => 'This resident already has an active linked account.',
+            ]
+        );
 
         if ($user->role === 'admin' && $data['role'] !== 'admin' && User::where('role', 'admin')->count() <= 1) {
             return back()->withErrors(['role' => 'Cannot remove the last administrator.'])->withInput();
@@ -146,19 +202,11 @@ class UserController extends Controller
         if ($data['role'] === 'resident') {
             $resident = Resident::query()->find($data['resident_id'] ?? null);
 
-            if (!$resident) {
-                return back()->withErrors(['resident_id' => 'Please select a resident record that is already assigned to a house.'])->withInput();
+            if (!$resident || $resident->status !== 'Active') {
+                return back()->withErrors(['resident_id' => 'Please select an active resident record.'])->withInput();
             }
 
-            if ($resident->status !== 'Active') {
-                return back()->withErrors(['resident_id' => 'Only active resident records can be linked to resident accounts.'])->withInput();
-            }
-
-            if (!$resident->house_id) {
-                return back()->withErrors(['resident_id' => 'The selected resident must be assigned to a house before creating a resident account.'])->withInput();
-            }
-
-            $data['subdivision_id'] = $resident->house?->subdivision_id ?? $resident->subdivision_id;
+            $data['subdivision_id'] = $resident->subdivision_id;
         } elseif ($data['role'] !== 'admin' && empty($data['subdivision_id'])) {
             return back()->withErrors(['subdivision_id' => 'Please select a subdivision for non-admin users.'])->withInput();
         }
@@ -205,6 +253,14 @@ class UserController extends Controller
                 ->with('error', 'That user is already active.');
         }
 
+        if ($user->resident_id && User::query()
+            ->where('resident_id', $user->resident_id)
+            ->whereNull('deleted_at')
+            ->exists()) {
+            return redirect()->route('users.index', $this->indexContext($request))
+                ->with('error', 'This resident is already linked to another active user account.');
+        }
+
         $user->restore();
 
         return redirect()->route('users.index', $this->indexContext($request))
@@ -240,5 +296,17 @@ class UserController extends Controller
         }
 
         return $context;
+    }
+
+    private function residentUniqueRule(?User $user = null): Unique
+    {
+        $rule = Rule::unique('users', 'resident_id')
+            ->where(static fn ($query) => $query->whereNull('deleted_at'));
+
+        if ($user) {
+            $rule->ignore($user->user_id, 'user_id');
+        }
+
+        return $rule;
     }
 }

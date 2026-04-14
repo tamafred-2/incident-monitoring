@@ -33,7 +33,7 @@
                                 type="search"
                                 name="q"
                                 value="{{ $filterQ }}"
-                                placeholder="Title, reporter, category, status"
+                                placeholder="Report ID, description, reporter, category, status"
                                 class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
                             >
                         </div>
@@ -67,6 +67,15 @@
                                     Report Incident
                                 </button>
                             @endif
+                            @if (!auth()->user()->isResident())
+                                <button
+                                    type="button"
+                                    id="open-report-scan"
+                                    class="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                                >
+                                    Scan Report QR
+                                </button>
+                            @endif
                         </div>
                     </form>
                 </div>
@@ -88,13 +97,14 @@
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50">
                             <tr>
-                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Title</th>
+                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Report ID</th>
                                 @if ($subdivisions->isNotEmpty())
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Subdivision</th>
                                 @endif
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Category</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Status</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Verified Reporter</th>
+                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Assigned Staff</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Proof</th>
                                 @if ($historyView !== 'active')
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Archived At</th>
@@ -115,9 +125,9 @@
                                                 'subdivision_id' => $filterSubdivision ?: null,
                                                 'view' => $historyView !== 'active' ? $historyView : null,
                                             ])) }}"
-                                            class="font-medium text-slate-900 hover:text-sky-700"
+                                            class="font-medium text-slate-900 hover:text-sky-700 font-mono"
                                         >
-                                            {{ $incident->title }}
+                                            {{ $incident->report_id }}
                                         </a>
                                     </td>
                                     @if ($subdivisions->isNotEmpty())
@@ -126,18 +136,19 @@
                                     <td class="px-6 py-4 text-slate-600">{{ $incident->category ?: '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $incident->status }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $incident->verifiedResident?->full_name ?? '-' }}</td>
+                                    <td class="px-6 py-4 text-slate-600">{{ $incident->assignedStaff?->full_name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600">
                                         @if ($incident->proofPhotos->isNotEmpty())
                                             @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proofPhotos->first()->photo_path]))
                                             <button
                                                 type="button"
-                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ addslashes($incident->title) }}')"
+                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ $incident->report_id }}')"
                                                 class="group relative block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
                                                 title="Preview proof images"
                                             >
                                                 <img
                                                     src="{{ $proofPhotoUrl }}"
-                                                    alt="Proof image for {{ $incident->title }}"
+                                                    alt="Proof image for {{ $incident->report_id }}"
                                                     class="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                                                 >
                                                 @if ($incident->proofPhotos->count() > 1)
@@ -150,13 +161,13 @@
                                             @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proof_photo_path]))
                                             <button
                                                 type="button"
-                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ addslashes($incident->title) }}')"
+                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ $incident->report_id }}')"
                                                 class="group relative block h-16 w-16 overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
                                                 title="Preview proof image"
                                             >
                                                 <img
                                                     src="{{ $proofPhotoUrl }}"
-                                                    alt="Proof image for {{ $incident->title }}"
+                                                    alt="Proof image for {{ $incident->report_id }}"
                                                     class="h-full w-full object-cover transition duration-200 group-hover:scale-105"
                                                 >
                                             </button>
@@ -227,7 +238,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $subdivisions->isNotEmpty() ? ($historyView !== 'active' ? 10 : 9) : ($historyView !== 'active' ? 9 : 8) }}" class="px-6 py-10 text-center text-slate-500">No incidents found.</td>
+                                    <td colspan="{{ $subdivisions->isNotEmpty() ? ($historyView !== 'active' ? 11 : 10) : ($historyView !== 'active' ? 10 : 9) }}" class="px-6 py-10 text-center text-slate-500">No incidents found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -237,6 +248,19 @@
 
             @if (auth()->user()->hasRole(['security', 'staff', 'investigator', 'resident']))
                 @include('incidents.partials.report-modal')
+            @endif
+
+            @if (!auth()->user()->isResident())
+                <div id="report_scan_modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/70 px-4">
+                    <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+                        <div class="mb-4 flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-slate-900">Scan incident report QR</h3>
+                            <button type="button" id="close-report-scan" class="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">&times;</button>
+                        </div>
+                        <div id="report_qr_reader" class="min-h-[260px]"></div>
+                        <p id="report_scan_status" class="mt-3 text-sm text-slate-500"></p>
+                    </div>
+                </div>
             @endif
 
             @if (auth()->user()->isAdmin())
@@ -253,7 +277,7 @@
                                     <div>
                                         <h3 class="text-lg font-semibold text-slate-900">Archive Incident?</h3>
                                         <p class="mt-2 text-sm text-slate-600">
-                                            {{ $incident->title }} will be removed from the active list, but it will stay available in the deleted view and can still be restored later.
+                                            {{ $incident->report_id }} will be removed from the active list, but it will stay available in the deleted view and can still be restored later.
                                         </p>
                                     </div>
                                 </div>
@@ -290,7 +314,7 @@
                                     <div>
                                         <h3 class="text-lg font-semibold text-slate-900">Permanently Delete Incident?</h3>
                                         <p class="mt-2 text-sm text-slate-600">
-                                            This will permanently remove {{ $incident->title }} and its proof images. This action cannot be undone.
+                                            This will permanently remove {{ $incident->report_id }} and its proof images. This action cannot be undone.
                                         </p>
                                     </div>
                                 </div>
@@ -345,4 +369,79 @@
             </div>
         </div>
     </div>
+    @if (!auth()->user()->isResident())
+        <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+        <script>
+            (function () {
+                var openBtn = document.getElementById('open-report-scan');
+                var closeBtn = document.getElementById('close-report-scan');
+                var modal = document.getElementById('report_scan_modal');
+                var statusEl = document.getElementById('report_scan_status');
+                var scanner = null;
+
+                if (!openBtn || !closeBtn || !modal || !statusEl) {
+                    return;
+                }
+
+                function stopScanner() {
+                    if (!scanner) {
+                        return Promise.resolve();
+                    }
+
+                    return scanner.stop().catch(function () {}).then(function () {
+                        scanner = null;
+                        var reader = document.getElementById('report_qr_reader');
+                        if (reader) {
+                            reader.innerHTML = '';
+                        }
+                    });
+                }
+
+                openBtn.addEventListener('click', function () {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    statusEl.textContent = 'Starting camera...';
+
+                    if (typeof Html5Qrcode === 'undefined') {
+                        statusEl.textContent = 'QR scanner failed to load.';
+                        return;
+                    }
+
+                    scanner = new Html5Qrcode('report_qr_reader');
+                    Html5Qrcode.getCameras()
+                        .then(function (cameras) {
+                            if (!cameras || !cameras.length) {
+                                throw new Error('No camera found');
+                            }
+
+                            var cameraId = cameras[0].id;
+                            return scanner.start(
+                                cameraId,
+                                { fps: 10, qrbox: { width: 250, height: 250 } },
+                                function (decodedText) {
+                                    var reportId = decodedText.indexOf('INCIDENT:') === 0 ? decodedText.slice(9) : decodedText;
+                                    stopScanner().then(function () {
+                                        window.location.href = @json(url('/incidents/report')) + '/' + encodeURIComponent(reportId);
+                                    });
+                                },
+                                function () {}
+                            );
+                        })
+                        .then(function () {
+                            statusEl.textContent = 'Point the camera at the incident report QR code.';
+                        })
+                        .catch(function () {
+                            statusEl.textContent = 'Could not start the camera.';
+                        });
+                });
+
+                closeBtn.addEventListener('click', function () {
+                    stopScanner().then(function () {
+                        modal.classList.add('hidden');
+                        modal.classList.remove('flex');
+                    });
+                });
+            })();
+        </script>
+    @endif
 </x-app-layout>
