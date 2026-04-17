@@ -98,16 +98,20 @@
                 @endif
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700">Status</label>
-                <select
-                    name="status"
-                    required
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
-                >
-                    @foreach (['Active', 'Inactive'] as $status)
-                        <option value="{{ $status }}" @selected(old('status', $resident?->status ?? 'Active') === $status)>{{ $status }}</option>
-                    @endforeach
-                </select>
+                @if ($resident)
+                    <label class="block text-sm font-medium text-slate-700">Status</label>
+                    <select
+                        name="status"
+                        required
+                        class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    >
+                        @foreach (['Active', 'Inactive'] as $status)
+                            <option value="{{ $status }}" @selected(old('status', $resident->status ?? 'Active') === $status)>{{ $status }}</option>
+                        @endforeach
+                    </select>
+                @else
+                    <input type="hidden" name="status" value="Active">
+                @endif
             </div>
         </div>
     </section>
@@ -230,8 +234,11 @@
                                 name="account_email"
                                 value="{{ old('account_email') }}"
                                 :required="createAccount"
-                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                class="mt-1 w-full rounded-xl text-sm shadow-sm focus:ring-sky-500 @error('account_email') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-sky-500 @enderror"
                             >
+                            @error('account_email')
+                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                            @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Password</label>

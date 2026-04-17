@@ -30,7 +30,7 @@ return new class extends Migration
         }
 
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
-            DB::statement("ALTER TABLE users MODIFY role ENUM('admin','security','staff','investigator','resident') NOT NULL");
+            DB::statement("ALTER TABLE users MODIFY role ENUM('admin','security','staff','resident') NOT NULL");
         }
     }
 
@@ -57,15 +57,15 @@ return new class extends Migration
         }
 
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
-            DB::statement("ALTER TABLE users MODIFY role ENUM('admin','security','staff','investigator') NOT NULL");
+            DB::statement("ALTER TABLE users MODIFY role ENUM('admin','security','staff') NOT NULL");
         }
     }
 
     private function rebuildSqliteUsersTable(bool $includeResidentRole): void
     {
         $roleValues = $includeResidentRole
-            ? "'admin','security','staff','investigator','resident'"
-            : "'admin','security','staff','investigator'";
+            ? "'admin','security','staff','resident'"
+            : "'admin','security','staff'";
 
         DB::statement('PRAGMA foreign_keys = OFF');
         DB::statement('ALTER TABLE users RENAME TO users_old');

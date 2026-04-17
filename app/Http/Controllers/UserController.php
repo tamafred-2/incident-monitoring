@@ -38,7 +38,7 @@ class UserController extends Controller
             });
         }
 
-        if (in_array($filterRole, ['admin', 'security', 'staff', 'investigator', 'resident'], true)) {
+        if (in_array($filterRole, ['admin', 'security', 'staff', 'resident'], true)) {
             $query->where('role', $filterRole);
         }
 
@@ -95,7 +95,7 @@ class UserController extends Controller
                 'middle_name' => ['nullable', 'string', 'max:100'],
                 'extension' => ['nullable', 'string', 'max:20'],
                 'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
-                'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator', 'resident'])],
+                'role' => ['required', Rule::in(['admin', 'security', 'staff', 'resident'])],
                 'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
                 'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', $this->residentUniqueRule()],
                 'password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -185,7 +185,7 @@ class UserController extends Controller
                 'middle_name' => ['nullable', 'string', 'max:100'],
                 'extension' => ['nullable', 'string', 'max:20'],
                 'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->user_id, 'user_id')],
-                'role' => ['required', Rule::in(['admin', 'security', 'staff', 'investigator', 'resident'])],
+                'role' => ['required', Rule::in(['admin', 'security', 'staff', 'resident'])],
                 'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
                 'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', $this->residentUniqueRule($user)],
                 'password' => ['nullable', 'string', 'min:8', 'confirmed'],

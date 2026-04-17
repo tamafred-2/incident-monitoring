@@ -43,7 +43,7 @@
     <label class="block text-sm font-medium text-slate-700">Role</label>
     <select name="role" x-model="role" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
         <option value="">Select Role</option>
-        @foreach (['admin', 'security', 'staff', 'investigator', 'resident'] as $role)
+        @foreach (['admin', 'security', 'staff', 'resident'] as $role)
             <option value="{{ $role }}" @selected(old('role', $user?->role ?? '') === $role)>{{ ucfirst($role) }}</option>
         @endforeach
     </select>

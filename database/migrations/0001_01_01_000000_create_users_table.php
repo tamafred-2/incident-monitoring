@@ -17,7 +17,7 @@ return new class extends Migration
                 $table->string('full_name', 100);
                 $table->string('email', 100)->unique();
                 $table->string('password', 255);
-                $table->enum('role', ['admin', 'security', 'staff', 'investigator']);
+                $table->enum('role', ['admin', 'security', 'staff']);
                 $table->unsignedInteger('subdivision_id')->nullable();
                 $table->timestamp('created_at')->useCurrent();
 

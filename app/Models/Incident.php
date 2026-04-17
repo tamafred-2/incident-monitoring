@@ -32,6 +32,8 @@ class Incident extends Model
         'verified_resident_id',
         'verification_method',
         'verified_at',
+        'verified_by_staff_id',
+        'verified_on_site_at',
     ];
 
     protected static function booted(): void
@@ -55,6 +57,7 @@ class Incident extends Model
             'reported_at' => 'datetime',
             'resolved_at' => 'datetime',
             'verified_at' => 'datetime',
+            'verified_on_site_at' => 'datetime',
             'created_at' => 'datetime',
         ];
     }
@@ -77,6 +80,11 @@ class Incident extends Model
     public function assignedStaff(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to', 'user_id')->withTrashed();
+    }
+
+    public function verifiedStaff(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by_staff_id', 'user_id')->withTrashed();
     }
 
     public function verifiedResident(): BelongsTo
