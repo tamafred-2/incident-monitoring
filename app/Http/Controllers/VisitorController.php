@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\House;
+use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
+use App\Models\VisitorRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class VisitorController extends Controller
@@ -30,8 +33,6 @@ class VisitorController extends Controller
                     ->orWhere('middle_initials', 'like', "%{$filterQ}%")
                     ->orWhere('extension', 'like', "%{$filterQ}%")
                     ->orWhere('phone', 'like', "%{$filterQ}%")
-                    ->orWhere('id_number', 'like', "%{$filterQ}%")
-                    ->orWhere('company', 'like', "%{$filterQ}%")
                     ->orWhere('purpose', 'like', "%{$filterQ}%")
                     ->orWhere('host_employee', 'like', "%{$filterQ}%")
                     ->orWhere('house_address_or_unit', 'like', "%{$filterQ}%")
@@ -58,7 +59,34 @@ class VisitorController extends Controller
             ->get()
             ->groupBy('subdivision_id')
             ->map(fn ($houses) => $houses->map(fn (House $house) => $house->display_address)->values()->all());
+
+        $residentsByHouse = House::query()
+            ->with(['residents' => fn ($q) => $q->where('status', 'Active')
+                ->whereHas('user')
+                ->select('house_id', 'resident_id', 'full_name')])
+            ->get()
+            ->mapWithKeys(fn (House $house) => [
+                $house->display_address => $house->residents->map(fn (Resident $r) => [
+                    'id'   => $r->resident_id,
+                    'name' => $r->full_name,
+                ])->values()->all(),
+            ]);
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
+
+        $pendingRequests = VisitorRequest::query()
+            ->with('resident')
+            ->where('status', 'Pending')
+            ->when(
+                !$user->isAdmin(),
+                fn ($q) => $q->where('subdivision_id', $user->allowedSubdivisionId())
+            )
+            ->when(
+                $user->isAdmin() && $filterSubdivision,
+                fn ($q) => $q->where('subdivision_id', $filterSubdivision)
+            )
+            ->orderByDesc('requested_at')
+            ->get();
+
         $insideVisitors = Visitor::query()
             ->with('subdivision')
             ->when(
@@ -70,8 +98,6 @@ class VisitorController extends Controller
                             ->orWhere('middle_initials', 'like', "%{$filterQ}%")
                             ->orWhere('extension', 'like', "%{$filterQ}%")
                             ->orWhere('phone', 'like', "%{$filterQ}%")
-                            ->orWhere('id_number', 'like', "%{$filterQ}%")
-                            ->orWhere('company', 'like', "%{$filterQ}%")
                             ->orWhere('purpose', 'like', "%{$filterQ}%")
                             ->orWhere('host_employee', 'like', "%{$filterQ}%")
                             ->orWhere('house_address_or_unit', 'like', "%{$filterQ}%")
@@ -99,7 +125,9 @@ class VisitorController extends Controller
             'historyView',
             'effectiveSubdivision',
             'insideVisitors',
+            'pendingRequests',
             'housesBySubdivision',
+            'residentsByHouse',
         ));
     }
 
@@ -116,17 +144,19 @@ class VisitorController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'subdivision_id' => ['nullable', 'integer'],
-            'surname' => ['required', 'string', 'max:100'],
-            'first_name' => ['required', 'string', 'max:100'],
-            'middle_initials' => ['nullable', 'string', 'max:20'],
-            'extension' => ['nullable', 'string', 'max:20'],
-            'phone' => ['nullable', 'string', 'max:40'],
-            'id_number' => ['nullable', 'string', 'max:80'],
-            'company' => ['nullable', 'string', 'max:150'],
-            'purpose' => ['nullable', 'string'],
-            'host_employee' => ['nullable', 'string', 'max:150'],
-            'house_address_or_unit' => ['nullable', 'string', 'max:120'],
+            'subdivision_id'        => ['nullable', 'integer'],
+            'surname'               => ['required', 'string', 'max:100'],
+            'first_name'            => ['required', 'string', 'max:100'],
+            'middle_initials'       => ['nullable', 'string', 'max:20'],
+            'extension'             => ['nullable', 'string', 'max:20'],
+            'phone'                 => ['required', 'string', 'max:40'],
+            'plate_number'          => ['nullable', 'string', 'max:30'],
+            'id_photo'              => ['required', 'image', 'max:4096'],
+            'purpose'               => ['nullable', 'string'],
+            'host_employee'         => ['required', 'string', 'max:150'],
+            'host_resident_id'      => ['nullable', 'integer'],
+            'house_address_or_unit' => ['required', 'string', 'max:120'],
+            'resident_code'         => ['nullable', 'string', 'max:20'],
         ]);
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
@@ -149,25 +179,75 @@ class VisitorController extends Controller
             }
         }
 
-        Visitor::create([
-            'subdivision_id' => $subdivisionId,
-            'surname' => $data['surname'],
-            'first_name' => $data['first_name'],
-            'middle_initials' => $data['middle_initials'] ?? null,
-            'extension' => $data['extension'] ?? null,
-            'phone' => $data['phone'] ?? null,
-            'id_number' => $data['id_number'] ?? null,
-            'company' => $data['company'] ?? null,
-            'purpose' => $data['purpose'] ?? null,
-            'host_employee' => $data['host_employee'] ?? null,
+        $photoPath = null;
+        if ($request->hasFile('id_photo')) {
+            $photoPath = $request->file('id_photo')->store('visitor-ids', 'public');
+        }
+
+        // Check if resident code was provided for instant check-in bypass
+        $residentCode = Resident::normalizeResidentCode($data['resident_code'] ?? null);
+        if ($residentCode) {
+            $resident = Resident::where('resident_code', $residentCode)
+                ->where('subdivision_id', $subdivisionId)
+                ->first();
+
+            if (!$resident) {
+                return back()->withErrors(['resident_code' => 'Invalid resident code for this subdivision.'])->withInput();
+            }
+
+            Visitor::create([
+                'subdivision_id'        => $subdivisionId,
+                'surname'               => $data['surname'],
+                'first_name'            => $data['first_name'],
+                'middle_initials'       => $data['middle_initials'] ?? null,
+                'extension'             => $data['extension'] ?? null,
+                'phone'                 => $data['phone'],
+                'plate_number'          => $data['plate_number'] ?? null,
+                'id_photo_path'         => $photoPath,
+                'purpose'               => $data['purpose'] ?? null,
+                'host_employee'         => $data['host_employee'],
+                'house_address_or_unit' => $data['house_address_or_unit'] ?? null,
+                'check_in'              => now(),
+                'check_out'             => null,
+                'status'                => 'Inside',
+            ]);
+
+            return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
+                ->with('success', 'Visitor checked in immediately using resident code.');
+        }
+
+        // No resident code — find the selected resident by host_resident_id and create a pending request
+        $resident = isset($data['host_resident_id'])
+            ? Resident::where('resident_id', $data['host_resident_id'])
+                ->where('subdivision_id', $subdivisionId)
+                ->where('status', 'Active')
+                ->whereHas('user')
+                ->first()
+            : null;
+
+        if (!$resident) {
+            return back()->withErrors(['host_employee' => 'The selected resident was not found or does not have an account.'])->withInput();
+        }
+
+        VisitorRequest::create([
+            'resident_id'           => $resident->resident_id,
+            'subdivision_id'        => $subdivisionId,
+            'visitor_name'          => Visitor::formatFullName($data['first_name'], $data['middle_initials'] ?? null, $data['surname'], $data['extension'] ?? null),
+            'surname'               => $data['surname'],
+            'first_name'            => $data['first_name'],
+            'middle_initials'       => $data['middle_initials'] ?? null,
+            'extension'             => $data['extension'] ?? null,
+            'phone'                 => $data['phone'],
+            'plate_number'          => $data['plate_number'] ?? null,
+            'id_photo_path'         => $photoPath,
             'house_address_or_unit' => $data['house_address_or_unit'] ?? null,
-            'check_in' => now(),
-            'check_out' => null,
-            'status' => 'Inside',
+            'purpose'               => $data['purpose'] ?? null,
+            'status'                => 'Pending',
+            'requested_at'          => now(),
         ]);
 
         return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
-            ->with('success', 'Visitor checked in successfully.');
+            ->with('success', 'Visitor request sent to resident for approval.');
     }
 
     public function checkout(Request $request, Visitor $visitor): RedirectResponse
@@ -269,7 +349,7 @@ class VisitorController extends Controller
     private function visitorRouteContext(Request $request, int|string|null $subdivisionId): array
     {
         $tab = $request->input('tab', $request->query('tab', 'history'));
-        if (!in_array($tab, ['check-in', 'check-out', 'history'], true)) {
+        if (!in_array($tab, ['check-in', 'check-out', 'history', 'pending'], true)) {
             $tab = 'history';
         }
 

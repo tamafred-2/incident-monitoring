@@ -118,6 +118,18 @@ class DashboardController extends Controller
         ));
     }
 
+    public function notificationsPage(Request $request): View
+    {
+        $user = $request->user();
+        $notifications = $user->notifications()->orderByDesc('created_at')->paginate(15);
+
+        $user->unreadNotifications->markAsRead();
+
+        return view('notifications.index', [
+            'notifications' => $notifications,
+        ]);
+    }
+
     public function notifications(Request $request): JsonResponse
     {
         abort_unless($request->user()?->isAdmin(), 403);

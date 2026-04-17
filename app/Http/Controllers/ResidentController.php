@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -83,30 +84,36 @@ class ResidentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateResident($request);
+        $shouldCreateAccount = $request->filled('account_email') || $request->filled('account_password');
+        $accountData = null;
 
-        $resident = Resident::create($data);
-
-        if ($request->filled('account_email')) {
+        if ($shouldCreateAccount) {
             $accountData = $request->validate([
                 'account_email' => ['required', 'email', 'max:100', 'unique:users,email'],
                 'account_password' => ['required', 'string', 'min:8'],
             ]);
-
-            $nameParts = $resident->name_parts;
-
-            User::create([
-                'surname' => $nameParts['surname'],
-                'first_name' => $nameParts['first_name'],
-                'middle_name' => $nameParts['middle_name'],
-                'extension' => $nameParts['extension'],
-                'email' => $accountData['account_email'],
-                'password' => $accountData['account_password'],
-                'requires_password_change' => true,
-                'role' => 'resident',
-                'subdivision_id' => $resident->subdivision_id,
-                'resident_id' => $resident->resident_id,
-            ]);
         }
+
+        DB::transaction(function () use ($data, $shouldCreateAccount, $accountData): void {
+            $resident = Resident::create($data);
+
+            if ($shouldCreateAccount && $accountData !== null) {
+                $nameParts = $resident->name_parts;
+
+                User::create([
+                    'surname' => $nameParts['surname'],
+                    'first_name' => $nameParts['first_name'],
+                    'middle_name' => $nameParts['middle_name'],
+                    'extension' => $nameParts['extension'],
+                    'email' => $accountData['account_email'],
+                    'password' => $accountData['account_password'],
+                    'requires_password_change' => true,
+                    'role' => 'resident',
+                    'subdivision_id' => $resident->subdivision_id,
+                    'resident_id' => $resident->resident_id,
+                ]);
+            }
+        });
 
         return redirect()->route('residents.index')
             ->with('success', 'Resident created successfully.');
@@ -124,20 +131,26 @@ class ResidentController extends Controller
 
     public function destroy(Request $request, Resident $resident): RedirectResponse
     {
-        if ($resident->user) {
-            return redirect()->route('residents.index', $this->indexContext($request))
-                ->with('error', 'Residents with linked user accounts cannot be deleted.');
-        }
-
         if ($resident->incidents()->exists()) {
             return redirect()->route('residents.index', $this->indexContext($request))
                 ->with('error', 'Residents with verified incident records cannot be deleted.');
         }
 
-        $resident->delete();
+        DB::transaction(function () use ($resident): void {
+            User::withTrashed()
+                ->where('resident_id', $resident->resident_id)
+                ->get()
+                ->each(function (User $linkedUser): void {
+                    if (!$linkedUser->trashed()) {
+                        $linkedUser->delete();
+                    }
+                });
+
+            $resident->delete();
+        });
 
         return redirect()->route('residents.index', $this->indexContext($request))
-            ->with('success', 'Resident deleted successfully.');
+            ->with('success', 'Resident deleted successfully. Linked resident account(s) were archived.');
     }
 
     public function qrCard(Request $request, Resident $resident): View|Response
@@ -168,7 +181,7 @@ class ResidentController extends Controller
             'house_id' => ['nullable', 'integer', 'exists:houses,house_id'],
             'address_or_unit' => ['nullable', 'string', 'max:150'],
             'resident_code' => ['nullable', 'string', 'max:64', Rule::unique('residents', 'resident_code')->ignore($resident?->resident_id, 'resident_id')],
-            'status' => ['required', Rule::in(['Active', 'Inactive'])],
+            'status' => ['nullable', Rule::in(['Active', 'Inactive'])],
         ]);
 
         $house = null;
@@ -190,7 +203,7 @@ class ResidentController extends Controller
             'phone' => $data['phone'] ?: null,
             'email' => $data['email'] ?: null,
             'address_or_unit' => $house?->display_address ?? ($data['address_or_unit'] ?: null),
-            'status' => $data['status'],
+            'status' => $data['status'] ?? $resident?->status ?? 'Active',
         ];
     }
 

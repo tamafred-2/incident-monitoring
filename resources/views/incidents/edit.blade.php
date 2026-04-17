@@ -68,7 +68,7 @@
                     </div>
                     @if (auth()->user()->isAdmin())
                         <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-slate-700">Assign Staff</label>
+                            <label class="block text-sm font-medium text-slate-700">Assign Responder</label>
                             <select name="assigned_to" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                                 <option value="">Unassigned</option>
                                 @foreach ($assignableStaff as $assignee)
@@ -80,7 +80,7 @@
                         </div>
                     @else
                         <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600">
-                            Status verification mode for assigned staff. Report details are shown for reference; saving will only update the incident status and resolved date.
+                            Assigned responder mode. Report details are shown for reference; saving here updates the incident status and resolved date after on-site verification.
                         </div>
                     @endif
                     <div class="md:col-span-2">

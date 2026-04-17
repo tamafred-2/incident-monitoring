@@ -8,9 +8,11 @@ use App\Models\IncidentPhoto;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
+use App\Notifications\IncidentUpdatedNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -52,14 +54,12 @@ class IncidentController extends Controller
             });
         }
 
-        if ($user->isAdmin()) {
-            $this->applyHistoryViewScope($query, $historyView);
-        }
+        $this->applyHistoryViewScope($query, $historyView);
 
         if ($user->isResident()) {
             $query->where('reported_by', $user->user_id);
         } elseif (!$user->isAdmin()) {
-            $query->where('subdivision_id', $user->allowedSubdivisionId());
+            $query->where('assigned_to', $user->user_id);
         } elseif ($filterSubdivision) {
             $query->where('subdivision_id', $filterSubdivision);
         }
@@ -202,6 +202,8 @@ class IncidentController extends Controller
         $incident = $this->findIncidentOrFail($request, $incidentId);
         $this->authorizeIncidentEdit($request, $incident);
         $isAdminEditor = $request->user()->isAdmin();
+        $previousAssignedTo = $incident->assigned_to;
+        $previousStatus = $incident->status;
         $data = $request->validate($isAdminEditor
             ? $this->incidentValidationRules(false, false, true)
             : $this->incidentStatusValidationRules()
@@ -233,6 +235,9 @@ class IncidentController extends Controller
                 'status' => $status,
                 'assigned_to' => $assignedTo,
             ]);
+
+            $this->notifyIncidentAssignmentIfNeeded($incident, $previousAssignedTo);
+            $this->notifyIncidentStatusIfNeeded($incident, $previousStatus);
         } else {
             $status = $data['status'];
             $incident->update([
@@ -244,6 +249,8 @@ class IncidentController extends Controller
                 'status' => $status,
             ]);
             $subdivisionId = $incident->subdivision_id;
+
+            $this->notifyIncidentStatusIfNeeded($incident, $previousStatus);
         }
 
         $proofPhotoPaths = $this->storeProofPhotos($request);
@@ -260,6 +267,31 @@ class IncidentController extends Controller
             ['incidentId' => $incident->incident_id],
             $this->indexContext($request)
         ))->with('success', 'Incident updated successfully.');
+    }
+
+    public function verifyOnScene(Request $request, int $incidentId): RedirectResponse
+    {
+        $incident = $this->findIncidentOrFail($request, $incidentId);
+        $user = $request->user();
+
+        if (!$user->isAdmin() && (int) $incident->assigned_to !== (int) $user->user_id) {
+            abort(403);
+        }
+
+        if ($incident->verified_on_site_at) {
+            return back()->with('success', 'This incident has already been verified on site.');
+        }
+
+        $status = $incident->status === 'Open' ? 'Under Investigation' : $incident->status;
+        $incident->update([
+            'verified_by_staff_id' => $user->user_id,
+            'verified_on_site_at' => now(),
+            'status' => $status,
+        ]);
+
+        $this->notifyIncidentVerification($incident);
+
+        return back()->with('success', 'Incident verified on site successfully.');
     }
 
     public function destroy(Request $request, int $incidentId): RedirectResponse
@@ -448,7 +480,7 @@ class IncidentController extends Controller
         return User::query()
             ->where('user_id', $assignedTo)
             ->where('subdivision_id', $subdivisionId)
-            ->whereIn('role', ['security', 'staff', 'investigator'])
+            ->whereIn('role', ['security', 'staff'])
             ->exists()
             ? $assignedTo
             : null;
@@ -462,7 +494,7 @@ class IncidentController extends Controller
 
         return User::query()
             ->where('subdivision_id', $subdivisionId)
-            ->whereIn('role', ['security', 'staff', 'investigator'])
+            ->whereIn('role', ['security', 'staff'])
             ->orderBy('role')
             ->orderBy('full_name')
             ->get();
@@ -617,7 +649,7 @@ class IncidentController extends Controller
 
     private function resolveHistoryView(?string $view): string
     {
-        return in_array($view, ['active', 'deleted', 'all'], true) ? $view : 'active';
+        return in_array($view, ['active', 'history', 'deleted', 'all'], true) ? $view : 'active';
     }
 
     private function applyHistoryViewScope(Builder $query, string $historyView): void
@@ -630,7 +662,19 @@ class IncidentController extends Controller
 
         if ($historyView === 'all') {
             $query->withTrashed();
+
+            return;
         }
+
+        $query->whereNull('deleted_at');
+
+        if ($historyView === 'history') {
+            $query->whereIn('status', ['Resolved', 'Closed']);
+
+            return;
+        }
+
+        $query->whereNotIn('status', ['Resolved', 'Closed']);
     }
 
     private function findIncidentOrFail(Request $request, int $incidentId, bool $withTrashed = false): Incident
@@ -654,7 +698,11 @@ class IncidentController extends Controller
             return;
         }
 
-        abort_unless($request->user()->canAccessSubdivision($incident->subdivision_id), 403);
+        if ($request->user()->isAdmin()) {
+            return;
+        }
+
+        abort_unless((int) $incident->assigned_to === (int) $request->user()->user_id, 403);
     }
 
     private function authorizeIncidentEdit(Request $request, Incident $incident): void
@@ -724,6 +772,78 @@ class IncidentController extends Controller
         $legacyPath = public_path($path);
         if (File::exists($legacyPath)) {
             File::delete($legacyPath);
+        }
+    }
+
+    private function notifyIncidentAssignmentIfNeeded(Incident $incident, ?int $previousAssignedTo): void
+    {
+        $newAssignedTo = $incident->assigned_to;
+
+        if (!$newAssignedTo || $newAssignedTo === $previousAssignedTo) {
+            return;
+        }
+
+        $assignedUser = User::find($newAssignedTo);
+        if ($assignedUser) {
+            Notification::send($assignedUser, new IncidentUpdatedNotification(
+                $incident,
+                'Incident Assigned',
+                "You have been assigned to incident {$incident->report_id}."
+            ));
+        }
+
+        $reporter = $incident->reporter;
+        if ($reporter && (! $assignedUser || $reporter->user_id !== $assignedUser->user_id)) {
+            Notification::send($reporter, new IncidentUpdatedNotification(
+                $incident,
+                'Staff Assigned',
+                "Staff has been assigned to your incident {$incident->report_id}."
+            ));
+        }
+    }
+
+    private function notifyIncidentStatusIfNeeded(Incident $incident, string $previousStatus): void
+    {
+        if ($incident->status === $previousStatus) {
+            return;
+        }
+
+        $reporter = $incident->reporter;
+        if ($reporter) {
+            Notification::send($reporter, new IncidentUpdatedNotification(
+                $incident,
+                'Incident Status Updated',
+                "Your incident {$incident->report_id} is now {$incident->status}."
+            ));
+        }
+
+        if ($incident->assignedStaff) {
+            Notification::send($incident->assignedStaff, new IncidentUpdatedNotification(
+                $incident,
+                'Incident Status Updated',
+                "Incident {$incident->report_id} status is now {$incident->status}."
+            ));
+        }
+    }
+
+    private function notifyIncidentVerification(Incident $incident): void
+    {
+        $reporter = $incident->reporter;
+        if ($reporter) {
+            Notification::send($reporter, new IncidentUpdatedNotification(
+                $incident,
+                'Incident Verified On Site',
+                "Your incident {$incident->report_id} has been verified on site by {$incident->verifiedStaff?->full_name}."
+            ));
+        }
+
+        $verificationUser = $incident->verifiedStaff;
+        if ($verificationUser && (! $reporter || $verificationUser->user_id !== $reporter->user_id)) {
+            Notification::send($verificationUser, new IncidentUpdatedNotification(
+                $incident,
+                'Incident Verification Confirmed',
+                "You have verified incident {$incident->report_id} on site."
+            ));
         }
     }
 
