@@ -122,8 +122,36 @@ class ResidentController extends Controller
     public function update(Request $request, Resident $resident): RedirectResponse
     {
         $data = $this->validateResident($request, $resident);
+        $shouldCreateAccount = !$resident->user && ($request->filled('account_email') || $request->filled('account_password'));
+        $accountData = null;
 
-        $resident->update($data);
+        if ($shouldCreateAccount) {
+            $accountData = $request->validate([
+                'account_email'    => ['required', 'email', 'max:100', 'unique:users,email'],
+                'account_password' => ['required', 'string', 'min:8'],
+            ]);
+        }
+
+        DB::transaction(function () use ($data, $resident, $shouldCreateAccount, $accountData): void {
+            $resident->update($data);
+
+            if ($shouldCreateAccount && $accountData !== null) {
+                $nameParts = $resident->fresh()->name_parts;
+
+                User::create([
+                    'surname'                  => $nameParts['surname'],
+                    'first_name'               => $nameParts['first_name'],
+                    'middle_name'              => $nameParts['middle_name'],
+                    'extension'                => $nameParts['extension'],
+                    'email'                    => $accountData['account_email'],
+                    'password'                 => $accountData['account_password'],
+                    'requires_password_change' => true,
+                    'role'                     => 'resident',
+                    'subdivision_id'           => $resident->subdivision_id,
+                    'resident_id'              => $resident->resident_id,
+                ]);
+            }
+        });
 
         return redirect()->route('residents.index')
             ->with('success', 'Resident updated successfully.');
