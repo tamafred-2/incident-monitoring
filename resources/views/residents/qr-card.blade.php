@@ -25,9 +25,8 @@
             {{ $resident->resident_code }}
         </div>
 
-        <div class="mt-8 flex justify-center gap-3 print:hidden">
+        <div class="mt-8 flex justify-center print:hidden">
             <button type="button" onclick="window.print()" class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Print Card</button>
-            <a href="{{ route('residents.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Back</a>
         </div>
     </div>
 
