@@ -219,15 +219,16 @@
                                             canvas.width = video.videoWidth;
                                             canvas.height = video.videoHeight;
                                             canvas.getContext('2d').drawImage(video, 0, 0);
+                                            const self = this;
                                             canvas.toBlob(blob => {
                                                 const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
                                                 const dt = new DataTransfer();
                                                 dt.items.add(file);
                                                 $refs.uploadInput.files = dt.files;
-                                                idPhotoPreview = URL.createObjectURL(blob);
-                                                idPhotoName = 'photo.jpg';
+                                                $refs.uploadInput.dispatchEvent(new Event('change'));
+                                                self.cameraOpen = false;
+                                                if (self.stream) { self.stream.getTracks().forEach(t => t.stop()); self.stream = null; }
                                             }, 'image/jpeg', 0.92);
-                                            this.stopCamera();
                                         }
                                     }" @click.away="photoMenuOpen = false">
 
@@ -441,6 +442,7 @@
                             <table class="min-w-full text-sm divide-y divide-slate-200">
                                 <thead class="bg-slate-50">
                                     <tr>
+                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">ID Photo</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Visitor</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Phone</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
@@ -453,6 +455,15 @@
                                 <tbody class="bg-white divide-y divide-slate-100">
                                     @forelse ($pendingRequests as $req)
                                         <tr>
+                                            <td class="px-6 py-4">
+                                                @if ($req->id_photo_path)
+                                                    <button type="button" x-data x-on:click="$dispatch('open-modal', 'pending-id-photo-{{ $req->request_id }}')">
+                                                        <img src="{{ route('visitors.id-photo', $req->request_id) }}" alt="ID" class="object-cover w-10 h-10 rounded-lg border border-slate-200 hover:opacity-80">
+                                                    </button>
+                                                @else
+                                                    <span class="text-xs text-slate-400">—</span>
+                                                @endif
+                                            </td>
                                             <td class="px-6 py-4 font-medium text-slate-900">{{ $req->visitor_name }}</td>
                                             <td class="px-6 py-4 text-slate-600">{{ $req->phone ?: '-' }}</td>
                                             <td class="px-6 py-4 text-slate-600">{{ $req->house_address_or_unit ?: '-' }}</td>
@@ -465,7 +476,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="7" class="px-6 py-10 text-center text-slate-500">No pending visitor requests.</td>
+                                            <td colspan="8" class="px-6 py-10 text-center text-slate-500">No pending visitor requests.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -674,6 +685,17 @@
                     </div>
                 </section>
             </div>
+
+            @foreach ($pendingRequests as $req)
+                @if ($req->id_photo_path)
+                    <x-modal name="pending-id-photo-{{ $req->request_id }}" maxWidth="md" focusable>
+                        <div class="p-6 bg-white text-center">
+                            <h3 class="mb-4 text-lg font-semibold text-slate-900">{{ $req->visitor_name }} — ID Photo</h3>
+                            <img src="{{ route('visitors.id-photo', $req->request_id) }}" alt="ID Photo" class="max-w-full mx-auto rounded-xl border border-slate-200">
+                        </div>
+                    </x-modal>
+                @endif
+            @endforeach
 
             @foreach ($visitors as $visitor)
                 @if (auth()->user()->hasRole('security') && !$visitor->trashed())

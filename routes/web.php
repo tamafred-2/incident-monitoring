@@ -66,6 +66,7 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::put('/residents/{resident}', [ResidentController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('residents.update');
     Route::delete('/residents/{resident}', [ResidentController::class, 'destroy'])->middleware(['role:admin', 'subdivision'])->name('residents.destroy');
     Route::get('/residents/{resident}/qr-card', [ResidentController::class, 'qrCard'])->middleware(['role:admin,staff', 'subdivision'])->name('residents.qr-card');
+    Route::get('/visitors/{visitorRequest}/id-photo', [VisitorController::class, 'idPhoto'])->middleware('role:security,staff')->name('visitors.id-photo');
     Route::get('/visitors', [VisitorController::class, 'index'])->middleware('role:security,staff')->name('visitors.index');
     Route::get('/visitors/{visitor}', [VisitorController::class, 'show'])->middleware(['role:security,staff', 'subdivision'])->name('visitors.show');
     Route::post('/visitors', [VisitorController::class, 'store'])->middleware('role:security')->name('visitors.store');
@@ -82,6 +83,7 @@ Route::middleware(['auth', 'password.change'])->group(function () {
         ->middleware('role:security,staff,resident')
         ->name('api.houses-by-subdivision');
 
+    Route::get('/my-visitors/{visitorRequest}/photo', [ResidentVisitorController::class, 'photo'])->middleware('role:resident')->name('resident.visitors.photo');
     Route::get('/my-visitors', [ResidentVisitorController::class, 'index'])->middleware('role:resident')->name('resident.visitors.index');
     Route::post('/my-visitors/{visitorRequest}/approve', [ResidentVisitorController::class, 'approve'])->middleware('role:resident')->name('resident.visitors.approve');
     Route::post('/my-visitors/{visitorRequest}/decline', [ResidentVisitorController::class, 'decline'])->middleware('role:resident')->name('resident.visitors.decline');

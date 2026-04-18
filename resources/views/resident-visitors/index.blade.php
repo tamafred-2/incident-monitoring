@@ -23,6 +23,7 @@
                         <table class="min-w-full text-sm divide-y divide-slate-200">
                             <thead class="bg-slate-50">
                                 <tr>
+                                    <th class="px-4 py-3 font-semibold text-left text-slate-600">ID Photo</th>
                                     <th class="px-4 py-3 font-semibold text-left text-slate-600">Visitor</th>
                                     <th class="px-4 py-3 font-semibold text-left text-slate-600">Phone</th>
                                     <th class="px-4 py-3 font-semibold text-left text-slate-600">Purpose</th>
@@ -35,6 +36,15 @@
                             <tbody class="bg-white divide-y divide-slate-100">
                                 @foreach ($requests as $req)
                                     <tr>
+                                        <td class="px-4 py-3">
+                                            @if ($req->id_photo_path)
+                                                    <button type="button" x-data x-on:click="$dispatch('open-modal', 'id-photo-{{ $req->request_id }}')">
+                                                        <img src="{{ route('resident.visitors.photo', $req->request_id) }}" alt="ID" class="object-cover w-10 h-10 rounded-lg border border-slate-200 hover:opacity-80">
+                                                </button>
+                                            @else
+                                                <span class="text-xs text-slate-400">—</span>
+                                            @endif
+                                        </td>
                                         <td class="px-4 py-3 font-medium text-slate-900">{{ $req->visitor_name }}</td>
                                         <td class="px-4 py-3 text-slate-600">{{ $req->phone ?: '-' }}</td>
                                         <td class="px-4 py-3 text-slate-600">{{ $req->purpose ?: '-' }}</td>
@@ -81,6 +91,14 @@
     </div>
 
     @foreach ($requests as $req)
+        @if ($req->id_photo_path)
+            <x-modal name="id-photo-{{ $req->request_id }}" maxWidth="md" focusable>
+                <div class="p-6 bg-white text-center">
+                    <h3 class="mb-4 text-lg font-semibold text-slate-900">{{ $req->visitor_name }} — ID Photo</h3>
+                    <img src="{{ route('resident.visitors.photo', $req->request_id) }}" alt="ID Photo" class="max-w-full mx-auto rounded-xl border border-slate-200">
+                </div>
+            </x-modal>
+        @endif
         @if ($req->status === 'Pending')
             <x-modal name="approve-visitor-{{ $req->request_id }}" maxWidth="md" focusable>
                 <div class="p-6 bg-white sm:p-8">
@@ -97,6 +115,13 @@
                             </p>
                         </div>
                     </div>
+
+                    @if ($req->id_photo_path)
+                        <div class="mt-4">
+                            <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">ID Photo</p>
+                            <img src="{{ route('resident.visitors.photo', $req->request_id) }}" alt="ID Photo" class="max-w-full rounded-xl border border-slate-200">
+                        </div>
+                    @endif
 
                     <form method="POST" action="{{ route('resident.visitors.approve', $req->request_id) }}" class="flex flex-wrap justify-end gap-3 mt-6">
                         @csrf
