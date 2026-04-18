@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Visitor;
 use App\Models\VisitorRequest;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -21,6 +22,19 @@ class ResidentVisitorController extends Controller
             ->get();
 
         return view('resident-visitors.index', compact('requests', 'resident'));
+    }
+
+    public function photo(Request $request, VisitorRequest $visitorRequest): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $resident = $request->user()->resident;
+        abort_if(!$resident, 403);
+        abort_unless($visitorRequest->resident_id === $resident->resident_id, 403);
+        abort_unless($visitorRequest->id_photo_path, 404);
+
+        $fullPath = Storage::disk('public')->path($visitorRequest->id_photo_path);
+        abort_unless(file_exists($fullPath), 404);
+
+        return response()->file($fullPath);
     }
 
     public function approve(Request $request, VisitorRequest $visitorRequest): RedirectResponse

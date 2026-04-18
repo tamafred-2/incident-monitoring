@@ -15,6 +15,20 @@ use Illuminate\View\View;
 
 class VisitorController extends Controller
 {
+    public function idPhoto(Request $request, VisitorRequest $visitorRequest): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        if (!$request->user()->isAdmin()) {
+            abort_unless($request->user()->canAccessSubdivision($visitorRequest->subdivision_id), 403);
+        }
+
+        abort_unless($visitorRequest->id_photo_path, 404);
+
+        $fullPath = Storage::disk('public')->path($visitorRequest->id_photo_path);
+        abort_unless(file_exists($fullPath), 404);
+
+        return response()->file($fullPath);
+    }
+
     public function index(Request $request): View
     {
         $user = $request->user();
