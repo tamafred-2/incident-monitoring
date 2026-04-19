@@ -151,23 +151,7 @@
         </div>
 
         <div class="grid gap-4 md:grid-cols-2">
-            <div>
-                <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                <select
-                    name="subdivision_id"
-                    x-model="subdivisionId"
-                    @change="if (houseId) { const selectedOption = $event.target.options[$event.target.selectedIndex]; if (selectedOption && selectedOption.value !== '') { const currentHouse = $refs.houseSelect.options[$refs.houseSelect.selectedIndex]; if (currentHouse && currentHouse.dataset.subdivision !== selectedOption.value) { houseId = ''; } } }"
-                    required
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
-                >
-                    <option value="">Select Subdivision</option>
-                    @foreach ($subdivisions as $subdivision)
-                        <option value="{{ $subdivision->subdivision_id }}" @selected($selectedSubdivision === (string) $subdivision->subdivision_id)>
-                            {{ $subdivision->subdivision_name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
+            <input type="hidden" name="subdivision_id" value="{{ $subdivisions->first()?->subdivision_id ?? old('subdivision_id', $resident?->subdivision_id ?? '') }}">
             <div>
                 <label class="block text-sm font-medium text-slate-700">Assigned House</label>
                 <select
@@ -181,10 +165,9 @@
                         <option
                             value="{{ $house->house_id }}"
                             data-subdivision="{{ $house->subdivision_id }}"
-                            x-show="!subdivisionId || subdivisionId === '{{ $house->subdivision_id }}'"
                             @selected($selectedHouse === (string) $house->house_id)
                         >
-                            {{ $house->subdivision?->subdivision_name ?? 'No subdivision' }} - {{ $house->display_address }}
+                            {{ $house->display_address }}
                         </option>
                     @endforeach
                 </select>

@@ -20,7 +20,7 @@
                 activeMonitoringTab: @js($defaultMonitoringTab),
                 housesBySubdivision: {{ \Illuminate\Support\Js::from($housesBySubdivision) }},
                 residentsByHouse: {{ \Illuminate\Support\Js::from($residentsByHouse) }},
-                selectedSubdivision: '{{ old('subdivision_id', auth()->user()->isAdmin() ? '' : $effectiveSubdivision) }}',
+                selectedSubdivision: '{{ $effectiveSubdivision }}',
                 selectedHouse: @js(old('house_address_or_unit', '')),
                 hostEmployee: @js(old('host_employee', '')),
                 hostSearch: @js(old('host_employee', '')),
@@ -28,6 +28,7 @@
                 idPhotoPreview: null,
                 idPhotoName: null,
                 hostOpen: false,
+                visitType: @js(old('visit_type', 'resident')),
                 get availableHouses() {
                     return this.housesBySubdivision[this.selectedSubdivision] || [];
                 },
@@ -66,20 +67,6 @@
                             class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                         >
                     </div>
-                    @if ($subdivisions->isNotEmpty())
-                        <div class="w-60">
-                            <label class="block text-sm font-medium text-slate-700">Subdivision Filter</label>
-                            <select
-                                name="subdivision_id"
-                                class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
-                            >
-                                <option value="">All subdivisions</option>
-                                @foreach ($subdivisions as $subdivision)
-                                    <option value="{{ $subdivision->subdivision_id }}" @selected($filterSubdivision === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    @endif
                     <div class="flex items-center gap-2">
                         <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
                         <a
@@ -129,29 +116,22 @@
 
                         <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                             <div class="mb-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Access Details</h4>
-                                <p class="mt-1 text-sm text-slate-500">Start with the subdivision where the visitor will enter.</p>
+                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Type</h4>
+                                <p class="mt-1 text-sm text-slate-500">Is the visitor here for a specific resident, or for a general purpose (delivery, amenity use, etc.)?</p>
                             </div>
-
-                            @if ($subdivisions->isNotEmpty())
-                                <div class="max-w-md">
-                                    <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                                    <select
-                                            name="subdivision_id"
-                                            x-model="selectedSubdivision"
-                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
-                                            required
-                                        >
-                                            <option value="">Select subdivision</option>
-                                            @foreach ($subdivisions as $subdivision)
-                                                <option value="{{ $subdivision->subdivision_id }}" @selected(old('subdivision_id', auth()->user()->isAdmin() ? '' : $effectiveSubdivision) == $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
-                                            @endforeach
-                                        </select>
-                                    </div>
-                            @elseif ($effectiveSubdivision)
-                                <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">
-                                <p class="text-sm text-slate-600">Subdivision is set automatically for your account.</p>
-                            @endif
+                            <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">
+                            <div class="flex flex-wrap gap-3">
+                                <label class="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition"
+                                    :class="visitType === 'resident' ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'">
+                                    <input type="radio" name="visit_type" value="resident" x-model="visitType" class="border-slate-300 text-sky-600 focus:ring-sky-500">
+                                    Visiting a Resident
+                                </label>
+                                <label class="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition"
+                                    :class="visitType === 'general' ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'">
+                                    <input type="radio" name="visit_type" value="general" x-model="visitType" class="border-slate-300 text-sky-600 focus:ring-sky-500">
+                                    General / Walk-in
+                                </label>
+                            </div>
                         </div>
 
                         <div class="p-5 bg-white border rounded-2xl border-slate-200">
@@ -310,7 +290,7 @@
                             </div>
                         </div>
 
-                        <div class="p-5 bg-white border rounded-2xl border-slate-200">
+                        <div class="p-5 bg-white border rounded-2xl border-slate-200" x-show="visitType === 'resident'" x-cloak>
                             <div class="mb-4">
                                 <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Details</h4>
                                 <p class="mt-1 text-sm text-slate-500">Who they are visiting and the reason for entry.</p>
@@ -319,7 +299,7 @@
                             <div class="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700">House / Unit</label>
-                                    <select name="house_address_or_unit" x-model="selectedHouse" x-on:change="onHouseChange()" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    <select name="house_address_or_unit" x-model="selectedHouse" x-on:change="onHouseChange()" :required="visitType === 'resident'" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                                         <option value="">Select house / unit</option>
                                         <template x-for="house in availableHouses" :key="house">
                                             <option :value="house" x-text="house"></option>
@@ -338,7 +318,7 @@
                                         x-on:click.away="hostOpen = false"
                                         :placeholder="selectedHouse ? 'Type to search residents...' : 'Select a house first'"
                                         :disabled="!selectedHouse"
-                                        required
+                                        :required="visitType === 'resident'"
                                         autocomplete="off"
                                         class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
@@ -356,7 +336,7 @@
                                         </template>
                                     </ul>
                                 </div>
-                                                                <div class="md:col-span-2">
+                                <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-slate-700">
                                         Resident Code
                                         <span class="font-normal text-slate-400">(optional — skip to send approval request)</span>
@@ -373,8 +353,19 @@
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-slate-700">Purpose</label>
-                                    <textarea name="purpose" rows="3" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">{{ old('purpose') }}</textarea>
+                                    <textarea name="purpose" rows="2" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">{{ old('purpose') }}</textarea>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 bg-white border rounded-2xl border-slate-200" x-show="visitType === 'general'" x-cloak>
+                            <div class="mb-4">
+                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Details</h4>
+                                <p class="mt-1 text-sm text-slate-500">Describe the reason for entry (e.g. delivery, repair, amenity use).</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700">Purpose</label>
+                                <textarea name="purpose" rows="3" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">{{ old('purpose') }}</textarea>
                             </div>
                         </div>
 
@@ -506,9 +497,6 @@
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Host</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Checked In</th>
-                                        @if ($subdivisions->isNotEmpty())
-                                            <th class="px-6 py-3 font-semibold text-left text-slate-600">Subdivision</th>
-                                        @endif
                                         @if (auth()->user()->hasRole('security'))
                                             <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                                         @endif
@@ -522,9 +510,6 @@
                                             <td class="px-6 py-4 text-slate-600">{{ $visitor->host_employee ?: '-' }}</td>
                                             <td class="px-6 py-4 text-slate-600">{{ $visitor->house_address_or_unit ?: '-' }}</td>
                                             <td class="px-6 py-4 text-slate-600">{{ optional($visitor->check_in)->format('M j, Y H:i') }}</td>
-                                            @if ($subdivisions->isNotEmpty())
-                                                <td class="px-6 py-4 text-slate-600">{{ $visitor->subdivision->subdivision_name ?? '-' }}</td>
-                                            @endif
                                             @if (auth()->user()->hasRole('security'))
                                                 <td class="px-6 py-4">
                                                     <form method="POST" action="{{ route('visitors.checkout', $visitor) }}">
@@ -537,7 +522,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ $subdivisions->isNotEmpty() ? (auth()->user()->hasRole('security') ? 7 : 6) : (auth()->user()->hasRole('security') ? 6 : 5) }}" class="px-6 py-10 text-center text-slate-500">No visitors are currently inside.</td>
+                                            <td colspan="{{ auth()->user()->hasRole('security') ? 6 : 5 }}" class="px-6 py-10 text-center text-slate-500">No visitors are currently inside.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -609,9 +594,6 @@
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Purpose</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Host</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
-                                    @if ($subdivisions->isNotEmpty())
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Subdivision</th>
-                                    @endif
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check In</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check Out</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
@@ -632,9 +614,6 @@
                                         <td class="px-6 py-4 text-slate-600">{{ \Illuminate\Support\Str::limit($visitor->purpose ?: '-', 40) }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $visitor->host_employee ?: '-' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $visitor->house_address_or_unit ?: '-' }}</td>
-                                        @if ($subdivisions->isNotEmpty())
-                                            <td class="px-6 py-4 text-slate-600">{{ $visitor->subdivision->subdivision_name ?? '-' }}</td>
-                                        @endif
                                         <td class="px-6 py-4 text-slate-600">{{ optional($visitor->check_in)->format('M j, Y H:i') }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ optional($visitor->check_out)->format('M j, Y H:i') ?: '-' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $visitor->status }}</td>
@@ -676,7 +655,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ $subdivisions->isNotEmpty() ? (auth()->user()->hasRole('security') ? ($historyView !== 'active' ? 12 : 11) : ($historyView !== 'active' ? 11 : 10)) : (auth()->user()->hasRole('security') ? ($historyView !== 'active' ? 11 : 10) : ($historyView !== 'active' ? 10 : 9)) }}" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
+                                        <td colspan="{{ auth()->user()->hasRole('security') ? ($historyView !== 'active' ? 11 : 10) : ($historyView !== 'active' ? 10 : 9) }}" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

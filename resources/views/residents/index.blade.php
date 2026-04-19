@@ -22,7 +22,7 @@
             @include('partials.alerts')
 
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                <form method="GET" action="{{ route('residents.index') }}" class="grid gap-4 md:grid-cols-[1fr_180px_220px_auto]">
+                <form method="GET" action="{{ route('residents.index') }}" class="grid gap-4 md:grid-cols-[1fr_180px_auto]">
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Search</label>
                         <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, code, address, house"
@@ -34,15 +34,6 @@
                             <option value="">All</option>
                             <option value="Active" @selected($filterStatus === 'Active')>Active</option>
                             <option value="Inactive" @selected($filterStatus === 'Inactive')>Inactive</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                        <select name="subdivision_id" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                            <option value="">{{ auth()->user()->isAdmin() ? 'All visible subdivisions' : 'Assigned subdivision' }}</option>
-                            @foreach ($subdivisions as $subdivision)
-                                <option value="{{ $subdivision->subdivision_id }}" @selected($filterSubdivision === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
-                            @endforeach
                         </select>
                     </div>
                     <div class="flex items-end gap-3">
@@ -72,9 +63,6 @@
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Legacy Address</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Code</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
-                                @if ($subdivisions->isNotEmpty())
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Subdivision</th>
-                                @endif
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                             </tr>
                         </thead>
@@ -86,9 +74,6 @@
                                     <td class="px-6 py-4 text-slate-600">{{ $resident->address_or_unit ?: '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600"><code>{{ $resident->resident_code }}</code></td>
                                     <td class="px-6 py-4 text-slate-600">{{ $resident->status }}</td>
-                                    @if ($subdivisions->isNotEmpty())
-                                        <td class="px-6 py-4 text-slate-600">{{ $resident->subdivision->subdivision_name ?? '-' }}</td>
-                                    @endif
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3 flex-nowrap">
                                             <a
@@ -129,7 +114,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $subdivisions->isNotEmpty() ? 7 : 6 }}" class="px-6 py-10 text-center text-slate-500">No residents found.</td>
+                                    <td colspan="6" class="px-6 py-10 text-center text-slate-500">No residents found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -49,16 +49,7 @@
     </select>
 
     <div x-show="role !== 'admin' && role !== 'resident'" x-cloak class="mt-4">
-        <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-        <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-            <option value="" @selected(old('subdivision_id', $user?->subdivision_id ?? '') === '')>Select Subdivision</option>
-            @foreach ($subdivisions as $subdivision)
-                <option value="{{ $subdivision->subdivision_id }}"
-                    @selected((string) old('subdivision_id', $user?->subdivision_id ?? '') === (string) $subdivision->subdivision_id)>
-                    {{ $subdivision->subdivision_name }}
-                </option>
-            @endforeach
-        </select>
+        <input type="hidden" name="subdivision_id" value="{{ $subdivisions->first()?->subdivision_id ?? '' }}">
     </div>
 
     <div x-show="role === 'resident'" x-cloak class="mt-4 space-y-4">
@@ -117,25 +108,15 @@
         @else
             <input type="hidden" name="resident_mode" value="new">
             <div id="resident-new-section" style="display: block" class="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <input type="hidden" name="new_resident_subdivision_id" value="{{ $subdivisions->first()?->subdivision_id ?? '' }}">
                 <div class="grid gap-3 md:grid-cols-2">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                        <select name="new_resident_subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                            <option value="">Select subdivision</option>
-                            @foreach ($subdivisions as $subdivision)
-                                <option value="{{ $subdivision->subdivision_id }}" @selected((string) old('new_resident_subdivision_id') === (string) $subdivision->subdivision_id)>
-                                    {{ $subdivision->subdivision_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">House (optional)</label>
                         <select name="new_resident_house_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                             <option value="">No house assigned</option>
                             @foreach ($houses as $house)
                                 <option value="{{ $house->house_id }}" @selected((string) old('new_resident_house_id') === (string) $house->house_id)>
-                                    {{ $house->subdivision?->subdivision_name }} - {{ $house->display_address }}
+                                    {{ $house->display_address }}
                                 </option>
                             @endforeach
                         </select>
@@ -150,25 +131,15 @@
 
         @if ($allowExistingResidentLink)
             <div id="resident-new-section" style="display: {{ $residentMode === 'new' ? 'block' : 'none' }}" class="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <input type="hidden" name="new_resident_subdivision_id" value="{{ $subdivisions->first()?->subdivision_id ?? '' }}">
                 <div class="grid gap-3 md:grid-cols-2">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                        <select name="new_resident_subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                            <option value="">Select subdivision</option>
-                            @foreach ($subdivisions as $subdivision)
-                                <option value="{{ $subdivision->subdivision_id }}" @selected((string) old('new_resident_subdivision_id') === (string) $subdivision->subdivision_id)>
-                                    {{ $subdivision->subdivision_name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">House (optional)</label>
                         <select name="new_resident_house_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                             <option value="">No house assigned</option>
                             @foreach ($houses as $house)
                                 <option value="{{ $house->house_id }}" @selected((string) old('new_resident_house_id') === (string) $house->house_id)>
-                                    {{ $house->subdivision?->subdivision_name }} - {{ $house->display_address }}
+                                    {{ $house->display_address }}
                                 </option>
                             @endforeach
                         </select>

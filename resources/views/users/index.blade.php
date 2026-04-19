@@ -11,7 +11,7 @@
             @include('partials.alerts')
 
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <form method="GET" action="{{ route('users.index') }}" class="grid gap-4 md:grid-cols-[1fr_160px_220px_160px_auto]">
+                <form method="GET" action="{{ route('users.index') }}" class="grid gap-4 md:grid-cols-[1fr_160px_160px_auto]">
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Search</label>
                         <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name or email"
@@ -23,18 +23,6 @@
                             <option value="">All</option>
                             @foreach (['admin', 'security', 'staff', 'resident'] as $role)
                                 <option value="{{ $role }}" @selected($filterRole === $role)>{{ ucfirst($role) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                        <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                            <option value="">All</option>
-                            <option value="none" @selected($filterSubdivision === 'none')>No subdivision</option>
-                            @foreach ($subdivisions as $subdivision)
-                                <option value="{{ $subdivision->subdivision_id }}" @selected((string) $filterSubdivision === (string) $subdivision->subdivision_id)>
-                                    {{ $subdivision->subdivision_name }}
-                                </option>
                             @endforeach
                         </select>
                     </div>
@@ -69,7 +57,6 @@
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Name</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Email</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Role</th>
-                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Subdivision</th>
                                 @if ($filterView !== 'active')
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Archived</th>
                                 @endif
@@ -82,7 +69,6 @@
                                     <td class="px-6 py-4 font-medium text-slate-900">{{ $user->full_name }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $user->email }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ ucfirst($user->role) }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $user->role === 'admin' ? 'All' : ($user->subdivision->subdivision_name ?? 'Unassigned') }}</td>
                                     @if ($filterView !== 'active')
                                         <td class="px-6 py-4 text-slate-600">
                                             {{ $user->deleted_at?->format('M j, Y H:i') ?? '-' }}
@@ -143,7 +129,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $filterView !== 'active' ? 6 : 5 }}" class="px-6 py-10 text-center text-slate-500">No users found.</td>
+                                    <td colspan="{{ $filterView !== 'active' ? 5 : 4 }}" class="px-6 py-10 text-center text-slate-500">No users found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

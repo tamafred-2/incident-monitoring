@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class VisitorController extends Controller
@@ -167,10 +168,11 @@ class VisitorController extends Controller
             'plate_number'          => ['nullable', 'string', 'max:30'],
             'id_photo'              => ['required', 'image', 'max:4096'],
             'purpose'               => ['nullable', 'string'],
-            'host_employee'         => ['required', 'string', 'max:150'],
+            'host_employee'         => ['nullable', 'string', 'max:150'],
             'host_resident_id'      => ['nullable', 'integer'],
-            'house_address_or_unit' => ['required', 'string', 'max:120'],
+            'house_address_or_unit' => ['nullable', 'string', 'max:120'],
             'resident_code'         => ['nullable', 'string', 'max:20'],
+            'visit_type'            => ['nullable', 'string', Rule::in(['resident', 'general'])],
         ]);
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
@@ -178,7 +180,10 @@ class VisitorController extends Controller
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
 
-        if (!empty($data['house_address_or_unit'])) {
+        $visitType = $data['visit_type'] ?? 'resident';
+        $isGeneralVisit = $visitType === 'general' || (empty($data['house_address_or_unit']) && empty($data['host_employee']));
+
+        if (!$isGeneralVisit && !empty($data['house_address_or_unit'])) {
             $normalizedAddress = strtoupper(trim($data['house_address_or_unit']));
 
             $houseExists = House::query()
@@ -196,6 +201,29 @@ class VisitorController extends Controller
         $photoPath = null;
         if ($request->hasFile('id_photo')) {
             $photoPath = $request->file('id_photo')->store('visitor-ids', 'public');
+        }
+
+        // General / walk-in visit — check in immediately, no resident needed
+        if ($isGeneralVisit) {
+            Visitor::create([
+                'subdivision_id'        => $subdivisionId,
+                'surname'               => $data['surname'],
+                'first_name'            => $data['first_name'],
+                'middle_initials'       => $data['middle_initials'] ?? null,
+                'extension'             => $data['extension'] ?? null,
+                'phone'                 => $data['phone'],
+                'plate_number'          => $data['plate_number'] ?? null,
+                'id_photo_path'         => $photoPath,
+                'purpose'               => $data['purpose'] ?? null,
+                'host_employee'         => null,
+                'house_address_or_unit' => null,
+                'check_in'              => now(),
+                'check_out'             => null,
+                'status'                => 'Inside',
+            ]);
+
+            return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
+                ->with('success', 'Walk-in visitor checked in successfully.');
         }
 
         // Check if resident code was provided for instant check-in bypass

@@ -16,12 +16,33 @@ class Subdivision extends Model
 
     protected $fillable = [
         'subdivision_name',
-        'address',
+        'country',
+        'street',
+        'city',
+        'province',
+        'zip',
+        'latitude',
+        'longitude',
         'contact_person',
         'contact_number',
         'email',
+        'secondary_contact_person',
+        'secondary_contact_number',
+        'secondary_email',
         'status',
     ];
+
+    protected $casts = [
+        'latitude'  => 'float',
+        'longitude' => 'float',
+    ];
+
+    public function getFullAddressAttribute(): string
+    {
+        return collect([$this->street, $this->city, $this->province, $this->country, $this->zip])
+            ->filter()
+            ->implode(', ');
+    }
 
     public function getRouteKeyName(): string
     {

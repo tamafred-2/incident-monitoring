@@ -59,7 +59,9 @@ class HouseController extends Controller
 
         House::create($data);
 
-        return redirect()->route('houses.index')
+        $redirect = $request->input('_redirect');
+
+        return redirect($redirect ?? route('houses.index'))
             ->with('success', 'House added successfully.');
     }
 
@@ -69,7 +71,9 @@ class HouseController extends Controller
 
         $house->update($data);
 
-        return redirect()->route('houses.index')
+        $redirect = $request->input('_redirect');
+
+        return redirect($redirect ?? route('houses.index'))
             ->with('success', 'House updated successfully.');
     }
 
@@ -77,7 +81,9 @@ class HouseController extends Controller
     {
         $house->delete();
 
-        return redirect()->route('houses.index', $this->indexContext($request))
+        $redirect = $request->input('_redirect');
+
+        return redirect($redirect ?? route('houses.index', $this->indexContext($request)))
             ->with('success', 'House deleted successfully.');
     }
 

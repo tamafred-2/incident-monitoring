@@ -26,11 +26,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
 
     Route::get('/subdivisions', [SubdivisionController::class, 'index'])->name('subdivisions.index');
     Route::get('/subdivisions/{subdivision}', [SubdivisionController::class, 'show'])->name('subdivisions.show');
-    Route::post('/subdivisions', [SubdivisionController::class, 'store'])->middleware('role:admin')->name('subdivisions.store');
-    Route::put('/subdivisions/{subdivision}', [SubdivisionController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('subdivisions.update');
-    Route::delete('/subdivisions/{subdivision}', [SubdivisionController::class, 'destroy'])->middleware(['role:admin', 'subdivision'])->name('subdivisions.destroy');
-    Route::post('/subdivisions/{subdivisionId}/restore', [SubdivisionController::class, 'restore'])->middleware('role:admin')->name('subdivisions.restore');
-    Route::delete('/subdivisions/{subdivisionId}/force', [SubdivisionController::class, 'forceDelete'])->middleware('role:admin')->name('subdivisions.force-delete');
+    Route::get('/subdivisions/{subdivision}/edit', [SubdivisionController::class, 'edit'])->middleware('role:admin')->name('subdivisions.edit');
+    Route::put('/subdivisions/{subdivision}', [SubdivisionController::class, 'update'])->middleware('role:admin')->name('subdivisions.update');
     Route::get('/houses', [HouseController::class, 'index'])->middleware('role:admin')->name('houses.index');
     Route::get('/houses/{house}', [HouseController::class, 'show'])->middleware('role:admin')->name('houses.show');
     Route::post('/houses', [HouseController::class, 'store'])->middleware('role:admin')->name('houses.store');
