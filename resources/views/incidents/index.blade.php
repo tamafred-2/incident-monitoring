@@ -29,9 +29,9 @@
         >
             @include('partials.alerts')
 
-            @if ($subdivisions->isNotEmpty())
+            @if (auth()->user()->hasRole(['security', 'staff', 'resident']) || !auth()->user()->isResident())
                 <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <form method="GET" action="{{ route('incidents.index') }}" class="grid gap-4 md:grid-cols-[1fr_220px_auto] md:items-end">
+                    <form method="GET" action="{{ route('incidents.index') }}" class="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Search</label>
                             <input
@@ -41,15 +41,6 @@
                                 placeholder="Report ID, description, reporter, category, status"
                                 class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                             >
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                            <select name="subdivision_id" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                                <option value="">All subdivisions</option>
-                                @foreach ($subdivisions as $subdivision)
-                                    <option value="{{ $subdivision->subdivision_id }}" @selected($filterSubdivision === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
-                                @endforeach
-                            </select>
                         </div>
                         <div class="flex flex-wrap items-end gap-3 md:justify-end">
                             <input type="hidden" name="view" :value="activeIncidentTab === 'history' ? 'history' : 'active'">
@@ -83,17 +74,6 @@
                             @endif
                         </div>
                     </form>
-                </div>
-            @elseif (auth()->user()->hasRole(['security', 'staff', 'resident']))
-                <div class="flex justify-end">
-                    <button
-                        type="button"
-                        x-data
-                        x-on:click="$dispatch('open-modal', 'report-incident')"
-                        class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
-                    >
-                        Report Incident
-                    </button>
                 </div>
             @endif
 
@@ -320,7 +300,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $subdivisions->isNotEmpty() ? ($historyView !== 'active' ? 11 : 10) : ($historyView !== 'active' ? 10 : 9) }}" class="px-6 py-10 text-center text-slate-500">No incidents found.</td>
+                                    <td colspan="{{ $historyView !== 'active' ? 10 : 9 }}" class="px-6 py-10 text-center text-slate-500">No incidents found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
