@@ -20,21 +20,18 @@
             @csrf
             @php
                 $residentUser = auth()->user()?->isResident();
+                $autoSubdivisionId = (int) old('subdivision_id', $effectiveSubdivision);
+                $autoSubdivisionName = $reportSubdivisions->firstWhere('subdivision_id', $autoSubdivisionId)?->subdivision_name
+                    ?? 'System subdivision';
             @endphp
 
-            @if ($reportSubdivisions->isNotEmpty())
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                    <select name="subdivision_id" id="report_subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
-                        <option value="">Select subdivision</option>
-                        @foreach ($reportSubdivisions as $subdivision)
-                            <option value="{{ $subdivision->subdivision_id }}" @selected((int) old('subdivision_id', auth()->user()->isAdmin() ? '' : ($filterSubdivision ?: $effectiveSubdivision)) === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
-                        @endforeach
-                    </select>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700">Subdivision</label>
+                <input type="hidden" name="subdivision_id" id="report_subdivision_id" value="{{ $autoSubdivisionId }}">
+                <div class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                    {{ $autoSubdivisionName }}
                 </div>
-            @elseif ($effectiveSubdivision)
-                <input type="hidden" name="subdivision_id" id="report_subdivision_id" value="{{ $effectiveSubdivision }}">
-            @endif
+            </div>
 
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-slate-700">House</label>
@@ -110,17 +107,33 @@
                     <label class="block text-sm font-medium text-slate-700">Date Reported</label>
                     <input type="datetime-local" name="reported_at" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                 </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700">Status</label>
+                <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-status-select>
+                    @foreach (['Open', 'Under Investigation', 'Resolved', 'Closed'] as $status)
+                        <option value="{{ $status }}" @selected(old('status', 'Open') === $status)>{{ $status }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @if (auth()->user()->isAdmin())
                 <div>
-                    <label class="block text-sm font-medium text-slate-700">Status</label>
-                    <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-status-select>
-                        @foreach (['Open', 'Under Investigation', 'Resolved', 'Closed'] as $status)
-                            <option value="{{ $status }}" @selected(old('status', 'Open') === $status)>{{ $status }}</option>
+                    <label class="block text-sm font-medium text-slate-700">Assign Staff (optional)</label>
+                    <select name="assigned_to" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                        <option value="">Unassigned</option>
+                        @foreach ($assignableStaff as $assignee)
+                            <option value="{{ $assignee->user_id }}" @selected((int) old('assigned_to') === (int) $assignee->user_id)>
+                                {{ $assignee->full_name }} - {{ ucfirst($assignee->role) }}
+                            </option>
                         @endforeach
                     </select>
+                    @error('assigned_to')
+                        <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                    @enderror
                 </div>
-                <div class="md:col-span-2 @if (!in_array(old('status', 'Open'), ['Resolved', 'Closed'], true)) hidden @endif" data-resolved-wrapper>
-                    <label class="block text-sm font-medium text-slate-700">Date Resolved</label>
-                    <input type="datetime-local" name="resolved_at" value="{{ old('resolved_at') }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-resolved-input>
+            @endif
+            <div class="md:col-span-2 @if (!in_array(old('status', 'Open'), ['Resolved', 'Closed'], true)) hidden @endif" data-resolved-wrapper>
+                <label class="block text-sm font-medium text-slate-700">Date Resolved</label>
+                <input type="datetime-local" name="resolved_at" value="{{ old('resolved_at') }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-resolved-input>
                 </div>
             @endif
             <div class="md:col-span-2" data-proof-preview-root>
@@ -474,32 +487,7 @@
             var houseSelect = document.getElementById('report_house_id');
 
             if (subdivisionSelect && houseSelect) {
-                subdivisionSelect.addEventListener('change', function () {
-                    var subdivId = subdivisionSelect.value;
-                    houseSelect.innerHTML = '<option value="">Loading...</option>';
-
-                    if (!subdivId) {
-                        houseSelect.innerHTML = '<option value="">Select house</option>';
-                        return;
-                    }
-
-                    fetch('/api/houses-by-subdivision?subdivision_id=' + encodeURIComponent(subdivId), {
-                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-                    })
-                        .then(function (r) { return r.json(); })
-                        .then(function (data) {
-                            houseSelect.innerHTML = '<option value="">Select house</option>';
-                            data.forEach(function (h) {
-                                var opt = document.createElement('option');
-                                opt.value = h.house_id;
-                                opt.textContent = h.display_address;
-                                houseSelect.appendChild(opt);
-                            });
-                        })
-                        .catch(function () {
-                            houseSelect.innerHTML = '<option value="">Failed to load houses</option>';
-                        });
-                });
+                // Subdivision is now fixed to the system subdivision for modal reporting.
             }
         })();
     </script>

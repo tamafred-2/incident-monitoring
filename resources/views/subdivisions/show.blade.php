@@ -1,18 +1,31 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">{{ $subdivision->subdivision_name }}</h2>
-                <p class="mt-1 text-sm text-slate-500">{{ $subdivision->full_address ?: 'No address provided.' }}</p>
+            <div class="flex items-center gap-4">
+                <img src="{{ $subdivision->logo_url }}" alt="{{ $subdivision->subdivision_name }} logo" class="h-14 w-14 rounded-full border border-slate-200 object-cover">
+                <div>
+                    <h2 class="text-xl font-semibold leading-tight text-gray-800">{{ $subdivision->subdivision_name }}</h2>
+                    <p class="mt-1 text-sm text-slate-500">{{ $subdivision->full_address ?: 'No address provided.' }}</p>
+                </div>
             </div>
-            @if (auth()->user()->isAdmin())
+            <div class="flex items-center gap-2">
                 <a
-                    href="{{ route('subdivisions.edit', $subdivision) }}"
-                    class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                    href="{{ route('dashboard') }}"
+                    class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                 >
-                    Edit Subdivision
+                    View Dashboard Summary
                 </a>
-            @endif
+                @if (auth()->user()->isAdmin())
+                    <button
+                        type="button"
+                        x-data
+                        x-on:click="$dispatch('open-modal', 'edit-subdivision')"
+                        class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                    >
+                        Edit Subdivision
+                    </button>
+                @endif
+            </div>
         </div>
     </x-slot>
 
@@ -20,113 +33,21 @@
         <div class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
             @include('partials.alerts')
 
-            {{-- Subdivision Info --}}
-            <div class="grid gap-6 lg:grid-cols-2">
-                <!-- Address Section -->
-                <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Address</h4>
-                    <dl class="mt-4 space-y-3 text-sm">
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Street / Barangay</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->street ?: '-' }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">City / Municipality</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->city ?: '-' }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Province / Region</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->province ?: '-' }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">ZIP Code</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->zip ?: '-' }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Status</dt>
-                            <dd>
-                                <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $subdivision->status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
-                                    {{ $subdivision->status }}
-                                </span>
-                            </dd>
-                        </div>
-                    </dl>
-                </div>
-
-                <!-- Summary Section -->
-                <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Summary</h4>
-                    <dl class="mt-4 space-y-3 text-sm">
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Houses</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $houses->count() }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Users</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->users_count }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Residents</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->residents_count }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Visitors</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->visitors_count }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Incidents</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->incidents_count }}</dd>
-                        </div>
-                    </dl>
-                </div>
-            </div>
-
-            <!-- Primary Contact Section -->
-            <div class="grid gap-6 lg:grid-cols-2">
-                <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Primary Contact</h4>
-                    <dl class="mt-4 space-y-3 text-sm">
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Person</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->contact_person ?: '-' }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Number</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->contact_number ?: '-' }}</dd>
-                        </div>
-                        <div class="flex items-start justify-between gap-4">
-                            <dt class="text-slate-500">Email</dt>
-                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->email ?: '-' }}</dd>
-                        </div>
-                    </dl>
-                </div>
-
-                <!-- Secondary Contact Section (if exists) -->
-                @if ($subdivision->secondary_contact_person || $subdivision->secondary_contact_number || $subdivision->secondary_email)
-                    <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Secondary Contact</h4>
-                        <dl class="mt-4 space-y-3 text-sm">
-                            @if ($subdivision->secondary_contact_person)
-                                <div class="flex items-start justify-between gap-4">
-                                    <dt class="text-slate-500">Person</dt>
-                                    <dd class="font-medium text-right text-slate-900">{{ $subdivision->secondary_contact_person }}</dd>
-                                </div>
-                            @endif
-                            @if ($subdivision->secondary_contact_number)
-                                <div class="flex items-start justify-between gap-4">
-                                    <dt class="text-slate-500">Number</dt>
-                                    <dd class="font-medium text-right text-slate-900">{{ $subdivision->secondary_contact_number }}</dd>
-                                </div>
-                            @endif
-                            @if ($subdivision->secondary_email)
-                                <div class="flex items-start justify-between gap-4">
-                                    <dt class="text-slate-500">Email</dt>
-                                    <dd class="font-medium text-right text-slate-900">{{ $subdivision->secondary_email }}</dd>
-                                </div>
-                            @endif
-                        </dl>
+            <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Contact Information</h4>
+                        <p class="mt-1 text-sm text-slate-500">Contact details are available on-demand to keep this page clean.</p>
                     </div>
-                @endif
+                    <button
+                        type="button"
+                        x-data
+                        x-on:click="$dispatch('open-modal', 'subdivision-contact-info')"
+                        class="inline-flex items-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                        View Contact Info
+                    </button>
+                </div>
             </div>
 
             {{-- Houses --}}
@@ -217,6 +138,32 @@
     </div>
 
     @if (auth()->user()->isAdmin())
+        <x-modal name="edit-subdivision" :show="request()->boolean('edit') || ((string) old('edit_subdivision_id') === (string) $subdivision->subdivision_id)" maxWidth="2xl" focusable>
+            <div class="p-6 bg-white sm:p-8">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900">Edit Subdivision</h3>
+                        <p class="mt-1 text-sm text-slate-500">Update details for {{ $subdivision->subdivision_name }}.</p>
+                    </div>
+                    <button type="button" x-on:click="$dispatch('close')" class="p-2 transition border rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700" aria-label="Close">
+                        <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M4.22 4.22a.75.75 0 011.06 0L10 8.94l4.72-4.72a.75.75 0 111.06 1.06L11.06 10l4.72 4.72a.75.75 0 11-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 11-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+                <form method="POST" action="{{ route('subdivisions.update', $subdivision) }}" enctype="multipart/form-data" class="mt-6 space-y-4">
+                    @csrf
+                    @method('PUT')
+                    <input type="hidden" name="edit_subdivision_id" value="{{ $subdivision->subdivision_id }}">
+                    @include('subdivisions.partials.form-fields', ['subdivision' => $subdivision])
+                    <div class="flex flex-wrap gap-3 pt-2">
+                        <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800">Save Changes</button>
+                        <button type="button" x-on:click="$dispatch('close')" class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </x-modal>
+
         {{-- Add House Modal --}}
         <x-modal name="create-house" :show="$errors->any() && old('edit_house_id') === null && !$errors->has('subdivision_name')" maxWidth="2xl" focusable>
             <div class="p-6 bg-white sm:p-8">
@@ -298,5 +245,59 @@
             </x-modal>
         @endforeach
     @endif
+
+    <x-modal name="subdivision-contact-info" maxWidth="lg" focusable>
+        <div class="p-6 bg-white sm:p-8">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-900">Contact Information</h3>
+                    <p class="mt-1 text-sm text-slate-500">{{ $subdivision->subdivision_name }}</p>
+                </div>
+                <button type="button" x-on:click="$dispatch('close')" class="p-2 transition border rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700" aria-label="Close">
+                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M4.22 4.22a.75.75 0 011.06 0L10 8.94l4.72-4.72a.75.75 0 111.06 1.06L11.06 10l4.72 4.72a.75.75 0 11-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 11-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="mt-6 grid gap-6 lg:grid-cols-2">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                    <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Primary Contact</h4>
+                    <dl class="mt-4 space-y-3 text-sm">
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Person</dt>
+                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->contact_person ?: '-' }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Number</dt>
+                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->contact_number ?: '-' }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Email</dt>
+                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->email ?: '-' }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                    <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Secondary Contact</h4>
+                    <dl class="mt-4 space-y-3 text-sm">
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Person</dt>
+                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->secondary_contact_person ?: '-' }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Number</dt>
+                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->secondary_contact_number ?: '-' }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Email</dt>
+                            <dd class="font-medium text-right text-slate-900">{{ $subdivision->secondary_email ?: '-' }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </x-modal>
 
 </x-app-layout>

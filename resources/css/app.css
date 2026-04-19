@@ -35,7 +35,7 @@
     }
 
     .sidebar-link {
-        @apply flex items-center rounded-xl px-4 py-3 text-sm font-medium transition duration-150 ease-out;
+        @apply flex items-center px-4 py-3 text-sm font-medium transition duration-150 ease-out rounded-xl;
         color: var(--shell-sidebar-text);
     }
 
@@ -51,7 +51,7 @@
     }
 
     .sidebar-ghost-button {
-        @apply rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 ease-out;
+        @apply px-3 py-2 text-sm font-semibold transition duration-150 ease-out rounded-xl;
         background-color: rgba(255, 255, 255, 0.05);
         color: #f8fafc;
     }
@@ -61,7 +61,7 @@
     }
 
     .sidebar-primary-button {
-        @apply rounded-xl px-3 py-2 text-sm font-semibold transition duration-150 ease-out;
+        @apply px-3 py-2 text-sm font-semibold transition duration-150 ease-out rounded-xl;
         background-color: #1f2a3d;
         color: #f8fafc;
     }
@@ -71,24 +71,26 @@
     }
 
     .sidebar-brand {
-        @apply flex min-w-0 items-center text-white;
+        @apply flex items-center min-w-0 text-white;
     }
 
     .sidebar-brand-mobile {
-        @apply flex-1 justify-start gap-3;
+        @apply justify-start flex-1 gap-3;
     }
 
     .sidebar-brand-desktop {
-        @apply flex-col justify-center gap-3 text-center;
+        @apply flex-col items-center justify-center gap-3 text-center;
     }
 
     .sidebar-brand-mark {
-        @apply h-12 w-12 flex-none rounded-full bg-transparent p-0.5 shadow-sm ring-1 ring-white/15;
-        object-fit: contain;
+        @apply h-12 w-12 flex-none rounded-full bg-white p-0 shadow-none ring-0;
+        object-fit: cover;
+        object-position: center;
+        filter: none;
     }
 
     .sidebar-brand-mark-desktop {
-        @apply h-16 w-16 p-0.5;
+        @apply w-24 h-24 p-0;
     }
 
     .sidebar-brand-text {

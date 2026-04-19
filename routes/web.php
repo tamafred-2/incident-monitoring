@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HouseController;
 use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\SubdivisionController;
@@ -16,6 +17,9 @@ Route::get('/', function () {
         ? redirect()->route('dashboard')
         : redirect()->route('login');
 });
+
+Route::get('/branding/favicon.png', [BrandingController::class, 'favicon'])->name('branding.favicon');
+Route::get('/subdivision-logo/{subdivision}', [SubdivisionController::class, 'logo'])->name('subdivisions.logo');
 
 Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');

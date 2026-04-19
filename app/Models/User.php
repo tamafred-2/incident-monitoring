@@ -36,6 +36,7 @@ class User extends Authenticatable
         'password',
         'requires_password_change',
         'role',
+        'is_active',
         'subdivision_id',
         'resident_id',
     ];
@@ -105,6 +106,7 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'requires_password_change' => 'boolean',
+            'is_active' => 'boolean',
             'visitor_notifications_read_at' => 'datetime',
             'visitor_notifications_cleared_at' => 'datetime',
             'visitor_notification_read_keys' => 'array',

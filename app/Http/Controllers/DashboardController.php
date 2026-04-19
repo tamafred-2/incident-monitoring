@@ -80,16 +80,6 @@ class DashboardController extends Controller
                 ->paginate($insidePerPage)
                 ->withQueryString();
 
-        $breakdown = $user->isAdmin()
-            ? Subdivision::withCount([
-                'incidents',
-                'residents',
-                'houses',
-                'visitors as visitors_inside_count' => fn ($query) => $query->where('status', 'Inside'),
-                'houses as occupied_houses_count' => fn ($query) => $query->whereHas('residents'),
-            ])->orderBy('subdivision_name')->get()
-            : collect();
-
         $residentOpenIncidents = $isResidentDashboard
             ? Incident::where('reported_by', $user->user_id)
                 ->whereIn('status', ['Open', 'Under Investigation'])
@@ -112,7 +102,6 @@ class DashboardController extends Controller
             'visitorsInside',
             'insideVisitors',
             'insidePerPage',
-            'breakdown',
             'residentOpenIncidents',
             'residentResolvedIncidents'
         ));

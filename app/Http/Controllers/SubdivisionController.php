@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\House;
 use App\Models\Subdivision;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SubdivisionController extends Controller
 {
@@ -44,20 +47,30 @@ class SubdivisionController extends Controller
 
         $houses = $housesQuery->orderBy('block')->orderBy('lot')->get();
 
-        $subdivision->loadCount(['users', 'residents', 'visitors', 'incidents']);
-
         return view('subdivisions.show', compact('subdivision', 'houses', 'filterQ'));
     }
 
-    public function edit(Subdivision $subdivision): View
+    public function logo(Subdivision $subdivision): BinaryFileResponse
     {
-        return view('subdivisions.edit', compact('subdivision'));
+        if (!$subdivision->logo_path || !Storage::disk('public')->exists($subdivision->logo_path)) {
+            abort(404);
+        }
+
+        return response()->file(Storage::disk('public')->path($subdivision->logo_path));
+    }
+
+    public function edit(Subdivision $subdivision): RedirectResponse
+    {
+        return redirect()
+            ->route('subdivisions.show', ['subdivision' => $subdivision, 'edit' => 1]);
     }
 
     public function update(Request $request, Subdivision $subdivision)
     {
         $data = $request->validate([
             'subdivision_name'         => ['required', 'string', 'max:150'],
+            'logo'                     => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_logo'              => ['nullable', 'boolean'],
             'country'                  => ['required', 'string', 'max:100'],
             'street'                   => ['required', 'string', 'max:255'],
             'city'                     => ['required', 'string', 'max:100'],
@@ -73,6 +86,21 @@ class SubdivisionController extends Controller
             'secondary_email'          => ['nullable', 'email', 'max:100'],
             'status'                   => ['required', Rule::in(['Active', 'Inactive'])],
         ]);
+
+        if ($request->boolean('remove_logo') && $subdivision->logo_path) {
+            Storage::disk('public')->delete($subdivision->logo_path);
+            $data['logo_path'] = null;
+        }
+
+        if ($request->hasFile('logo')) {
+            if ($subdivision->logo_path) {
+                Storage::disk('public')->delete($subdivision->logo_path);
+            }
+
+            $data['logo_path'] = $request->file('logo')->store('subdivision-logos', 'public');
+        }
+
+        unset($data['logo'], $data['remove_logo']);
 
         $subdivision->update($data);
         return redirect()->route('subdivisions.show', $subdivision)

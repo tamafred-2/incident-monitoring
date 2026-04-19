@@ -43,8 +43,12 @@ class SqliteDemoSeeder extends Seeder
 
             // ── Subdivision ──────────────────────────────────────────────────
             $subdivision = Subdivision::create([
-                'subdivision_name' => 'Maple Grove Residences',
-                'address'          => '101 Maple Grove Avenue, San Jose',
+                'subdivision_name' => 'Doña Maria Dizon',
+                'country'          => 'Philippines',
+                'street'           => 'Buenlag',
+                'city'             => 'Calasiao',
+                'province'         => 'Pangasinan',
+                'zip'              => '2418',
                 'contact_person'   => 'Clara Mendoza',
                 'contact_number'   => '09171234567',
                 'email'            => 'maplegrove@example.com',
