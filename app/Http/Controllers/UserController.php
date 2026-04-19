@@ -96,6 +96,7 @@ class UserController extends Controller
                 'extension' => ['nullable', 'string', 'max:20'],
                 'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
                 'role' => ['required', Rule::in(['admin', 'security', 'staff', 'resident'])],
+                'is_active' => ['nullable', 'boolean'],
                 'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
                 'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', $this->residentUniqueRule()],
                 'password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -166,6 +167,8 @@ class UserController extends Controller
             $data['resident_id'] = null;
         }
 
+        $data['is_active'] = $request->boolean('is_active', true);
+
         $user = User::create($data);
 
         if ($user->role === 'resident') {
@@ -186,6 +189,7 @@ class UserController extends Controller
                 'extension' => ['nullable', 'string', 'max:20'],
                 'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->user_id, 'user_id')],
                 'role' => ['required', Rule::in(['admin', 'security', 'staff', 'resident'])],
+                'is_active' => ['nullable', 'boolean'],
                 'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
                 'resident_id' => ['nullable', 'integer', 'exists:residents,resident_id', $this->residentUniqueRule($user)],
                 'password' => ['nullable', 'string', 'min:8', 'confirmed'],
@@ -221,6 +225,8 @@ class UserController extends Controller
         if (empty($data['password'])) {
             unset($data['password']);
         }
+
+        $data['is_active'] = $request->boolean('is_active');
 
         $user->update($data);
 

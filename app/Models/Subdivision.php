@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Subdivision extends Model
 {
@@ -16,6 +17,7 @@ class Subdivision extends Model
 
     protected $fillable = [
         'subdivision_name',
+        'logo_path',
         'country',
         'street',
         'city',
@@ -42,6 +44,15 @@ class Subdivision extends Model
         return collect([$this->street, $this->city, $this->province, $this->country, $this->zip])
             ->filter()
             ->implode(', ');
+    }
+
+    public function getLogoUrlAttribute(): string
+    {
+        if ($this->logo_path) {
+            return route('subdivisions.logo', $this);
+        }
+
+        return asset('imgsrc/logo.png');
     }
 
     public function getRouteKeyName(): string

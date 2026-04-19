@@ -29,6 +29,7 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class, 'email')->ignore($this->user()->user_id, 'user_id'),
             ],
+            'is_active' => ['nullable', 'boolean'],
         ];
     }
 }

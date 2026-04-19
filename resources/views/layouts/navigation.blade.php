@@ -1,5 +1,26 @@
 @php
+    use App\Models\Subdivision;
+    use Illuminate\Support\Str;
+    use Illuminate\Support\Facades\Schema;
+
     $user = auth()->user();
+    $brandingSubdivision = null;
+
+    if (Schema::hasTable('subdivisions')) {
+        $brandingSubdivision = $user?->subdivision_id
+            ? Subdivision::find($user->subdivision_id)
+            : null;
+
+        $brandingSubdivision ??= Subdivision::query()
+            ->where('status', 'Active')
+            ->orderBy('subdivision_name')
+            ->first()
+            ?? Subdivision::query()->orderBy('subdivision_name')->first();
+    }
+
+    $brandName = $brandingSubdivision?->subdivision_name ?? 'Doña Maria Dizon';
+    $brandNameUpper = Str::upper($brandName);
+    $brandLogo = $brandingSubdivision?->logo_url ?? asset('imgsrc/logo.png');
 
     $sections = [
         [
@@ -39,8 +60,8 @@
     <div class="sticky top-0 z-30 border-b border-white/10 bg-[var(--shell-sidebar)] text-white lg:hidden">
         <div class="flex items-center justify-between gap-3 px-4 py-4">
             <a href="{{ route('dashboard') }}" class="sidebar-brand sidebar-brand-mobile">
-                <img src="{{ asset('imgsrc/logo.png') }}" alt="Logo" class="sidebar-brand-mark">
-                <span class="sidebar-brand-text">DO&Ntilde;A MARIA DIZON</span>
+                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" class="h-12 w-12 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
+                <span class="sidebar-brand-text">{{ $brandNameUpper }}</span>
             </a>
 
             <button
@@ -68,10 +89,10 @@
         :class="open ? 'translate-x-0' : '-translate-x-full'"
         class="sidebar-panel fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col transition duration-200 ease-out lg:translate-x-0"
     >
-        <div class="border-b border-white/10 px-6 py-7">
+        <div class="flex min-h-44 items-center justify-center border-b border-white/10 px-6 py-7">
             <a href="{{ route('dashboard') }}" class="sidebar-brand sidebar-brand-desktop">
-                <img src="{{ asset('imgsrc/logo.png') }}" alt="Logo" class="sidebar-brand-mark sidebar-brand-mark-desktop">
-                <span class="sidebar-brand-text sidebar-brand-text-desktop">DO&Ntilde;A MARIA DIZON</span>
+                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" class="h-24 w-24 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
+                <span class="sidebar-brand-text sidebar-brand-text-desktop">{{ $brandNameUpper }}</span>
             </a>
         </div>
 

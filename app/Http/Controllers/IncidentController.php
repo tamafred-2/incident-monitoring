@@ -76,6 +76,9 @@ class IncidentController extends Controller
         $incidentCategories = $this->incidentCategories();
         $residentReporter = $user->isResident() ? $user->loadMissing('resident.house') : null;
         $houses = $this->housesForUser($user, $effectiveSubdivision);
+        $assignableStaff = $user->isAdmin()
+            ? $this->assignableStaffForSubdivision($effectiveSubdivision)
+            : collect();
 
         return view('incidents.index', compact(
             'incidents',
@@ -89,6 +92,7 @@ class IncidentController extends Controller
             'incidentCategories',
             'residentReporter',
             'houses',
+            'assignableStaff',
         ));
     }
 
@@ -142,7 +146,13 @@ class IncidentController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate($this->incidentValidationRules($request->user()->isResident()));
+        $data = $request->validate(
+            $this->incidentValidationRules(
+                $request->user()->isResident(),
+                true,
+                $request->user()->isAdmin()
+            )
+        );
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
         if (!$subdivisionId) {
@@ -156,6 +166,24 @@ class IncidentController extends Controller
 
         $houseId = $this->resolveHouseId($data, $subdivisionId);
 
+        $assignedTo = null;
+        $status = $request->user()->isResident() ? 'Open' : $data['status'];
+
+        if ($request->user()->isAdmin()) {
+            $requestedAssignedTo = (int) ($data['assigned_to'] ?? 0);
+            $assignedTo = $this->resolveAssignedStaffId($data, $subdivisionId);
+
+            if ($requestedAssignedTo > 0 && !$assignedTo) {
+                return back()->withErrors([
+                    'assigned_to' => 'Please select an active staff/security account for assignment.',
+                ])->withInput();
+            }
+
+            if ($assignedTo && $status === 'Open') {
+                $status = 'Under Investigation';
+            }
+        }
+
         $incident = Incident::create([
             'subdivision_id' => $subdivisionId,
             'house_id' => $houseId,
@@ -164,16 +192,18 @@ class IncidentController extends Controller
             'location' => $data['location'] ?: null,
             'incident_date' => $data['incident_date'],
             'reported_at' => $request->user()->isResident() ? now() : $data['reported_at'],
-            'resolved_at' => $request->user()->isResident() ? null : $this->resolveResolvedAt($data, null),
-            'status' => $request->user()->isResident() ? 'Open' : $data['status'],
+            'resolved_at' => $request->user()->isResident() ? null : $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $data['reported_at']], null),
+            'status' => $status,
             'proof_photo_path' => $proofPhotoPaths[0] ?? null,
             'reported_by' => $request->user()->user_id,
+            'assigned_to' => $assignedTo,
             'verified_resident_id' => $verifiedResidentId,
             'verification_method' => $verificationMethod,
             'verified_at' => $verifiedAt,
         ]);
 
         $this->syncIncidentPhotoRecords($incident, $proofPhotoPaths, false);
+        $this->notifyIncidentAssignmentIfNeeded($incident, null);
 
         return redirect()->route('incidents.index', $this->routeContext($request, $subdivisionId))
             ->with('success', 'Incident reported successfully.');
@@ -192,7 +222,7 @@ class IncidentController extends Controller
             'indexContext' => $this->indexContext($request),
             'proofPhotos' => $this->proofPhotosFor($incident),
             'incidentCategories' => $this->incidentCategories(),
-            'assignableStaff' => $this->assignableStaffForSubdivision($incident->subdivision_id),
+            'assignableStaff' => $this->assignableStaffForSubdivision($incident->subdivision_id, $incident->assigned_to),
             'isStaffVerificationMode' => !$request->user()->isAdmin(),
         ]);
     }
@@ -216,7 +246,14 @@ class IncidentController extends Controller
             }
 
             $houseId = $this->resolveHouseId($data, $subdivisionId);
-            $assignedTo = $this->resolveAssignedStaffId($data, $subdivisionId);
+            $requestedAssignedTo = (int) ($data['assigned_to'] ?? 0);
+            $assignedTo = $this->resolveAssignedStaffId($data, $subdivisionId, $incident->assigned_to);
+
+            if ($requestedAssignedTo > 0 && !$assignedTo) {
+                return back()->withErrors([
+                    'assigned_to' => 'Please select an active staff/security account for assignment.',
+                ])->withInput();
+            }
 
             $status = $data['status'];
             if ($assignedTo && $incident->assigned_to !== $assignedTo && $status === 'Open') {
@@ -470,23 +507,31 @@ class IncidentController extends Controller
             : null;
     }
 
-    private function resolveAssignedStaffId(array $data, int $subdivisionId): ?int
+    private function resolveAssignedStaffId(array $data, int $subdivisionId, ?int $currentAssignedTo = null): ?int
     {
         $assignedTo = (int) ($data['assigned_to'] ?? 0);
         if ($assignedTo < 1) {
             return null;
         }
 
-        return User::query()
+        $assignee = User::query()
             ->where('user_id', $assignedTo)
             ->where('subdivision_id', $subdivisionId)
             ->whereIn('role', ['security', 'staff'])
-            ->exists()
-            ? $assignedTo
-            : null;
+            ->first();
+
+        if (!$assignee) {
+            return null;
+        }
+
+        if ($assignee->is_active || (int) $assignee->user_id === (int) $currentAssignedTo) {
+            return $assignedTo;
+        }
+
+        return null;
     }
 
-    private function assignableStaffForSubdivision(?int $subdivisionId): Collection
+    private function assignableStaffForSubdivision(?int $subdivisionId, ?int $currentAssignedTo = null): Collection
     {
         if (!$subdivisionId) {
             return collect();
@@ -495,6 +540,13 @@ class IncidentController extends Controller
         return User::query()
             ->where('subdivision_id', $subdivisionId)
             ->whereIn('role', ['security', 'staff'])
+            ->where(function (Builder $query) use ($currentAssignedTo) {
+                $query->where('is_active', true);
+
+                if ($currentAssignedTo) {
+                    $query->orWhere('user_id', $currentAssignedTo);
+                }
+            })
             ->orderBy('role')
             ->orderBy('full_name')
             ->get();

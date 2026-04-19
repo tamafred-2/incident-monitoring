@@ -67,6 +67,24 @@
             @endif
         </div>
 
+        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <p class="text-sm font-semibold text-slate-800">Availability</p>
+                    <p class="mt-1 text-xs text-slate-500">Set inactive when you are on leave or day off to avoid new task assignments.</p>
+                </div>
+                <label x-data="{ enabled: {{ (string) old('is_active', $user->is_active ? '1' : '0') === '1' ? 'true' : 'false' }} }" class="inline-flex items-center gap-3 text-sm font-medium text-slate-700">
+                    <input type="hidden" name="is_active" value="0">
+                    <input type="checkbox" name="is_active" value="1" class="peer sr-only" x-model="enabled" @checked((string) old('is_active', $user->is_active ? '1' : '0') === '1')>
+                    <span class="relative h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-emerald-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-emerald-500 peer-focus:ring-offset-2">
+                        <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200" :class="enabled ? 'translate-x-5' : 'translate-x-0'"></span>
+                    </span>
+                    <span class="min-w-16" x-text="enabled ? 'Active' : 'Inactive'"></span>
+                </label>
+            </div>
+            <x-input-error class="mt-2" :messages="$errors->get('is_active')" />
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

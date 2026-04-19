@@ -1,19 +1,20 @@
 @php
     $selectedSubdivision = old('subdivision_id', $house->subdivision_id ?? '');
+    if ($selectedSubdivision === '' || $selectedSubdivision === null) {
+        $selectedSubdivision = $subdivisions->first()?->subdivision_id ?? '';
+    }
+    $selectedSubdivisionName = $subdivisions->firstWhere('subdivision_id', (int) $selectedSubdivision)?->subdivision_name
+        ?? 'Subdivision';
     $block = old('block', $house->block ?? '');
     $lot = old('lot', $house->lot ?? '');
 @endphp
 
 <div>
     <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-    <select name="subdivision_id" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-        <option value="">Select subdivision</option>
-        @foreach ($subdivisions as $subdivisionOption)
-            <option value="{{ $subdivisionOption->subdivision_id }}" @selected((string) $selectedSubdivision === (string) $subdivisionOption->subdivision_id)>
-                {{ $subdivisionOption->subdivision_name }}
-            </option>
-        @endforeach
-    </select>
+    <input type="hidden" name="subdivision_id" value="{{ $selectedSubdivision }}">
+    <div class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+        {{ $selectedSubdivisionName }}
+    </div>
     @error('subdivision_id')
         <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
     @enderror

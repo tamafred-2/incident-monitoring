@@ -73,7 +73,7 @@
                                 <option value="">Unassigned</option>
                                 @foreach ($assignableStaff as $assignee)
                                     <option value="{{ $assignee->user_id }}" @selected((int) old('assigned_to', $incident->assigned_to) === (int) $assignee->user_id)>
-                                        {{ $assignee->full_name }} - {{ ucfirst($assignee->role) }}
+                                        {{ $assignee->full_name }} - {{ ucfirst($assignee->role) }}{{ !$assignee->is_active ? ' (Inactive)' : '' }}
                                     </option>
                                 @endforeach
                             </select>

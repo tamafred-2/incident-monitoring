@@ -57,6 +57,7 @@
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Name</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Email</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Role</th>
+                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Availability</th>
                                 @if ($filterView !== 'active')
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Archived</th>
                                 @endif
@@ -69,6 +70,11 @@
                                     <td class="px-6 py-4 font-medium text-slate-900">{{ $user->full_name }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $user->email }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ ucfirst($user->role) }}</td>
+                                    <td class="px-6 py-4">
+                                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $user->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                            {{ $user->is_active ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    </td>
                                     @if ($filterView !== 'active')
                                         <td class="px-6 py-4 text-slate-600">
                                             {{ $user->deleted_at?->format('M j, Y H:i') ?? '-' }}
@@ -129,7 +135,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $filterView !== 'active' ? 5 : 4 }}" class="px-6 py-10 text-center text-slate-500">No users found.</td>
+                                    <td colspan="{{ $filterView !== 'active' ? 6 : 5 }}" class="px-6 py-10 text-center text-slate-500">No users found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -138,7 +144,7 @@
             </div>
 
             <x-modal name="create-user" :show="$errors->any() && old('edit_user_id') === null" maxWidth="2xl" focusable>
-                <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-user') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden]):not([type=radio]):not([type=checkbox])').forEach(i => i.value = ''); $el.querySelectorAll('input[type=radio], input[type=checkbox]').forEach(i => i.checked = false); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); const residentNew = $el.querySelector('input[name=&quot;resident_mode&quot;][value=&quot;new&quot;]'); const residentExisting = $el.querySelector('input[name=&quot;resident_mode&quot;][value=&quot;existing&quot;]'); if (residentNew) residentNew.checked = true; if (residentExisting) residentExisting.checked = false; const existingSection = $el.querySelector('#resident-existing-section'); const newSection = $el.querySelector('#resident-new-section'); if (existingSection) existingSection.style.display = 'none'; if (newSection) newSection.style.display = 'block'; }); }">
+                <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-user') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden]):not([type=radio]):not([type=checkbox])').forEach(i => i.value = ''); $el.querySelectorAll('input[type=radio], input[type=checkbox]').forEach(i => i.checked = false); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); const residentNew = $el.querySelector('input[name=&quot;resident_mode&quot;][value=&quot;new&quot;]'); const residentExisting = $el.querySelector('input[name=&quot;resident_mode&quot;][value=&quot;existing&quot;]'); if (residentNew) residentNew.checked = true; if (residentExisting) residentExisting.checked = false; const activeToggle = $el.querySelector('input[name=&quot;is_active&quot;][type=&quot;checkbox&quot;]'); if (activeToggle) activeToggle.checked = true; const existingSection = $el.querySelector('#resident-existing-section'); const newSection = $el.querySelector('#resident-new-section'); if (existingSection) existingSection.style.display = 'none'; if (newSection) newSection.style.display = 'block'; }); }">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900">Add User</h3>

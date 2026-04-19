@@ -69,6 +69,12 @@
                                 <dd class="text-right font-medium text-slate-900">{{ $managedUser->role === 'admin' ? 'All' : ($managedUser->subdivision?->subdivision_name ?? 'Unassigned') }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Availability</dt>
+                                <dd class="text-right font-medium {{ $managedUser->is_active ? 'text-emerald-700' : 'text-amber-700' }}">
+                                    {{ $managedUser->is_active ? 'Active' : 'Inactive' }}
+                                </dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Resident House</dt>
                                 <dd class="text-right font-medium text-slate-900">{{ $managedUser->resident?->house?->display_address ?? 'Not linked' }}</dd>
                             </div>

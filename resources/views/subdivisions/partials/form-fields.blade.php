@@ -3,6 +3,40 @@
 ])
 
 <div class="space-y-4">
+    <section class="rounded-2xl border border-slate-200 bg-white p-5">
+        <div class="mb-4">
+            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Branding</h4>
+            <p class="mt-1 text-sm text-slate-500">Used as the app logo and subdivision name across the system, including login.</p>
+        </div>
+        <div class="grid gap-4 md:grid-cols-[120px_1fr]">
+            <div>
+                <div class="h-24 w-24 overflow-hidden rounded-full border border-slate-200 bg-slate-50">
+                    <img
+                        src="{{ $subdivision?->logo_url ?? asset('imgsrc/logo.png') }}"
+                        alt="{{ old('subdivision_name', $subdivision?->subdivision_name ?? 'Subdivision') }} logo"
+                        class="h-full w-full object-cover"
+                    >
+                </div>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700">Subdivision Logo</label>
+                    <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp"
+                           class="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                    <p class="mt-1 text-xs text-slate-500">JPG, PNG, or WEBP. Max 2 MB.</p>
+                    @error('logo') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+                </div>
+                @if ($subdivision?->logo_path)
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+                        <input type="checkbox" name="remove_logo" value="1" @checked(old('remove_logo'))
+                               class="rounded border-slate-300 text-rose-600 shadow-sm focus:ring-rose-500">
+                        Remove current logo
+                    </label>
+                @endif
+            </div>
+        </div>
+    </section>
+
     <section class="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
         <div class="mb-4">
             <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Subdivision Profile</h4>
@@ -34,6 +68,13 @@
             <p class="mt-1 text-sm text-slate-500">Complete location of the subdivision.</p>
         </div>
         <div class="grid gap-4 md:grid-cols-2">
+            <div>
+                <label class="block text-sm font-medium text-slate-700">Country <span class="text-rose-500">*</span></label>
+                <input type="text" name="country" required
+                       value="{{ old('country', $subdivision?->country ?? 'Philippines') }}"
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                @error('country') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+            </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-slate-700">Street / Barangay <span class="text-rose-500">*</span></label>
                 <input type="text" name="street" id="edit-street" required
