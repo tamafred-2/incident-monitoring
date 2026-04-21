@@ -25,6 +25,7 @@ class Visitor extends Model
         'extension',
         'phone',
         'plate_number',
+        'passenger_count',
         'id_photo_path',
         'purpose',
         'host_employee',

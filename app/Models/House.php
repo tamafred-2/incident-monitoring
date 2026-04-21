@@ -14,6 +14,7 @@ class House extends Model
 
     protected $fillable = [
         'subdivision_id',
+        'street',
         'block',
         'lot',
     ];

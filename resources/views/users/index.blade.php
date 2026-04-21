@@ -21,7 +21,7 @@
                         <label class="block text-sm font-medium text-slate-700">Role</label>
                         <select name="role" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                             <option value="">All</option>
-                            @foreach (['admin', 'security', 'staff', 'resident'] as $role)
+                            @foreach (['admin', 'security', 'staff'] as $role)
                                 <option value="{{ $role }}" @selected($filterRole === $role)>{{ ucfirst($role) }}</option>
                             @endforeach
                         </select>
@@ -144,7 +144,7 @@
             </div>
 
             <x-modal name="create-user" :show="$errors->any() && old('edit_user_id') === null" maxWidth="2xl" focusable>
-                <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-user') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden]):not([type=radio]):not([type=checkbox])').forEach(i => i.value = ''); $el.querySelectorAll('input[type=radio], input[type=checkbox]').forEach(i => i.checked = false); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); const residentNew = $el.querySelector('input[name=&quot;resident_mode&quot;][value=&quot;new&quot;]'); const residentExisting = $el.querySelector('input[name=&quot;resident_mode&quot;][value=&quot;existing&quot;]'); if (residentNew) residentNew.checked = true; if (residentExisting) residentExisting.checked = false; const activeToggle = $el.querySelector('input[name=&quot;is_active&quot;][type=&quot;checkbox&quot;]'); if (activeToggle) activeToggle.checked = true; const existingSection = $el.querySelector('#resident-existing-section'); const newSection = $el.querySelector('#resident-new-section'); if (existingSection) existingSection.style.display = 'none'; if (newSection) newSection.style.display = 'block'; }); }">
+                <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-user') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden]):not([type=checkbox])').forEach(i => i.value = ''); $el.querySelectorAll('input[type=checkbox]').forEach(i => i.checked = false); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); const activeToggle = $el.querySelector('input[name=&quot;is_active&quot;][type=&quot;checkbox&quot;]'); if (activeToggle) activeToggle.checked = true; }); }">
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900">Add User</h3>
@@ -164,9 +164,7 @@
 
                     <form method="POST" action="{{ route('users.store') }}" class="mt-6 space-y-4">
                         @csrf
-                        @include('users.partials.form-fields', [
-                            'allowExistingResidentLink' => false,
-                        ])
+                        @include('users.partials.form-fields')
 
                         <div class="flex flex-wrap gap-3 pt-2">
                             <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
@@ -211,8 +209,6 @@
 
                             @include('users.partials.form-fields', [
                                 'user' => $user,
-                                'allowExistingResidentLink' => true,
-                                'lockResidentRecord' => true,
                                 'passwordLabel' => 'New Password',
                                 'passwordConfirmationLabel' => 'Confirm New Password',
                                 'passwordRequired' => false,

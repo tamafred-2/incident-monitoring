@@ -26,6 +26,7 @@ class HouseController extends Controller
             $query->where(function ($builder) use ($filterQ) {
                 $builder->where('block', 'like', "%{$filterQ}%")
                     ->orWhere('lot', 'like', "%{$filterQ}%")
+                    ->orWhere('street', 'like', "%{$filterQ}%")
                     ->orWhereHas('subdivision', fn ($subdivisionQuery) => $subdivisionQuery->where('subdivision_name', 'like', "%{$filterQ}%"));
             });
         }
@@ -91,6 +92,7 @@ class HouseController extends Controller
     {
         $data = $request->validate([
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
+            'street' => ['required', 'string', 'max:120'],
             'block' => [
                 'required',
                 'string',
@@ -107,6 +109,7 @@ class HouseController extends Controller
 
         return [
             'subdivision_id' => (int) $data['subdivision_id'],
+            'street' => $this->normalizeStreet((string) $data['street']),
             'block' => $this->normalizeAddressPart($data['block']),
             'lot' => $this->normalizeAddressPart($data['lot']),
         ];
@@ -115,6 +118,11 @@ class HouseController extends Controller
     private function normalizeAddressPart(string $value): string
     {
         return strtoupper(trim($value));
+    }
+
+    private function normalizeStreet(string $value): string
+    {
+        return preg_replace('/\s+/', ' ', trim($value)) ?? '';
     }
 
     private function indexContext(Request $request): array

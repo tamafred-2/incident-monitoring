@@ -28,7 +28,7 @@
             'title' => 'Overview',
             'items' => array_values(array_filter([
                 ['label' => 'Dashboard', 'href' => route('dashboard'), 'active' => 'dashboard'],
-                !$user->isResident() ? ['label' => 'Subdivision', 'href' => route('subdivisions.index'), 'active' => 'subdivisions.*'] : null,
+                ['label' => 'Subdivision', 'href' => route('subdivisions.index'), 'active' => 'subdivisions.*'],
                 $user->isAdmin() ? ['label' => 'Users', 'href' => route('users.index'), 'active' => 'users.*'] : null,
             ])),
         ],
@@ -39,7 +39,6 @@
                 ['label' => 'Incidents', 'href' => route('incidents.index'), 'active' => 'incidents.index'],
                 $user->hasRole(['staff']) ? ['label' => 'Residents', 'href' => route('residents.index'), 'active' => 'residents.*'] : null,
                 $user->hasRole(['security', 'staff']) ? ['label' => 'Visitors', 'href' => route('visitors.index'), 'active' => 'visitors.*'] : null,
-                $user->isResident() ? ['label' => 'Visitors', 'href' => route('resident.visitors.index'), 'active' => 'resident.visitors.*'] : null,
             ])),
         ],
     ];

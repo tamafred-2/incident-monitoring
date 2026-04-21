@@ -29,7 +29,7 @@
         >
             @include('partials.alerts')
 
-            @if (auth()->user()->hasRole(['security', 'staff', 'resident']) || !auth()->user()->isResident())
+            @if (auth()->user()->hasRole(['security', 'staff']) || auth()->user()->isAdmin())
                 <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
                     <form method="GET" action="{{ route('incidents.index') }}" class="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                         <div>
@@ -53,7 +53,7 @@
                             >
                                 Clear
                             </a>
-                            @if (auth()->user()->hasRole(['security', 'staff', 'resident']))
+                            @if (auth()->user()->hasRole(['staff']) || auth()->user()->isAdmin())
                                 <button
                                     type="button"
                                     x-data
@@ -61,15 +61,6 @@
                                     class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
                                 >
                                     Report Incident
-                                </button>
-                            @endif
-                            @if (!auth()->user()->isResident())
-                                <button
-                                    type="button"
-                                    id="open-report-scan"
-                                    class="inline-flex items-center px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                                >
-                                    Scan Report QR
                                 </button>
                             @endif
                         </div>
@@ -308,22 +299,10 @@
                 </div>
             </div>
 
-            @if (auth()->user()->hasRole(['security', 'staff', 'resident']))
+            @if (auth()->user()->hasRole(['staff']) || auth()->user()->isAdmin())
                 @include('incidents.partials.report-modal')
             @endif
 
-            @if (!auth()->user()->isResident())
-                <div id="report_scan_modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/70 px-4">
-                    <div class="w-full max-w-lg p-6 bg-white shadow-2xl rounded-2xl">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-semibold text-slate-900">Scan incident report QR</h3>
-                            <button type="button" id="close-report-scan" class="px-2 py-1 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700">&times;</button>
-                        </div>
-                        <div id="report_qr_reader" class="min-h-[260px]"></div>
-                        <p id="report_scan_status" class="mt-3 text-sm text-slate-500"></p>
-                    </div>
-                </div>
-            @endif
 
             @if (auth()->user()->isAdmin())
                 @foreach ($incidents as $incident)
@@ -431,79 +410,4 @@
             </div>
         </div>
     </div>
-    @if (!auth()->user()->isResident())
-        <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-        <script>
-            (function () {
-                var openBtn = document.getElementById('open-report-scan');
-                var closeBtn = document.getElementById('close-report-scan');
-                var modal = document.getElementById('report_scan_modal');
-                var statusEl = document.getElementById('report_scan_status');
-                var scanner = null;
-
-                if (!openBtn || !closeBtn || !modal || !statusEl) {
-                    return;
-                }
-
-                function stopScanner() {
-                    if (!scanner) {
-                        return Promise.resolve();
-                    }
-
-                    return scanner.stop().catch(function () {}).then(function () {
-                        scanner = null;
-                        var reader = document.getElementById('report_qr_reader');
-                        if (reader) {
-                            reader.innerHTML = '';
-                        }
-                    });
-                }
-
-                openBtn.addEventListener('click', function () {
-                    modal.classList.remove('hidden');
-                    modal.classList.add('flex');
-                    statusEl.textContent = 'Starting camera...';
-
-                    if (typeof Html5Qrcode === 'undefined') {
-                        statusEl.textContent = 'QR scanner failed to load.';
-                        return;
-                    }
-
-                    scanner = new Html5Qrcode('report_qr_reader');
-                    Html5Qrcode.getCameras()
-                        .then(function (cameras) {
-                            if (!cameras || !cameras.length) {
-                                throw new Error('No camera found');
-                            }
-
-                            var cameraId = cameras[0].id;
-                            return scanner.start(
-                                cameraId,
-                                { fps: 10, qrbox: { width: 250, height: 250 } },
-                                function (decodedText) {
-                                    var reportId = decodedText.indexOf('INCIDENT:') === 0 ? decodedText.slice(9) : decodedText;
-                                    stopScanner().then(function () {
-                                        window.location.href = @json(url('/incidents/report')) + '/' + encodeURIComponent(reportId);
-                                    });
-                                },
-                                function () {}
-                            );
-                        })
-                        .then(function () {
-                            statusEl.textContent = 'Point the camera at the incident report QR code.';
-                        })
-                        .catch(function () {
-                            statusEl.textContent = 'Could not start the camera.';
-                        });
-                });
-
-                closeBtn.addEventListener('click', function () {
-                    stopScanner().then(function () {
-                        modal.classList.add('hidden');
-                        modal.classList.remove('flex');
-                    });
-                });
-            })();
-        </script>
-    @endif
 </x-app-layout>

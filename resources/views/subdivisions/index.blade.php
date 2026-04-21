@@ -15,7 +15,7 @@
                     <form method="GET" action="{{ route('subdivisions.index') }}" class="grid gap-4 md:grid-cols-[1fr_180px_160px_auto]">
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Search</label>
-                            <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, address, contact"
+                            <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, street, contact"
                                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                         </div>
                         <div>
@@ -55,7 +55,7 @@
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Name</th>
-                                    <th class="px-6 py-3 text-left font-semibold text-slate-600">Address</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-slate-600">Street</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Contact</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Status</th>
                                     @if ($filterView !== 'active')
@@ -68,7 +68,7 @@
                                 @forelse ($subdivisions as $subdivision)
                                     <tr>
                                         <td class="px-6 py-4 font-medium text-slate-900">{{ $subdivision->subdivision_name }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ $subdivision->address ?: '-' }}</td>
+                                        <td class="px-6 py-4 text-slate-600">{{ $subdivision->street ?: '-' }}</td>
                                         <td class="px-6 py-4 text-slate-600">
                                             {{ $subdivision->contact_person ?: '-' }}
                                             @if ($subdivision->contact_number)
@@ -312,7 +312,7 @@
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Name</th>
-                                    <th class="px-6 py-3 text-left font-semibold text-slate-600">Address</th>
+                                    <th class="px-6 py-3 text-left font-semibold text-slate-600">Street</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Contact</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Status</th>
                                     <th class="px-6 py-3 text-left font-semibold text-slate-600">Action</th>
@@ -322,7 +322,7 @@
                                 @forelse ($subdivisions as $subdivision)
                                     <tr>
                                         <td class="px-6 py-4 font-medium text-slate-900">{{ $subdivision->subdivision_name }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ $subdivision->address ?: '-' }}</td>
+                                        <td class="px-6 py-4 text-slate-600">{{ $subdivision->street ?: '-' }}</td>
                                         <td class="px-6 py-4 text-slate-600">{{ $subdivision->contact_person ?: '-' }}</td>
                                         <td class="px-6 py-4">{{ $subdivision->status }}</td>
                                         <td class="px-6 py-4">

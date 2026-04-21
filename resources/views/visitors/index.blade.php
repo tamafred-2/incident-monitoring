@@ -2,7 +2,7 @@
     @php
         $defaultMonitoringTab = request()->query('tab');
 
-        if (!in_array($defaultMonitoringTab, ['pending', 'check-out', 'history'], true)) {
+        if (!in_array($defaultMonitoringTab, ['check-out', 'history'], true)) {
             $defaultMonitoringTab = 'check-out';
         }
     @endphp
@@ -24,7 +24,7 @@
                 selectedHouse: @js(old('house_address_or_unit', '')),
                 hostEmployee: @js(old('host_employee', '')),
                 hostSearch: @js(old('host_employee', '')),
-                hostResidentId: @js(old('host_resident_id', '')),
+                hasVehicle: @js((string) old('has_vehicle', '0')),
                 idPhotoPreview: null,
                 idPhotoName: null,
                 hostOpen: false,
@@ -40,13 +40,11 @@
                 selectResident(resident) {
                     this.hostEmployee = resident.name;
                     this.hostSearch = resident.name;
-                    this.hostResidentId = resident.id;
                     this.hostOpen = false;
                 },
                 onHouseChange() {
                     this.hostEmployee = '';
                     this.hostSearch = '';
-                    this.hostResidentId = '';
                 }
             }"
             class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
@@ -170,6 +168,24 @@
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700">Phone</label>
                                     <input type="text" name="phone" value="{{ old('phone') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">With Vehicle?</label>
+                                    <select name="has_vehicle" x-model="hasVehicle" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                        <option value="0">No</option>
+                                        <option value="1">Yes</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Plate Number</label>
+                                    <input type="text" name="plate_number" value="{{ old('plate_number') }}" :required="hasVehicle === '1'" :disabled="hasVehicle !== '1'" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400">
+                                    <x-input-error :messages="$errors->get('plate_number')" class="mt-1" />
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Passenger Count</label>
+                                    <input type="number" min="1" max="50" name="passenger_count" value="{{ old('passenger_count') }}" :required="hasVehicle === '1'" :disabled="hasVehicle !== '1'" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400">
+                                    <p class="mt-1 text-xs text-slate-500">Only total passengers are required, no individual passenger forms needed.</p>
+                                    <x-input-error :messages="$errors->get('passenger_count')" class="mt-1" />
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700">ID Photo</label>
@@ -309,11 +325,10 @@
                                 <div x-data class="relative">
                                     <label class="block text-sm font-medium text-slate-700">Resident</label>
                                     <input type="hidden" name="host_employee" :value="hostEmployee">
-                                    <input type="hidden" name="host_resident_id" :value="hostResidentId">
                                     <input
                                         type="text"
                                         x-model="hostSearch"
-                                        x-on:input="hostOpen = true; hostEmployee = hostSearch; hostResidentId = ''"
+                                        x-on:input="hostOpen = true; hostEmployee = hostSearch"
                                         x-on:focus="hostOpen = availableResidents.length > 0"
                                         x-on:click.away="hostOpen = false"
                                         :placeholder="selectedHouse ? 'Type to search residents...' : 'Select a house first'"
@@ -335,21 +350,6 @@
                                             ></li>
                                         </template>
                                     </ul>
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-slate-700">
-                                        Resident Code
-                                        <span class="font-normal text-slate-400">(optional — skip to send approval request)</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="resident_code"
-                                        value="{{ old('resident_code') }}"
-                                        placeholder="e.g. E7FC90"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
-                                    >
-                                    <p class="mt-1 text-xs text-slate-500">If provided and valid, the visitor will be checked in immediately. Otherwise, an approval request is sent to the resident.</p>
-                                    <x-input-error :messages="$errors->get('resident_code')" class="mt-1" />
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-slate-700">Purpose</label>
@@ -387,17 +387,6 @@
             <div class="p-4 bg-white border shadow-sm rounded-2xl border-slate-200">
                 <nav class="flex flex-wrap gap-6 px-2 pb-1 border-b border-slate-200" aria-label="Visitor monitoring sections">
                     <a
-                        href="#visitor-pending"
-                        @click.prevent="activeMonitoringTab = 'pending'"
-                        :class="activeMonitoringTab === 'pending' ? 'border-amber-500 text-amber-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
-                        class="px-1 pb-3 text-sm font-semibold transition border-b-2 flex items-center gap-2"
-                    >
-                        Pending Requests
-                        @if ($pendingRequests->isNotEmpty())
-                            <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white rounded-full bg-amber-500">{{ $pendingRequests->count() }}</span>
-                        @endif
-                    </a>
-                    <a
                         href="#visitor-check-out"
                         @click.prevent="activeMonitoringTab = 'check-out'"
                         :class="activeMonitoringTab === 'check-out' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
@@ -417,65 +406,6 @@
             </div>
 
             <div>
-                <section
-                    id="visitor-pending"
-                    x-cloak
-                    x-show="activeMonitoringTab === 'pending'"
-                    x-transition.opacity.duration.150ms
-                    class="min-w-0 scroll-mt-24"
-                >
-                    <div class="h-full overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <div class="px-6 py-4 border-b border-slate-200">
-                            <h3 class="text-lg font-semibold text-slate-900">Pending Visitor Requests</h3>
-                            <p class="mt-1 text-sm text-slate-500">Visitors waiting for resident approval before being checked in.</p>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm divide-y divide-slate-200">
-                                <thead class="bg-slate-50">
-                                    <tr>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">ID Photo</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Visitor</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Phone</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Resident</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Purpose</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Requested</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-slate-100">
-                                    @forelse ($pendingRequests as $req)
-                                        <tr>
-                                            <td class="px-6 py-4">
-                                                @if ($req->id_photo_path)
-                                                    <button type="button" x-data x-on:click="$dispatch('open-modal', 'pending-id-photo-{{ $req->request_id }}')">
-                                                        <img src="{{ route('visitors.id-photo', $req->request_id) }}" alt="ID" class="object-cover w-10 h-10 rounded-lg border border-slate-200 hover:opacity-80">
-                                                    </button>
-                                                @else
-                                                    <span class="text-xs text-slate-400">—</span>
-                                                @endif
-                                            </td>
-                                            <td class="px-6 py-4 font-medium text-slate-900">{{ $req->visitor_name }}</td>
-                                            <td class="px-6 py-4 text-slate-600">{{ $req->phone ?: '-' }}</td>
-                                            <td class="px-6 py-4 text-slate-600">{{ $req->house_address_or_unit ?: '-' }}</td>
-                                            <td class="px-6 py-4 text-slate-600">{{ $req->resident->full_name ?? '-' }}</td>
-                                            <td class="px-6 py-4 text-slate-600">{{ \Illuminate\Support\Str::limit($req->purpose ?: '-', 40) }}</td>
-                                            <td class="px-6 py-4 text-slate-500">{{ $req->requested_at->format('M j, Y H:i') }}</td>
-                                            <td class="px-6 py-4">
-                                                <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700">Pending</span>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="8" class="px-6 py-10 text-center text-slate-500">No pending visitor requests.</td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-
                 <section
                     id="visitor-check-out"
                     x-cloak
@@ -665,16 +595,6 @@
                 </section>
             </div>
 
-            @foreach ($pendingRequests as $req)
-                @if ($req->id_photo_path)
-                    <x-modal name="pending-id-photo-{{ $req->request_id }}" maxWidth="md" focusable>
-                        <div class="p-6 bg-white text-center">
-                            <h3 class="mb-4 text-lg font-semibold text-slate-900">{{ $req->visitor_name }} — ID Photo</h3>
-                            <img src="{{ route('visitors.id-photo', $req->request_id) }}" alt="ID Photo" class="max-w-full mx-auto rounded-xl border border-slate-200">
-                        </div>
-                    </x-modal>
-                @endif
-            @endforeach
 
             @foreach ($visitors as $visitor)
                 @if (auth()->user()->hasRole('security') && !$visitor->trashed())
@@ -758,3 +678,5 @@
         </div>
     </div>
 </x-app-layout>
+
+

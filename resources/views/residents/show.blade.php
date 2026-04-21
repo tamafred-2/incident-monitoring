@@ -15,18 +15,7 @@
     </x-slot>
 
     <div class="py-10">
-        <div
-            x-data="{
-                qrPreviewUrl: '',
-                qrPreviewTitle: '',
-                openQrPreview(url, title) {
-                    this.qrPreviewUrl = url;
-                    this.qrPreviewTitle = title;
-                    this.$dispatch('open-modal', 'resident-show-qr-preview');
-                }
-            }"
-            class="flex flex-col max-w-5xl gap-6 px-4 mx-auto sm:px-6 lg:px-8"
-        >
+        <div class="flex flex-col max-w-5xl gap-6 px-4 mx-auto sm:px-6 lg:px-8">
             @include('partials.alerts')
 
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
@@ -72,8 +61,8 @@
                                 <dd class="font-medium text-right text-slate-900">{{ $resident->house?->display_address ?? 'Not assigned' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Manual Address</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $resident->address_or_unit ?: '-' }}</dd>
+                                <dt class="text-slate-500">Street</dt>
+                                <dd class="font-medium text-right text-slate-900">{{ $resident->house?->street ?: ($resident->address_or_unit ?: '-') }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Linked User Account</dt>
@@ -93,13 +82,6 @@
                             <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Recent Verified Incidents</h4>
                             <p class="mt-1 text-sm text-slate-500">Complaint and verification history tied to this resident.</p>
                         </div>
-                        <button
-                            type="button"
-                            x-on:click="openQrPreview(@js(route('residents.qr-card', $resident)), @js('Resident QR: ' . $resident->full_name))"
-                            class="inline-flex px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                        >
-                            Open QR Card
-                        </button>
                     </div>
 
                     @if ($resident->incidents->isNotEmpty())
@@ -135,28 +117,6 @@
                 </div>
             </div>
 
-            <x-modal name="resident-show-qr-preview" maxWidth="2xl" focusable>
-                <div class="relative bg-white p-3 sm:p-4">
-                    <button
-                        type="button"
-                        x-on:click="$dispatch('close')"
-                        class="absolute right-5 top-5 z-10 rounded-xl border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50"
-                        aria-label="Close QR preview"
-                    >
-                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M4.22 4.22a.75.75 0 011.06 0L10 8.94l4.72-4.72a.75.75 0 111.06 1.06L11.06 10l4.72 4.72a.75.75 0 11-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 11-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-
-                    <div class="overflow-hidden rounded-3xl border border-slate-200">
-                        <iframe
-                            x-bind:src="qrPreviewUrl"
-                            title="Resident QR Card Preview"
-                            class="h-[88vh] w-full bg-slate-100"
-                        ></iframe>
-                    </div>
-                </div>
-            </x-modal>
         </div>
     </div>
 </x-app-layout>
