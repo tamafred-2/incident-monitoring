@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    // NOTE:
+    // Resident account creation is currently disabled at the application layer.
+    // This migration is intentionally kept as-is for schema compatibility.
+
     public function up(): void
     {
         if (!Schema::hasTable('users')) {

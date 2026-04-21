@@ -6,20 +6,13 @@
                 <p class="mt-1 text-sm text-slate-500">Full incident information, verification details, and proof images in one place.</p>
             </div>
             <div class="flex flex-wrap gap-3">
-                <button
-                    type="button"
-                    x-on:click="openQrPreview(@js(route('incidents.qr-card', ['incidentId' => $incident->incident_id])), @js('Incident QR: ' . $incident->report_id))"
-                    class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                >
-                    Report QR
-                </button>
                 <a
                     href="{{ route('incidents.index', $indexContext) }}"
                     class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                 >
                     Back to Incidents
                 </a>
-                @if (! $incident->trashed() && (! auth()->user()->isAdmin() ? auth()->user()->user_id === $incident->assigned_to : true) && ! $incident->verified_on_site_at)
+                @if (! $incident->trashed() && (auth()->user()->isAdmin() || auth()->user()->hasRole(['security', 'staff'])) && ! $incident->verified_on_site_at)
                     <form method="POST" action="{{ route('incidents.verify', array_merge(['incidentId' => $incident->incident_id], $indexContext)) }}">
                         @csrf
                         <button
@@ -30,7 +23,7 @@
                         </button>
                     </form>
                 @endif
-                @if ((! auth()->user()->isAdmin() && auth()->user()->user_id === $incident->assigned_to) || auth()->user()->isAdmin())
+                @if (auth()->user()->isAdmin() || auth()->user()->hasRole(['security', 'staff']))
                     <a
                         href="{{ route('incidents.edit', array_merge(['incidentId' => $incident->incident_id], $indexContext)) }}"
                         class="px-4 py-2 text-sm font-semibold text-white transition rounded-xl bg-sky-600 hover:bg-sky-700"
@@ -47,8 +40,6 @@
             x-data="{
                 previewImage: null,
                 previewLabel: '',
-                qrPreviewUrl: '',
-                qrPreviewTitle: '',
                 openPreview(url, label) {
                     this.previewImage = url;
                     this.previewLabel = label || 'Proof image preview';
@@ -56,11 +47,6 @@
                 closePreview() {
                     this.previewImage = null;
                     this.previewLabel = '';
-                },
-                openQrPreview(url, title) {
-                    this.qrPreviewUrl = url;
-                    this.qrPreviewTitle = title;
-                    this.$dispatch('open-modal', 'incident-qr-preview');
                 }
             }"
             class="flex flex-col max-w-6xl gap-6 px-4 mx-auto sm:px-6 lg:px-8"
@@ -223,28 +209,6 @@
                 </div>
             </div>
 
-            <x-modal name="incident-qr-preview" maxWidth="2xl" focusable>
-                <div class="relative bg-white p-3 sm:p-4">
-                    <button
-                        type="button"
-                        x-on:click="$dispatch('close')"
-                        class="absolute right-5 top-5 z-10 rounded-xl border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50"
-                        aria-label="Close QR preview"
-                    >
-                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M4.22 4.22a.75.75 0 011.06 0L10 8.94l4.72-4.72a.75.75 0 111.06 1.06L11.06 10l4.72 4.72a.75.75 0 11-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 11-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-
-                    <div class="overflow-hidden rounded-3xl border border-slate-200">
-                        <iframe
-                            x-bind:src="qrPreviewUrl"
-                            title="Incident QR Card Preview"
-                            class="h-[88vh] w-full bg-slate-100"
-                        ></iframe>
-                    </div>
-                </div>
-            </x-modal>
         </div>
     </div>
 </x-app-layout>

@@ -14,7 +14,7 @@
                 <form method="GET" action="{{ route('houses.index') }}" class="grid gap-4 md:grid-cols-[1fr_240px_auto]">
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Search</label>
-                        <input type="search" name="q" value="{{ $filterQ }}" placeholder="Subdivision, block, or lot"
+                        <input type="search" name="q" value="{{ $filterQ }}" placeholder="Subdivision, street, block, or lot"
                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                     </div>
                     <div>
@@ -51,7 +51,7 @@
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Subdivision</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Block</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Lot</th>
-                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Address</th>
+                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Street</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Action</th>
                             </tr>
                         </thead>
@@ -61,7 +61,7 @@
                                     <td class="px-6 py-4 font-medium text-slate-900">{{ $house->subdivision?->subdivision_name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $house->block }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $house->lot }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $house->display_address }}</td>
+                                    <td class="px-6 py-4 text-slate-600">{{ $house->street ?: '-' }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex flex-nowrap items-center gap-3">
                                             <a

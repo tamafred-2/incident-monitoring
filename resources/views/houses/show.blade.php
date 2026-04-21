@@ -41,6 +41,10 @@
                             <dd class="text-right font-medium text-slate-900">{{ $house->display_address }}</dd>
                         </div>
                         <div class="flex items-start justify-between gap-4">
+                            <dt class="text-slate-500">Street</dt>
+                            <dd class="text-right font-medium text-slate-900">{{ $house->street ?: '-' }}</dd>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
                             <dt class="text-slate-500">Created</dt>
                             <dd class="text-right font-medium text-slate-900">{{ $house->created_at?->format('M j, Y h:i A') ?? '-' }}</dd>
                         </div>

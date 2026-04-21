@@ -2,7 +2,15 @@
     'subdivision' => null,
 ])
 
-<div class="space-y-4">
+@php
+    $streetOptions = ['Imperial Street', 'Plaza Boulevard'];
+    $streetValue = old('street', $subdivision?->street ?? '');
+    $streetSelection = in_array($streetValue, $streetOptions, true)
+        ? $streetValue
+        : ($streetValue !== '' ? 'others' : '');
+@endphp
+
+<div class="space-y-4" x-data="{ streetSelection: '{{ $streetSelection }}' }">
     <section class="rounded-2xl border border-slate-200 bg-white p-5">
         <div class="mb-4">
             <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Branding</h4>
@@ -76,11 +84,34 @@
                 @error('country') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
             </div>
             <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700">Street / Barangay <span class="text-rose-500">*</span></label>
-                <input type="text" name="street" id="edit-street" required
-                       value="{{ old('street', $subdivision?->street ?? '') }}"
-                       placeholder="e.g. 123 Rizal St., Brgy. San Jose"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                <label class="block text-sm font-medium text-slate-700">Street <span class="text-rose-500">*</span></label>
+                <select
+                    x-model="streetSelection"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                >
+                    <option value="">Select Street</option>
+                    @foreach ($streetOptions as $option)
+                        <option value="{{ $option }}">{{ $option }}</option>
+                    @endforeach
+                    <option value="others">Others</option>
+                </select>
+
+                <template x-if="streetSelection === 'others'">
+                    <input
+                        type="text"
+                        name="street"
+                        id="edit-street"
+                        required
+                        value="{{ $streetSelection === 'others' ? $streetValue : '' }}"
+                        placeholder="Type street name"
+                        class="mt-3 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    >
+                </template>
+
+                <template x-if="streetSelection !== 'others'">
+                    <input type="hidden" name="street" :value="streetSelection">
+                </template>
+
                 @error('street') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
             </div>
             <div>

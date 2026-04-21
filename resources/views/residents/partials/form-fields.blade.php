@@ -2,7 +2,7 @@
     'resident' => null,
     'subdivisions' => collect(),
     'houses' => collect(),
-    'withAccount' => true,
+    'withAccount' => false,
 ])
 
 @php
@@ -128,6 +128,7 @@
                 <input
                     type="text"
                     name="phone"
+                    required
                     value="{{ old('phone', $resident?->phone ?? '') }}"
                     class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
                 >
@@ -137,6 +138,7 @@
                 <input
                     type="email"
                     name="email"
+                    required
                     value="{{ old('email', $resident?->email ?? '') }}"
                     class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
                 >

@@ -56,10 +56,8 @@ class IncidentController extends Controller
 
         $this->applyHistoryViewScope($query, $historyView);
 
-        if ($user->isResident()) {
-            $query->where('reported_by', $user->user_id);
-        } elseif (!$user->isAdmin()) {
-            $query->where('assigned_to', $user->user_id);
+        if (!$user->isAdmin()) {
+            $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
             $query->where('subdivision_id', $filterSubdivision);
         }
@@ -74,7 +72,7 @@ class IncidentController extends Controller
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
         $openReportModal = $request->boolean('report');
         $incidentCategories = $this->incidentCategories();
-        $residentReporter = $user->isResident() ? $user->loadMissing('resident.house') : null;
+        $residentReporter = null;
         $houses = $this->housesForUser($user, $effectiveSubdivision);
         $assignableStaff = $user->isAdmin()
             ? $this->assignableStaffForSubdivision($effectiveSubdivision)
@@ -148,7 +146,7 @@ class IncidentController extends Controller
     {
         $data = $request->validate(
             $this->incidentValidationRules(
-                $request->user()->isResident(),
+                false,
                 true,
                 $request->user()->isAdmin()
             )
@@ -159,15 +157,13 @@ class IncidentController extends Controller
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
 
-        [$verifiedResidentId, $verificationMethod, $verifiedAt] = $request->user()->isResident()
-            ? $this->resolveResidentAccountVerificationData($request->user(), $subdivisionId)
-            : $this->resolveVerificationData($data, $subdivisionId);
+        [$verifiedResidentId, $verificationMethod, $verifiedAt] = $this->resolveVerificationData($data, $subdivisionId);
         $proofPhotoPaths = $this->storeProofPhotos($request);
 
         $houseId = $this->resolveHouseId($data, $subdivisionId);
 
         $assignedTo = null;
-        $status = $request->user()->isResident() ? 'Open' : $data['status'];
+        $status = $data['status'];
 
         if ($request->user()->isAdmin()) {
             $requestedAssignedTo = (int) ($data['assigned_to'] ?? 0);
@@ -189,10 +185,10 @@ class IncidentController extends Controller
             'house_id' => $houseId,
             'description' => $data['description'] ?: null,
             'category' => $this->resolveCategory($data),
-            'location' => $data['location'] ?: null,
+            'location' => $this->resolveLocation($data),
             'incident_date' => $data['incident_date'],
-            'reported_at' => $request->user()->isResident() ? now() : $data['reported_at'],
-            'resolved_at' => $request->user()->isResident() ? null : $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $data['reported_at']], null),
+            'reported_at' => $data['reported_at'],
+            'resolved_at' => $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $data['reported_at']], null),
             'status' => $status,
             'proof_photo_path' => $proofPhotoPaths[0] ?? null,
             'reported_by' => $request->user()->user_id,
@@ -204,6 +200,7 @@ class IncidentController extends Controller
 
         $this->syncIncidentPhotoRecords($incident, $proofPhotoPaths, false);
         $this->notifyIncidentAssignmentIfNeeded($incident, null);
+        $this->notifyIncidentTeamNewReport($incident);
 
         return redirect()->route('incidents.index', $this->routeContext($request, $subdivisionId))
             ->with('success', 'Incident reported successfully.');
@@ -265,7 +262,7 @@ class IncidentController extends Controller
                 'house_id' => $houseId,
                 'description' => $data['description'] ?: null,
                 'category' => $this->resolveCategory($data),
-                'location' => $data['location'] ?: null,
+                'location' => $this->resolveLocation($data),
                 'incident_date' => $data['incident_date'],
                 'reported_at' => $data['reported_at'],
                 'resolved_at' => $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $data['reported_at']], $incident),
@@ -311,7 +308,7 @@ class IncidentController extends Controller
         $incident = $this->findIncidentOrFail($request, $incidentId);
         $user = $request->user();
 
-        if (!$user->isAdmin() && (int) $incident->assigned_to !== (int) $user->user_id) {
+        if (!$user->isAdmin() && !$user->canAccessSubdivision($incident->subdivision_id)) {
             abort(403);
         }
 
@@ -457,7 +454,8 @@ class IncidentController extends Controller
             'description' => ['required', 'string'],
             'category' => ['nullable', 'string', 'max:100', Rule::in($this->incidentCategories())],
             'category_other' => ['nullable', 'string', 'max:100', 'required_if:category,Other'],
-            'location' => ['nullable', 'string', 'max:150'],
+            'location' => ['required', 'string', 'max:150'],
+            'location_other' => ['nullable', 'string', 'max:150', 'required_if:location,__other__'],
             'incident_date' => ['required', 'date'],
             'proof_photos' => ['required', 'array', 'min:1', 'max:10'],
             'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
@@ -505,6 +503,15 @@ class IncidentController extends Controller
         return House::where('house_id', $houseId)->where('subdivision_id', $subdivisionId)->exists()
             ? $houseId
             : null;
+    }
+
+    private function resolveLocation(array $data): ?string
+    {
+        if (($data['location'] ?? null) === '__other__') {
+            return trim((string) ($data['location_other'] ?? '')) ?: null;
+        }
+
+        return trim((string) ($data['location'] ?? '')) ?: null;
     }
 
     private function resolveAssignedStaffId(array $data, int $subdivisionId, ?int $currentAssignedTo = null): ?int
@@ -745,16 +752,11 @@ class IncidentController extends Controller
 
     private function authorizeIncidentAccess(Request $request, Incident $incident): void
     {
-        if ($request->user()->isResident()) {
-            abort_unless((int) $incident->reported_by === (int) $request->user()->user_id, 403);
-            return;
-        }
-
         if ($request->user()->isAdmin()) {
             return;
         }
 
-        abort_unless((int) $incident->assigned_to === (int) $request->user()->user_id, 403);
+        abort_unless($request->user()->canAccessSubdivision($incident->subdivision_id), 403);
     }
 
     private function authorizeIncidentEdit(Request $request, Incident $incident): void
@@ -767,20 +769,9 @@ class IncidentController extends Controller
 
         abort_unless(
             $user->canAccessSubdivision($incident->subdivision_id)
-            && (int) $incident->assigned_to === (int) $user->user_id,
+            && $user->hasRole(['security', 'staff']),
             403
         );
-    }
-
-    private function resolveResidentAccountVerificationData($user, int $subdivisionId): array
-    {
-        $resident = $user->resident;
-
-        if (!$resident || (int) $resident->subdivision_id !== $subdivisionId || $resident->status !== 'Active') {
-            return [null, null, null];
-        }
-
-        return [$resident->resident_id, 'resident_account', now()];
     }
 
     private function proofPhotosFor(Incident $incident): Collection
@@ -852,6 +843,25 @@ class IncidentController extends Controller
                 "Staff has been assigned to your incident {$incident->report_id}."
             ));
         }
+    }
+
+    private function notifyIncidentTeamNewReport(Incident $incident): void
+    {
+        $team = User::query()
+            ->where('subdivision_id', $incident->subdivision_id)
+            ->whereIn('role', ['security', 'staff'])
+            ->where('is_active', true)
+            ->get();
+
+        if ($team->isEmpty()) {
+            return;
+        }
+
+        Notification::send($team, new IncidentUpdatedNotification(
+            $incident,
+            'New Incident Reported',
+            "New incident {$incident->report_id} requires coordination."
+        ));
     }
 
     private function notifyIncidentStatusIfNeeded(Incident $incident, string $previousStatus): void

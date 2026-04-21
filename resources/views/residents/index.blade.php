@@ -7,25 +7,14 @@
     </x-slot>
 
     <div class="py-10">
-        <div
-            x-data="{
-                qrPreviewUrl: '',
-                qrPreviewTitle: '',
-                openQrPreview(url, title) {
-                    this.qrPreviewUrl = url;
-                    this.qrPreviewTitle = title;
-                    this.$dispatch('open-modal', 'resident-qr-preview');
-                }
-            }"
-            class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
-        >
+        <div class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
             @include('partials.alerts')
 
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
                 <form method="GET" action="{{ route('residents.index') }}" class="grid gap-4 md:grid-cols-[1fr_180px_auto]">
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Search</label>
-                        <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, code, address, house"
+                        <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, address, house"
                                class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                     </div>
                     <div>
@@ -60,8 +49,7 @@
                             <tr>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Name</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">House</th>
-                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Legacy Address</th>
-                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Code</th>
+                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Street</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                             </tr>
@@ -71,8 +59,7 @@
                                 <tr>
                                     <td class="px-6 py-4 font-medium text-slate-900">{{ $resident->full_name }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $resident->house?->display_address ?: '-' }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $resident->address_or_unit ?: '-' }}</td>
-                                    <td class="px-6 py-4 text-slate-600"><code>{{ $resident->resident_code }}</code></td>
+                                    <td class="px-6 py-4 text-slate-600">{{ $resident->house?->street ?: ($resident->address_or_unit ?: '-') }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $resident->status }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3 flex-nowrap">
@@ -92,13 +79,6 @@
                                                     Edit
                                                 </button>
                                             @endif
-                                            <button
-                                                type="button"
-                                                x-on:click="openQrPreview(@js(route('residents.qr-card', $resident)), @js('Resident QR: ' . $resident->full_name))"
-                                                class="inline-flex items-center rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                                            >
-                                                QR Card
-                                            </button>
                                             @if (auth()->user()->isAdmin())
                                                 <button
                                                     type="button"
@@ -148,7 +128,7 @@
                                 'resident' => null,
                                 'subdivisions' => $subdivisions,
                                 'houses' => $houses,
-                                'withAccount' => true,
+                                'withAccount' => false,
                             ])
 
                             <div class="flex flex-wrap gap-3 pt-2">
@@ -251,28 +231,6 @@
                 @endif
             @endforeach
 
-            <x-modal name="resident-qr-preview" maxWidth="2xl" focusable>
-                <div class="relative bg-white p-3 sm:p-4">
-                    <button
-                        type="button"
-                        x-on:click="$dispatch('close')"
-                        class="absolute right-5 top-5 z-10 rounded-xl border border-slate-300 bg-white p-2 text-slate-700 hover:bg-slate-50"
-                        aria-label="Close QR preview"
-                    >
-                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path fill-rule="evenodd" d="M4.22 4.22a.75.75 0 011.06 0L10 8.94l4.72-4.72a.75.75 0 111.06 1.06L11.06 10l4.72 4.72a.75.75 0 11-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 11-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
-                        </svg>
-                    </button>
-
-                    <div class="overflow-hidden rounded-3xl border border-slate-200">
-                        <iframe
-                            x-bind:src="qrPreviewUrl"
-                            title="Resident QR Card Preview"
-                            class="h-[88vh] w-full bg-slate-100"
-                        ></iframe>
-                    </div>
-                </div>
-            </x-modal>
         </div>
     </div>
 </x-app-layout>

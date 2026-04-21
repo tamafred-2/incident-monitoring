@@ -8,7 +8,6 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ResidentController;
 use App\Http\Controllers\SubdivisionController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\ResidentVisitorController;
 use App\Http\Controllers\VisitorController;
 use Illuminate\Support\Facades\Route;
 
@@ -47,8 +46,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::delete('/users/{userId}/force', [UserController::class, 'forceDelete'])->middleware('role:admin')->name('users.force-delete');
 
     Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
-    Route::get('/incidents/create', [IncidentController::class, 'create'])->middleware('role:security,staff,resident')->name('incidents.create');
-    Route::post('/incidents', [IncidentController::class, 'store'])->middleware('role:security,staff,resident')->name('incidents.store');
+    Route::get('/incidents/create', [IncidentController::class, 'create'])->middleware('role:admin,staff')->name('incidents.create');
+    Route::post('/incidents', [IncidentController::class, 'store'])->middleware('role:admin,staff')->name('incidents.store');
     Route::get('/incident-photos/{path}', [IncidentController::class, 'photo'])
         ->where('path', '.*')
         ->name('incidents.photos.show');
@@ -67,7 +66,6 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::put('/residents/{resident}', [ResidentController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('residents.update');
     Route::delete('/residents/{resident}', [ResidentController::class, 'destroy'])->middleware(['role:admin', 'subdivision'])->name('residents.destroy');
     Route::get('/residents/{resident}/qr-card', [ResidentController::class, 'qrCard'])->middleware(['role:admin,staff', 'subdivision'])->name('residents.qr-card');
-    Route::get('/visitors/{visitorRequest}/id-photo', [VisitorController::class, 'idPhoto'])->middleware('role:security,staff')->name('visitors.id-photo');
     Route::get('/visitors', [VisitorController::class, 'index'])->middleware('role:security,staff')->name('visitors.index');
     Route::get('/visitors/{visitor}', [VisitorController::class, 'show'])->middleware(['role:security,staff', 'subdivision'])->name('visitors.show');
     Route::post('/visitors', [VisitorController::class, 'store'])->middleware('role:security')->name('visitors.store');
@@ -81,13 +79,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
         ->name('api.verify-resident');
 
     Route::get('/api/houses-by-subdivision', [IncidentController::class, 'housesBySubdivision'])
-        ->middleware('role:security,staff,resident')
+        ->middleware('role:security,staff')
         ->name('api.houses-by-subdivision');
-
-    Route::get('/my-visitors/{visitorRequest}/photo', [ResidentVisitorController::class, 'photo'])->middleware('role:resident')->name('resident.visitors.photo');
-    Route::get('/my-visitors', [ResidentVisitorController::class, 'index'])->middleware('role:resident')->name('resident.visitors.index');
-    Route::post('/my-visitors/{visitorRequest}/approve', [ResidentVisitorController::class, 'approve'])->middleware('role:resident')->name('resident.visitors.approve');
-    Route::post('/my-visitors/{visitorRequest}/decline', [ResidentVisitorController::class, 'decline'])->middleware('role:resident')->name('resident.visitors.decline');
 
     Route::get('/notifications', [DashboardController::class, 'notificationsPage'])->name('notifications.index');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

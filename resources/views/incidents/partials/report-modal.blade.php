@@ -23,6 +23,10 @@
                 $autoSubdivisionId = (int) old('subdivision_id', $effectiveSubdivision);
                 $autoSubdivisionName = $reportSubdivisions->firstWhere('subdivision_id', $autoSubdivisionId)?->subdivision_name
                     ?? 'System subdivision';
+                $selectedLocation = old('location');
+                $houseLocations = $houses->pluck('display_address')->filter()->values();
+                $isOtherLocation = filled($selectedLocation) && !$houseLocations->contains($selectedLocation);
+                $locationSelectValue = $isOtherLocation ? '__other__' : ($selectedLocation ?? '');
             @endphp
 
             <div class="md:col-span-2">
@@ -43,26 +47,7 @@
                 </select>
             </div>
 
-            @if (!$residentUser)
-            <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div class="flex flex-col gap-3">
-                    <div>
-                        <h4 class="text-base font-semibold text-slate-900">Verify Reporter</h4>
-                        <p class="mt-1 text-sm text-slate-500">Optional: verify the reporting resident by code or QR before you submit the incident.</p>
-                    </div>
-                    <input type="hidden" name="verified_resident_id" id="verified_resident_id" value="{{ old('verified_resident_id') }}">
-                    <input type="hidden" name="verification_method" id="verification_method" value="{{ old('verification_method') }}">
-                    <div class="flex flex-col gap-3 sm:flex-row">
-                        <input type="text" id="resident_code_input" placeholder="Resident code" class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:max-w-xs">
-                        <button type="button" id="verify_code_btn" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white">Verify by code</button>
-                        <button type="button" id="scan_qr_btn" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white">Scan QR</button>
-                        <button type="button" id="clear_verify_btn" class="hidden rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white">Clear</button>
-                    </div>
-                    <p id="verified_display" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"></p>
-                    <p id="verify_error" class="hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"></p>
-                </div>
-            </div>
-            @else
+            @if ($residentUser)
                 <input type="hidden" name="reported_at" value="{{ now()->format('Y-m-d\TH:i') }}">
                 <input type="hidden" name="status" value="Open">
             @endif
@@ -94,9 +79,25 @@
                     >
                 </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700">Location</label>
-                <input type="text" name="location" value="{{ old('location') }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+            <div data-location-root>
+                <label class="block text-sm font-medium text-slate-700">House <span class="text-rose-500">*</span></label>
+                <select name="location" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-location-select>
+                    <option value="">Select house</option>
+                    @foreach ($houses as $house)
+                        <option value="{{ $house->display_address }}" @selected($locationSelectValue === $house->display_address)>{{ $house->display_address }}</option>
+                    @endforeach
+                    <option value="__other__" @selected($locationSelectValue === '__other__')>Others</option>
+                </select>
+                <div class="@if ($locationSelectValue !== '__other__') hidden @endif mt-3" data-location-other-wrapper>
+                    <input
+                        type="text"
+                        name="location_other"
+                        value="{{ $isOtherLocation ? $selectedLocation : old('location_other') }}"
+                        placeholder="Enter other location"
+                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                        data-location-other
+                    >
+                </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700">Incident Date & Time</label>
@@ -164,18 +165,6 @@
         </form>
     </div>
 
-    <div id="scan_modal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-950/70 px-4">
-        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-slate-900">Scan resident QR code</h3>
-                <button type="button" id="close_scan_modal" class="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">&times;</button>
-            </div>
-            <div id="qr_reader" class="min-h-[260px]"></div>
-            <p id="scan_status" class="mt-3 text-sm text-slate-500"></p>
-        </div>
-    </div>
-
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
         (function () {
             if (window.__incidentReportModalInitialized) {
@@ -281,6 +270,44 @@
 
             initializeCustomCategories();
 
+            function initializeLocationFields() {
+                var locationRoots = document.querySelectorAll('[data-location-root]');
+
+                locationRoots.forEach(function (root) {
+                    if (root.dataset.locationInitialized === 'true') {
+                        return;
+                    }
+
+                    root.dataset.locationInitialized = 'true';
+
+                    var select = root.querySelector('[data-location-select]');
+                    var otherWrapper = root.querySelector('[data-location-other-wrapper]');
+                    var otherInput = root.querySelector('[data-location-other]');
+
+                    if (!select || !otherWrapper || !otherInput) {
+                        return;
+                    }
+
+                    function syncLocationField() {
+                        var isOther = select.value === '__other__';
+                        otherWrapper.classList.toggle('hidden', !isOther);
+
+                        if (isOther) {
+                            otherInput.setAttribute('required', 'required');
+                            return;
+                        }
+
+                        otherInput.removeAttribute('required');
+                        otherInput.value = '';
+                    }
+
+                    select.addEventListener('change', syncLocationField);
+                    syncLocationField();
+                });
+            }
+
+            initializeLocationFields();
+
             function initializeResolvedDateFields() {
                 var statusSelects = document.querySelectorAll('[data-status-select]');
 
@@ -314,173 +341,6 @@
             }
 
             initializeResolvedDateFields();
-
-            var verifyUrl = @json(route('api.verify-resident'));
-            var modal = document.getElementById('scan_modal');
-            var qrReaderEl = document.getElementById('qr_reader');
-            var verifyError = document.getElementById('verify_error');
-            var verifiedDisplay = document.getElementById('verified_display');
-            var residentIdInput = document.getElementById('verified_resident_id');
-            var verificationMethodInput = document.getElementById('verification_method');
-            var clearButton = document.getElementById('clear_verify_btn');
-            var scanner = null;
-
-            function getSubdivisionId() {
-                var input = document.querySelector('[name="subdivision_id"]');
-                return input ? input.value : '';
-            }
-
-            function showError(message) {
-                verifyError.textContent = message;
-                verifyError.classList.remove('hidden');
-            }
-
-            function hideError() {
-                verifyError.textContent = '';
-                verifyError.classList.add('hidden');
-            }
-
-            function setVerified(residentId, method, name, address) {
-                residentIdInput.value = residentId;
-                verificationMethodInput.value = method;
-                verifiedDisplay.textContent = 'Verified: ' + name + (address ? ' - ' + address : '');
-                verifiedDisplay.classList.remove('hidden');
-                clearButton.classList.remove('hidden');
-                hideError();
-            }
-
-            function clearVerified() {
-                residentIdInput.value = '';
-                verificationMethodInput.value = '';
-                verifiedDisplay.textContent = '';
-                verifiedDisplay.classList.add('hidden');
-                clearButton.classList.add('hidden');
-                hideError();
-            }
-
-            function verifyCode(code, method) {
-                var subdivisionId = getSubdivisionId();
-                if (!code || !subdivisionId) {
-                    showError('Resident code and subdivision are required.');
-                    return;
-                }
-
-                fetch(verifyUrl + '?code=' + encodeURIComponent(code) + '&subdivision_id=' + encodeURIComponent(subdivisionId), {
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                })
-                    .then(function (response) { return response.json(); })
-                    .then(function (data) {
-                        if (data.success) {
-                            setVerified(data.resident_id, method, data.full_name, data.address_or_unit);
-                            return;
-                        }
-
-                        showError(data.error || 'Verification failed.');
-                    })
-                    .catch(function () {
-                        showError('Verification request failed.');
-                    });
-            }
-
-            function stopScanner() {
-                if (!scanner) {
-                    return Promise.resolve();
-                }
-
-                return scanner.stop().catch(function () {}).then(function () {
-                    scanner = null;
-                    qrReaderEl.innerHTML = '';
-                });
-            }
-
-            document.getElementById('verify_code_btn').addEventListener('click', function () {
-                verifyCode(document.getElementById('resident_code_input').value.trim(), 'manual_code');
-            });
-
-            clearButton.addEventListener('click', clearVerified);
-
-            document.getElementById('scan_qr_btn').addEventListener('click', function () {
-                var subdivisionId = getSubdivisionId();
-                if (!subdivisionId) {
-                    showError('Please select a subdivision first.');
-                    return;
-                }
-
-                hideError();
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                document.getElementById('scan_status').textContent = 'Starting camera...';
-
-                if (typeof Html5Qrcode === 'undefined') {
-                    document.getElementById('scan_status').textContent = 'QR scanner failed to load. Use manual code instead.';
-                    return;
-                }
-
-                scanner = new Html5Qrcode('qr_reader');
-
-                Html5Qrcode.getCameras()
-                    .then(function (cameras) {
-                        if (!cameras || !cameras.length) {
-                            throw new Error('No camera found');
-                        }
-
-                        var cameraId = cameras[0].id;
-                        for (var i = 0; i < cameras.length; i += 1) {
-                            if (cameras[i].label && cameras[i].label.toLowerCase().indexOf('back') !== -1) {
-                                cameraId = cameras[i].id;
-                                break;
-                            }
-                        }
-
-                        return scanner.start(
-                            cameraId,
-                            { fps: 10, qrbox: { width: 250, height: 250 } },
-                            function (decodedText) {
-                                var code = decodedText.indexOf('RESIDENT:') === 0 ? decodedText.slice(9) : decodedText;
-                                document.getElementById('resident_code_input').value = code;
-                                document.getElementById('scan_status').textContent = 'Verifying...';
-                                stopScanner().then(function () {
-                                    modal.classList.add('hidden');
-                                    modal.classList.remove('flex');
-                                    verifyCode(code, 'qr_scan');
-                                });
-                            },
-                            function () {}
-                        );
-                    })
-                    .then(function () {
-                        document.getElementById('scan_status').textContent = 'Point the camera at the resident QR code.';
-                    })
-                    .catch(function () {
-                        document.getElementById('scan_status').textContent = 'Could not start the camera. Use manual code instead.';
-                    });
-            });
-
-            document.getElementById('close_scan_modal').addEventListener('click', function () {
-                stopScanner().then(function () {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                });
-            });
-
-            modal.addEventListener('click', function (event) {
-                if (event.target !== modal) {
-                    return;
-                }
-
-                stopScanner().then(function () {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                });
-            });
-
-            if (residentIdInput.value && verificationMethodInput.value) {
-                verifiedDisplay.textContent = 'Resident verification will be kept on submit.';
-                verifiedDisplay.classList.remove('hidden');
-                clearButton.classList.remove('hidden');
-            }
 
             // Reload houses when subdivision changes
             var subdivisionSelect = document.getElementById('report_subdivision_id');

@@ -6,30 +6,14 @@ use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
-use App\Models\VisitorRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class VisitorController extends Controller
 {
-    public function idPhoto(Request $request, VisitorRequest $visitorRequest): \Symfony\Component\HttpFoundation\BinaryFileResponse
-    {
-        if (!$request->user()->isAdmin()) {
-            abort_unless($request->user()->canAccessSubdivision($visitorRequest->subdivision_id), 403);
-        }
-
-        abort_unless($visitorRequest->id_photo_path, 404);
-
-        $fullPath = Storage::disk('public')->path($visitorRequest->id_photo_path);
-        abort_unless(file_exists($fullPath), 404);
-
-        return response()->file($fullPath);
-    }
-
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -77,7 +61,6 @@ class VisitorController extends Controller
 
         $residentsByHouse = House::query()
             ->with(['residents' => fn ($q) => $q->where('status', 'Active')
-                ->whereHas('user')
                 ->select('house_id', 'resident_id', 'full_name')])
             ->get()
             ->mapWithKeys(fn (House $house) => [
@@ -87,20 +70,6 @@ class VisitorController extends Controller
                 ])->values()->all(),
             ]);
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
-
-        $pendingRequests = VisitorRequest::query()
-            ->with('resident')
-            ->where('status', 'Pending')
-            ->when(
-                !$user->isAdmin(),
-                fn ($q) => $q->where('subdivision_id', $user->allowedSubdivisionId())
-            )
-            ->when(
-                $user->isAdmin() && $filterSubdivision,
-                fn ($q) => $q->where('subdivision_id', $filterSubdivision)
-            )
-            ->orderByDesc('requested_at')
-            ->get();
 
         $insideVisitors = Visitor::query()
             ->with('subdivision')
@@ -140,7 +109,6 @@ class VisitorController extends Controller
             'historyView',
             'effectiveSubdivision',
             'insideVisitors',
-            'pendingRequests',
             'housesBySubdivision',
             'residentsByHouse',
         ));
@@ -165,13 +133,13 @@ class VisitorController extends Controller
             'middle_initials'       => ['nullable', 'string', 'max:20'],
             'extension'             => ['nullable', 'string', 'max:20'],
             'phone'                 => ['required', 'string', 'max:40'],
+            'has_vehicle'           => ['nullable', 'boolean'],
             'plate_number'          => ['nullable', 'string', 'max:30'],
+            'passenger_count'       => ['nullable', 'integer', 'min:1', 'max:50'],
             'id_photo'              => ['required', 'image', 'max:4096'],
             'purpose'               => ['nullable', 'string'],
             'host_employee'         => ['nullable', 'string', 'max:150'],
-            'host_resident_id'      => ['nullable', 'integer'],
             'house_address_or_unit' => ['nullable', 'string', 'max:120'],
-            'resident_code'         => ['nullable', 'string', 'max:20'],
             'visit_type'            => ['nullable', 'string', Rule::in(['resident', 'general'])],
         ]);
 
@@ -180,8 +148,16 @@ class VisitorController extends Controller
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
 
+        $hasVehicle = $request->boolean('has_vehicle');
+        if ($hasVehicle && empty($data['plate_number'])) {
+            return back()->withErrors(['plate_number' => 'Plate number is required when visitor has a vehicle.'])->withInput();
+        }
+        if ($hasVehicle && empty($data['passenger_count'])) {
+            return back()->withErrors(['passenger_count' => 'Passenger count is required when visitor has a vehicle.'])->withInput();
+        }
+
         $visitType = $data['visit_type'] ?? 'resident';
-        $isGeneralVisit = $visitType === 'general' || (empty($data['house_address_or_unit']) && empty($data['host_employee']));
+        $isGeneralVisit = $visitType === 'general';
 
         if (!$isGeneralVisit && !empty($data['house_address_or_unit'])) {
             $normalizedAddress = strtoupper(trim($data['house_address_or_unit']));
@@ -203,93 +179,26 @@ class VisitorController extends Controller
             $photoPath = $request->file('id_photo')->store('visitor-ids', 'public');
         }
 
-        // General / walk-in visit — check in immediately, no resident needed
-        if ($isGeneralVisit) {
-            Visitor::create([
-                'subdivision_id'        => $subdivisionId,
-                'surname'               => $data['surname'],
-                'first_name'            => $data['first_name'],
-                'middle_initials'       => $data['middle_initials'] ?? null,
-                'extension'             => $data['extension'] ?? null,
-                'phone'                 => $data['phone'],
-                'plate_number'          => $data['plate_number'] ?? null,
-                'id_photo_path'         => $photoPath,
-                'purpose'               => $data['purpose'] ?? null,
-                'host_employee'         => null,
-                'house_address_or_unit' => null,
-                'check_in'              => now(),
-                'check_out'             => null,
-                'status'                => 'Inside',
-            ]);
-
-            return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
-                ->with('success', 'Walk-in visitor checked in successfully.');
-        }
-
-        // Check if resident code was provided for instant check-in bypass
-        $residentCode = Resident::normalizeResidentCode($data['resident_code'] ?? null);
-        if ($residentCode) {
-            $resident = Resident::where('resident_code', $residentCode)
-                ->where('subdivision_id', $subdivisionId)
-                ->first();
-
-            if (!$resident) {
-                return back()->withErrors(['resident_code' => 'Invalid resident code for this subdivision.'])->withInput();
-            }
-
-            Visitor::create([
-                'subdivision_id'        => $subdivisionId,
-                'surname'               => $data['surname'],
-                'first_name'            => $data['first_name'],
-                'middle_initials'       => $data['middle_initials'] ?? null,
-                'extension'             => $data['extension'] ?? null,
-                'phone'                 => $data['phone'],
-                'plate_number'          => $data['plate_number'] ?? null,
-                'id_photo_path'         => $photoPath,
-                'purpose'               => $data['purpose'] ?? null,
-                'host_employee'         => $data['host_employee'],
-                'house_address_or_unit' => $data['house_address_or_unit'] ?? null,
-                'check_in'              => now(),
-                'check_out'             => null,
-                'status'                => 'Inside',
-            ]);
-
-            return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
-                ->with('success', 'Visitor checked in immediately using resident code.');
-        }
-
-        // No resident code — find the selected resident by host_resident_id and create a pending request
-        $resident = isset($data['host_resident_id'])
-            ? Resident::where('resident_id', $data['host_resident_id'])
-                ->where('subdivision_id', $subdivisionId)
-                ->where('status', 'Active')
-                ->whereHas('user')
-                ->first()
-            : null;
-
-        if (!$resident) {
-            return back()->withErrors(['host_employee' => 'The selected resident was not found or does not have an account.'])->withInput();
-        }
-
-        VisitorRequest::create([
-            'resident_id'           => $resident->resident_id,
+        Visitor::create([
             'subdivision_id'        => $subdivisionId,
-            'visitor_name'          => Visitor::formatFullName($data['first_name'], $data['middle_initials'] ?? null, $data['surname'], $data['extension'] ?? null),
             'surname'               => $data['surname'],
             'first_name'            => $data['first_name'],
             'middle_initials'       => $data['middle_initials'] ?? null,
             'extension'             => $data['extension'] ?? null,
             'phone'                 => $data['phone'],
-            'plate_number'          => $data['plate_number'] ?? null,
+            'plate_number'          => $hasVehicle ? ($data['plate_number'] ?? null) : null,
+            'passenger_count'       => $hasVehicle ? (int) ($data['passenger_count'] ?? 0) : null,
             'id_photo_path'         => $photoPath,
-            'house_address_or_unit' => $data['house_address_or_unit'] ?? null,
             'purpose'               => $data['purpose'] ?? null,
-            'status'                => 'Pending',
-            'requested_at'          => now(),
+            'host_employee'         => $isGeneralVisit ? null : ($data['host_employee'] ?? null),
+            'house_address_or_unit' => $isGeneralVisit ? null : ($data['house_address_or_unit'] ?? null),
+            'check_in'              => now(),
+            'check_out'             => null,
+            'status'                => 'Inside',
         ]);
 
         return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
-            ->with('success', 'Visitor request sent to resident for approval.');
+            ->with('success', 'Visitor checked in successfully.');
     }
 
     public function checkout(Request $request, Visitor $visitor): RedirectResponse
@@ -391,7 +300,7 @@ class VisitorController extends Controller
     private function visitorRouteContext(Request $request, int|string|null $subdivisionId): array
     {
         $tab = $request->input('tab', $request->query('tab', 'history'));
-        if (!in_array($tab, ['check-in', 'check-out', 'history', 'pending'], true)) {
+        if (!in_array($tab, ['check-in', 'check-out', 'history'], true)) {
             $tab = 'history';
         }
 
@@ -430,3 +339,4 @@ class VisitorController extends Controller
         }
     }
 }
+

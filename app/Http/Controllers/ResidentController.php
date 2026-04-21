@@ -84,6 +84,8 @@ class ResidentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateResident($request);
+        // Resident account auto-creation is temporarily disabled.
+        /*
         $shouldCreateAccount = $request->filled('account_email') || $request->filled('account_password');
         $accountData = null;
 
@@ -93,10 +95,12 @@ class ResidentController extends Controller
                 'account_password' => ['required', 'string', 'min:8'],
             ]);
         }
+        */
 
-        DB::transaction(function () use ($data, $shouldCreateAccount, $accountData): void {
-            $resident = Resident::create($data);
+        DB::transaction(function () use ($data): void {
+            Resident::create($data);
 
+            /*
             if ($shouldCreateAccount && $accountData !== null) {
                 $nameParts = $resident->name_parts;
 
@@ -113,6 +117,7 @@ class ResidentController extends Controller
                     'resident_id' => $resident->resident_id,
                 ]);
             }
+            */
         });
 
         return redirect()->route('residents.index')
@@ -122,6 +127,8 @@ class ResidentController extends Controller
     public function update(Request $request, Resident $resident): RedirectResponse
     {
         $data = $this->validateResident($request, $resident);
+        // Resident account auto-creation is temporarily disabled.
+        /*
         $shouldCreateAccount = !$resident->user && ($request->filled('account_email') || $request->filled('account_password'));
         $accountData = null;
 
@@ -131,10 +138,12 @@ class ResidentController extends Controller
                 'account_password' => ['required', 'string', 'min:8'],
             ]);
         }
+        */
 
-        DB::transaction(function () use ($data, $resident, $shouldCreateAccount, $accountData): void {
+        DB::transaction(function () use ($data, $resident): void {
             $resident->update($data);
 
+            /*
             if ($shouldCreateAccount && $accountData !== null) {
                 $nameParts = $resident->fresh()->name_parts;
 
@@ -151,6 +160,7 @@ class ResidentController extends Controller
                     'resident_id'              => $resident->resident_id,
                 ]);
             }
+            */
         });
 
         return redirect()->route('residents.index')
@@ -203,8 +213,8 @@ class ResidentController extends Controller
             'middle_name' => ['nullable', 'string', 'max:50'],
             'extension' => ['nullable', 'string', 'max:20'],
             'full_name' => ['nullable', 'string', 'max:100'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'email' => ['nullable', 'email', 'max:100'],
+            'phone' => ['required', 'string', 'max:20'],
+            'email' => ['required', 'email', 'max:100'],
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
             'house_id' => ['nullable', 'integer', 'exists:houses,house_id'],
             'address_or_unit' => ['nullable', 'string', 'max:150'],
@@ -228,8 +238,8 @@ class ResidentController extends Controller
             'subdivision_id' => (int) $data['subdivision_id'],
             'house_id' => $house?->house_id,
             'full_name' => $this->resolveResidentFullName($data),
-            'phone' => $data['phone'] ?: null,
-            'email' => $data['email'] ?: null,
+            'phone' => $data['phone'],
+            'email' => $data['email'],
             'address_or_unit' => $house?->display_address ?? ($data['address_or_unit'] ?: null),
             'status' => $data['status'] ?? $resident?->status ?? 'Active',
         ];
