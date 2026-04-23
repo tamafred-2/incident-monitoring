@@ -1,4 +1,11 @@
 <x-guest-layout>
+    <div class="mb-6">
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Create Account</p>
+        <p class="mt-3 text-sm leading-6 text-slate-500">
+            Set up an account for subdivision monitoring with the same interface styling used across the platform.
+        </p>
+    </div>
+
     <form method="POST" action="{{ route('register') }}">
         @csrf
 
@@ -58,8 +65,8 @@
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
-            <a class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('login') }}">
+        <div class="mt-5 flex items-center justify-end">
+            <a class="rounded-md text-sm font-medium text-slate-600 underline transition hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2" href="{{ route('login') }}">
                 {{ __('Already registered?') }}
             </a>
 

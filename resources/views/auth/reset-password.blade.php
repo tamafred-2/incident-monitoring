@@ -1,4 +1,11 @@
 <x-guest-layout>
+    <div class="mb-6">
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Set New Password</p>
+        <p class="mt-3 text-sm leading-6 text-slate-500">
+            Choose a new password to restore access to your monitoring account.
+        </p>
+    </div>
+
     <form method="POST" action="{{ route('password.store') }}">
         @csrf
 
@@ -30,7 +37,7 @@
             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
         </div>
 
-        <div class="flex items-center justify-end mt-4">
+        <div class="mt-5 flex items-center justify-end">
             <x-primary-button>
                 {{ __('Reset Password') }}
             </x-primary-button>
