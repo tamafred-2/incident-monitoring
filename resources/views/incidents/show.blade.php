@@ -76,7 +76,7 @@
                     </div>
                 </div>
 
-                <div class="grid gap-6 mt-6 lg:grid-cols-2">
+                <div class="grid gap-6 mt-6 xl:grid-cols-[1.15fr_0.85fr]">
                     <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Report Summary</h4>
                         <dl class="mt-4 space-y-3 text-sm">
@@ -93,42 +93,73 @@
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Location</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $incident->location ?: '-' }}</dd>
+                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->location ?: '-' }}</dd>
                             </div>
                             @if ($sameIncidentAndReportedDate)
                                 <div class="flex items-start justify-between gap-4">
                                     <dt class="text-slate-500">Incident / Reported Date</dt>
-                                    <dd class="font-medium text-right text-slate-900">{{ $incidentDate->format('M j, Y h:i A') }}</dd>
+                                    <dd class="font-medium text-right text-slate-900">
+                                        <span class="block whitespace-nowrap">{{ $incidentDate->format('M j, Y') }}</span>
+                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incidentDate->format('h:i A') }}</span>
+                                    </dd>
                                 </div>
                             @else
                                 <div class="flex items-start justify-between gap-4">
                                     <dt class="text-slate-500">Incident Date</dt>
-                                    <dd class="font-medium text-right text-slate-900">{{ optional($incident->incident_date)->format('M j, Y h:i A') ?: '-' }}</dd>
+                                    <dd class="font-medium text-right text-slate-900">
+                                        @if ($incident->incident_date)
+                                            <span class="block whitespace-nowrap">{{ $incident->incident_date->format('M j, Y') }}</span>
+                                            <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->incident_date->format('h:i A') }}</span>
+                                        @else
+                                            -
+                                        @endif
+                                    </dd>
                                 </div>
                                 <div class="flex items-start justify-between gap-4">
                                     <dt class="text-slate-500">Date Reported</dt>
-                                    <dd class="font-medium text-right text-slate-900">{{ optional($incident->reported_at)->format('M j, Y h:i A') ?: '-' }}</dd>
+                                    <dd class="font-medium text-right text-slate-900">
+                                        @if ($incident->reported_at)
+                                            <span class="block whitespace-nowrap">{{ $incident->reported_at->format('M j, Y') }}</span>
+                                            <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->reported_at->format('h:i A') }}</span>
+                                        @else
+                                            -
+                                        @endif
+                                    </dd>
                                 </div>
                             @endif
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Date Resolved</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ optional($incident->resolved_at)->format('M j, Y h:i A') ?: '-' }}</dd>
+                                <dd class="font-medium text-right text-slate-900">
+                                    @if ($incident->resolved_at)
+                                        <span class="block whitespace-nowrap">{{ $incident->resolved_at->format('M j, Y') }}</span>
+                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->resolved_at->format('h:i A') }}</span>
+                                    @else
+                                        -
+                                    @endif
+                                </dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Reported By</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $incident->reporter?->full_name ?? '-' }}</dd>
+                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->reporter?->full_name ?? '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Assigned Responder</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $incident->assignedStaff?->full_name ?? '-' }}</dd>
+                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->assignedStaff?->full_name ?? '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Verified On Site</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ optional($incident->verified_on_site_at)->format('M j, Y h:i A') ?: '-' }}</dd>
+                                <dd class="font-medium text-right text-slate-900">
+                                    @if ($incident->verified_on_site_at)
+                                        <span class="block whitespace-nowrap">{{ $incident->verified_on_site_at->format('M j, Y') }}</span>
+                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->verified_on_site_at->format('h:i A') }}</span>
+                                    @else
+                                        -
+                                    @endif
+                                </dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Verified By</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $incident->verifiedStaff?->full_name ?? '-' }}</dd>
+                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->verifiedStaff?->full_name ?? '-' }}</dd>
                             </div>
                         </dl>
                     </div>
@@ -138,7 +169,7 @@
                         <dl class="mt-4 space-y-3 text-sm">
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Verified Reporter</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $incident->verifiedResident?->full_name ?? '-' }}</dd>
+                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->verifiedResident?->full_name ?? '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Method</dt>
@@ -146,7 +177,26 @@
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Verified At</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ optional($incident->verified_at)->format('M j, Y h:i A') ?: '-' }}</dd>
+                                <dd class="font-medium text-right text-slate-900">
+                                    @if ($incident->verified_at)
+                                        <span class="block whitespace-nowrap">{{ $incident->verified_at->format('M j, Y') }}</span>
+                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->verified_at->format('h:i A') }}</span>
+                                    @else
+                                        -
+                                    @endif
+                                </dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Current Status</dt>
+                                <dd>
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $incident->trashed() ? 'bg-rose-100 text-rose-700' : ($incident->status === 'Resolved' ? 'bg-emerald-100 text-emerald-700' : ($incident->status === 'Open' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700')) }}">
+                                        {{ $incident->trashed() ? 'Archived' : $incident->status }}
+                                    </span>
+                                </dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">House / Unit</dt>
+                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->house?->display_address ?? '-' }}</dd>
                             </div>
                         </dl>
                     </div>

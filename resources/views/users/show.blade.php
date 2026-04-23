@@ -62,11 +62,11 @@
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Linked Resident</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ $managedUser->resident?->full_name ?? 'Not linked' }}</dd>
+                                <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $managedUser->resident?->full_name ?? 'Not linked' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Subdivision</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ $managedUser->role === 'admin' ? 'All' : ($managedUser->subdivision?->subdivision_name ?? 'Unassigned') }}</dd>
+                                <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $managedUser->role === 'admin' ? 'All' : ($managedUser->subdivision?->subdivision_name ?? 'Unassigned') }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Availability</dt>
@@ -76,11 +76,18 @@
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Resident House</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ $managedUser->resident?->house?->display_address ?? 'Not linked' }}</dd>
+                                <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $managedUser->resident?->house?->display_address ?? 'Not linked' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Archived</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ $managedUser->deleted_at?->format('M j, Y h:i A') ?? 'No' }}</dd>
+                                <dd class="text-right font-medium text-slate-900">
+                                    @if ($managedUser->deleted_at)
+                                        <span class="block whitespace-nowrap">{{ $managedUser->deleted_at->format('M j, Y') }}</span>
+                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $managedUser->deleted_at->format('h:i A') }}</span>
+                                    @else
+                                        No
+                                    @endif
+                                </dd>
                             </div>
                         </dl>
                     </div>

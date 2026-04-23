@@ -82,17 +82,30 @@
                             <p class="mt-1 text-sm text-slate-500">Compact live list. Click a visitor name to open the full details.</p>
                         </div>
 
-                        <form method="GET" action="{{ route('dashboard') }}" class="flex items-end gap-3">
+                        <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-end gap-3">
                             <div>
                                 <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Per Page</label>
-                                <select
-                                    name="inside_per_page"
-                                    onchange="this.form.submit()"
-                                    class="mt-1 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
-                                >
-                                    <option value="5" @selected($insidePerPage === 5)>5</option>
-                                    <option value="10" @selected($insidePerPage === 10)>10</option>
-                                </select>
+                                <div class="mt-1 flex flex-wrap items-center gap-2">
+                                    <select
+                                        name="inside_per_page"
+                                        class="rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                    >
+                                        @foreach ([10, 25, 50, 100] as $size)
+                                            <option value="{{ $size }}" @selected($insidePerPage === $size)>{{ $size }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input
+                                        type="number"
+                                        name="inside_per_page_custom"
+                                        min="1"
+                                        max="100"
+                                        value=""
+                                        placeholder="{{ $insidePerPage }}"
+                                        class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                        aria-label="Custom dashboard rows per page"
+                                    >
+                                    <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -114,8 +127,23 @@
                                     onclick="window.location='{{ route('visitors.show', array_merge(['visitor' => $visitor], request()->only(['inside_per_page', 'page']))) }}'"
                                     onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location='{{ route('visitors.show', array_merge(['visitor' => $visitor], request()->only(['inside_per_page', 'page']))) }}'; }"
                                 >
-                                    <td class="px-6 py-4 text-slate-600">{{ $visitor->subdivision->subdivision_name ?? '-' }}</td>
-                                    <td class="px-6 py-4 font-medium text-sky-700">{{ $visitor->full_name }}</td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <div class="max-w-[14rem] truncate" title="{{ $visitor->subdivision->subdivision_name ?? '-' }}">
+                                            {{ $visitor->subdivision->subdivision_name ?? '-' }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4">
+                                        <div class="min-w-[12rem]">
+                                            <div class="font-medium text-sky-700">{{ $visitor->full_name }}</div>
+                                            <div class="mt-1 text-xs text-slate-500">
+                                                @if ($visitor->check_in)
+                                                    {{ $visitor->check_in->format('M j, Y') }} at {{ $visitor->check_in->format('h:i A') }}
+                                                @else
+                                                    No check-in time
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </td>
                                 </tr>
                             @empty
                                     <tr>
@@ -128,11 +156,30 @@
                         </table>
                     </div>
 
-                    @if ($insideVisitors->total() >= $insidePerPage)
-                        <div class="border-t border-slate-200 px-6 py-4">
-                            {{ $insideVisitors->links() }}
+                    <div class="flex flex-col gap-3 border-t border-slate-200 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <p class="text-sm text-slate-500">
+                            @if ($insideVisitors->total() > 0)
+                                Showing {{ $insideVisitors->firstItem() }}-{{ $insideVisitors->lastItem() }} of {{ $insideVisitors->total() }} visitors
+                            @else
+                                No visitor records to paginate
+                            @endif
+                        </p>
+                        <div class="flex items-center gap-2">
+                            @if ($insideVisitors->onFirstPage())
+                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
+                            @else
+                                <a href="{{ $insideVisitors->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
+                            @endif
+                            <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
+                                Page {{ $insideVisitors->currentPage() }} of {{ max($insideVisitors->lastPage(), 1) }}
+                            </span>
+                            @if ($insideVisitors->hasMorePages())
+                                <a href="{{ $insideVisitors->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
+                            @else
+                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
+                            @endif
                         </div>
-                    @endif
+                    </div>
                 </div>
             </div>
             @endif

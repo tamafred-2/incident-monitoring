@@ -31,6 +31,11 @@ class IncidentController extends Controller
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
         $historyView = $this->resolveHistoryView($request->query('view'));
+        $perPage = $this->resolvePerPageChoice(
+            $request->query('per_page_custom'),
+            $request->query('per_page'),
+            10
+        );
 
         $query = Incident::query()
             ->with(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter', 'assignedStaff'])
@@ -62,7 +67,9 @@ class IncidentController extends Controller
             $query->where('subdivision_id', $filterSubdivision);
         }
 
-        $incidents = $query->get();
+        $incidents = $query
+            ->paginate($perPage)
+            ->withQueryString();
         $subdivisions = $user->isAdmin()
             ? Subdivision::orderBy('subdivision_name')->get()
             : collect();
@@ -91,6 +98,7 @@ class IncidentController extends Controller
             'residentReporter',
             'houses',
             'assignableStaff',
+            'perPage',
         ));
     }
 
@@ -634,7 +642,14 @@ class IncidentController extends Controller
             return [];
         }
 
-        return $subdivisionId ? ['subdivision_id' => (int) $subdivisionId] : [];
+        $context = $subdivisionId ? ['subdivision_id' => (int) $subdivisionId] : [];
+        $context['per_page'] = $this->resolvePerPageChoice(
+            $request->input('per_page_custom', $request->query('per_page_custom')),
+            $request->input('per_page', $request->query('per_page')),
+            10
+        );
+
+        return $context;
     }
 
     private function indexContext(Request $request): array
@@ -657,6 +672,8 @@ class IncidentController extends Controller
                 $context['view'] = $view;
             }
         }
+
+        $context['per_page'] = $this->resolvePerPage($request->input('per_page', $request->query('per_page')), 10);
 
         return $context;
     }
@@ -951,5 +968,26 @@ class IncidentController extends Controller
         }
 
         return $data['reported_at'] ?? null;
+    }
+
+    private function resolvePerPage(mixed $value, int $default = 10): int
+    {
+        $perPage = (int) $value;
+
+        if ($perPage < 1) {
+            return $default;
+        }
+
+        return min($perPage, 100);
+    }
+
+    private function resolvePerPageChoice(mixed $customValue, mixed $selectedValue, int $default = 10): int
+    {
+        $custom = (int) $customValue;
+        if ($custom > 0) {
+            return $this->resolvePerPage($custom, $default);
+        }
+
+        return $this->resolvePerPage($selectedValue, $default);
     }
 }

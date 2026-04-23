@@ -19,12 +19,12 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $allowedId = $user->allowedSubdivisionId();
-        $insidePerPage = (int) $request->query('inside_per_page', 5);
+        $insidePerPage = $this->resolvePerPageChoice(
+            $request->query('inside_per_page_custom'),
+            $request->query('inside_per_page'),
+            10
+        );
         $isResidentDashboard = $user->isResident();
-
-        if (!in_array($insidePerPage, [5, 10], true)) {
-            $insidePerPage = 5;
-        }
 
         $totalSubdivisions = $user->isAdmin()
             ? Subdivision::count()
@@ -186,5 +186,26 @@ class DashboardController extends Controller
         ])->save();
 
         return response()->noContent();
+    }
+
+    private function resolvePerPage(mixed $value, int $default = 10): int
+    {
+        $perPage = (int) $value;
+
+        if ($perPage < 1) {
+            return $default;
+        }
+
+        return min($perPage, 100);
+    }
+
+    private function resolvePerPageChoice(mixed $customValue, mixed $selectedValue, int $default = 10): int
+    {
+        $custom = (int) $customValue;
+        if ($custom > 0) {
+            return $this->resolvePerPage($custom, $default);
+        }
+
+        return $this->resolvePerPage($selectedValue, $default);
     }
 }

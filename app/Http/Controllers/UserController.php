@@ -16,6 +16,11 @@ class UserController extends Controller
         $filterRole = trim((string) $request->query('role', ''));
         $filterSubdivision = $request->query('subdivision_id');
         $filterView = trim((string) $request->query('view', 'active'));
+        $perPage = $this->resolvePerPageChoice(
+            $request->query('per_page_custom'),
+            $request->query('per_page'),
+            10
+        );
 
         $query = User::query()
             ->with('subdivision')
@@ -47,7 +52,9 @@ class UserController extends Controller
             }
         }
 
-        $users = $query->get();
+        $users = $query
+            ->paginate($perPage)
+            ->withQueryString();
         $subdivisions = Subdivision::orderBy('subdivision_name')->get();
         return view('users.index', compact(
             'users',
@@ -55,7 +62,8 @@ class UserController extends Controller
             'filterQ',
             'filterRole',
             'filterSubdivision',
-            'filterView'
+            'filterView',
+            'perPage'
         ));
     }
 
@@ -207,6 +215,11 @@ class UserController extends Controller
             'q' => $request->input('q', $request->query('q')),
             'role' => $request->input('role', $request->query('role')),
             'subdivision_id' => $request->input('subdivision_id', $request->query('subdivision_id')),
+            'per_page' => $this->resolvePerPageChoice(
+                $request->input('per_page_custom', $request->query('per_page_custom')),
+                $request->input('per_page', $request->query('per_page')),
+                10
+            ),
         ], static fn ($value) => $value !== null && $value !== '');
 
         $view = $request->input('view', $request->query('view', 'active'));
@@ -215,6 +228,27 @@ class UserController extends Controller
         }
 
         return $context;
+    }
+
+    private function resolvePerPage(mixed $value, int $default = 10): int
+    {
+        $perPage = (int) $value;
+
+        if ($perPage < 1) {
+            return $default;
+        }
+
+        return min($perPage, 100);
+    }
+
+    private function resolvePerPageChoice(mixed $customValue, mixed $selectedValue, int $default = 10): int
+    {
+        $custom = (int) $customValue;
+        if ($custom > 0) {
+            return $this->resolvePerPage($custom, $default);
+        }
+
+        return $this->resolvePerPage($selectedValue, $default);
     }
 
 }
