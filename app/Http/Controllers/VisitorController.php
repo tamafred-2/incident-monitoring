@@ -20,6 +20,16 @@ class VisitorController extends Controller
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
         $historyView = $this->resolveHistoryView($request->query('view'));
+        $historyPerPage = $this->resolvePerPageChoice(
+            $request->query('history_per_page_custom'),
+            $request->query('history_per_page'),
+            10
+        );
+        $checkOutPerPage = $this->resolvePerPageChoice(
+            $request->query('check_out_per_page_custom'),
+            $request->query('check_out_per_page'),
+            10
+        );
 
         $query = Visitor::query()
             ->with('subdivision')
@@ -47,7 +57,9 @@ class VisitorController extends Controller
             $query->where('subdivision_id', $filterSubdivision);
         }
 
-        $visitors = $query->get();
+        $visitors = $query
+            ->paginate($historyPerPage, ['*'], 'history_page')
+            ->withQueryString();
         $subdivisions = $user->isAdmin()
             ? Subdivision::where('status', 'Active')->orderBy('subdivision_name')->get()
             : collect();
@@ -99,7 +111,8 @@ class VisitorController extends Controller
             )
             ->where('status', 'Inside')
             ->orderByDesc('check_in')
-            ->get();
+            ->paginate($checkOutPerPage, ['*'], 'check_out_page')
+            ->withQueryString();
 
         return view('visitors.index', compact(
             'visitors',
@@ -111,6 +124,8 @@ class VisitorController extends Controller
             'insideVisitors',
             'housesBySubdivision',
             'residentsByHouse',
+            'historyPerPage',
+            'checkOutPerPage',
         ));
     }
 
@@ -314,6 +329,19 @@ class VisitorController extends Controller
             $context['q'] = $filterQ;
         }
 
+        $historyPerPage = $this->resolvePerPageChoice(
+            $request->input('history_per_page_custom', $request->query('history_per_page_custom')),
+            $request->input('history_per_page', $request->query('history_per_page')),
+            10
+        );
+        $checkOutPerPage = $this->resolvePerPageChoice(
+            $request->input('check_out_per_page_custom', $request->query('check_out_per_page_custom')),
+            $request->input('check_out_per_page', $request->query('check_out_per_page')),
+            10
+        );
+        $context['history_per_page'] = $historyPerPage;
+        $context['check_out_per_page'] = $checkOutPerPage;
+
         if ($request->user()->isAdmin() && $subdivisionId) {
             $context['subdivision_id'] = (int) $subdivisionId;
         }
@@ -338,5 +366,25 @@ class VisitorController extends Controller
             $query->withTrashed();
         }
     }
-}
 
+    private function resolvePerPage(mixed $value, int $default = 10): int
+    {
+        $perPage = (int) $value;
+
+        if ($perPage < 1) {
+            return $default;
+        }
+
+        return min($perPage, 100);
+    }
+
+    private function resolvePerPageChoice(mixed $customValue, mixed $selectedValue, int $default = 10): int
+    {
+        $custom = (int) $customValue;
+        if ($custom > 0) {
+            return $this->resolvePerPage($custom, $default);
+        }
+
+        return $this->resolvePerPage($selectedValue, $default);
+    }
+}

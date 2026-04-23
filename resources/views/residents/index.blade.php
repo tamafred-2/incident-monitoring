@@ -27,7 +27,7 @@
                     </div>
                     <div class="flex items-end gap-3">
                         <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
-                        <a href="{{ route('residents.index') }}" class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Clear</a>
+                        <a href="{{ route('residents.index', ['per_page' => $perPage]) }}" class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Clear</a>
                         @if (auth()->user()->isAdmin())
                             <button
                                 type="button"
@@ -43,6 +43,35 @@
             </div>
 
             <div class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+                <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900">Resident Directory</h3>
+                        <p class="mt-1 text-sm text-slate-500">Browse and manage resident profiles with housing assignment details.</p>
+                    </div>
+                    <form method="GET" action="{{ route('residents.index') }}" class="flex flex-wrap items-end gap-3">
+                        @if ($filterQ !== '')
+                            <input type="hidden" name="q" value="{{ $filterQ }}">
+                        @endif
+                        @if ($filterStatus !== '')
+                            <input type="hidden" name="status" value="{{ $filterStatus }}">
+                        @endif
+                        @if ($filterSubdivision)
+                            <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                        @endif
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                            <div class="mt-1 flex flex-wrap items-center gap-2">
+                                <select name="per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    @foreach ([10, 25, 50, 100] as $size)
+                                        <option value="{{ $size }}" @selected($perPage === $size)>{{ $size }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="number" name="per_page_custom" min="1" max="100" value="" placeholder="{{ $perPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom resident rows per page">
+                                <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm divide-y divide-slate-200">
                         <thead class="bg-slate-50">
@@ -57,14 +86,31 @@
                         <tbody class="bg-white divide-y divide-slate-100">
                             @forelse ($residents as $resident)
                                 <tr>
-                                    <td class="px-6 py-4 font-medium text-slate-900">{{ $resident->full_name }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $resident->house?->display_address ?: '-' }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $resident->house?->street ?: ($resident->address_or_unit ?: '-') }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $resident->status }}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="min-w-[12rem]">
+                                            <div class="font-medium text-slate-900">{{ $resident->full_name }}</div>
+                                            <div class="mt-1 text-xs text-slate-500">{{ $resident->email ?: 'No email provided' }}</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <div class="max-w-[12rem] truncate" title="{{ $resident->house?->display_address ?: '-' }}">
+                                            {{ $resident->house?->display_address ?: '-' }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <div class="max-w-[14rem] truncate" title="{{ $resident->house?->street ?: ($resident->address_or_unit ?: '-') }}">
+                                            {{ $resident->house?->street ?: ($resident->address_or_unit ?: '-') }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold {{ $resident->status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
+                                            {{ $resident->status }}
+                                        </span>
+                                    </td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3 flex-nowrap">
                                             <a
-                                                href="{{ route('residents.show', array_merge(['resident' => $resident], array_filter(['q' => $filterQ, 'status' => $filterStatus, 'subdivision_id' => $filterSubdivision], static fn ($value) => $value !== null && $value !== '' && $value !== 0))) }}"
+                                                href="{{ route('residents.show', array_merge(['resident' => $resident], array_filter(['q' => $filterQ, 'status' => $filterStatus, 'subdivision_id' => $filterSubdivision, 'per_page' => $perPage], static fn ($value) => $value !== null && $value !== '' && $value !== 0))) }}"
                                                 class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
                                             >
                                                 View
@@ -99,6 +145,30 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+                <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-slate-500">
+                        @if ($residents->total() > 0)
+                            Showing {{ $residents->firstItem() }}-{{ $residents->lastItem() }} of {{ $residents->total() }} residents
+                        @else
+                            No resident records to paginate
+                        @endif
+                    </p>
+                    <div class="flex items-center gap-2">
+                        @if ($residents->onFirstPage())
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
+                        @else
+                            <a href="{{ $residents->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
+                        @endif
+                        <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
+                            Page {{ $residents->currentPage() }} of {{ max($residents->lastPage(), 1) }}
+                        </span>
+                        @if ($residents->hasMorePages())
+                            <a href="{{ $residents->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
+                        @else
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -214,6 +284,7 @@
                                 <input type="hidden" name="q" value="{{ $filterQ }}">
                                 <input type="hidden" name="status" value="{{ $filterStatus }}">
                                 <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                                <input type="hidden" name="per_page" value="{{ $perPage }}">
 
                                 <button
                                     type="button"

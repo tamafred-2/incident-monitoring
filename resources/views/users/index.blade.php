@@ -36,7 +36,7 @@
                     </div>
                     <div class="flex items-end gap-3">
                         <button class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Apply</button>
-                        <a href="{{ route('users.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Clear</a>
+                        <a href="{{ route('users.index', ['per_page' => $perPage]) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Clear</a>
                         <button
                             type="button"
                             x-data
@@ -50,6 +50,36 @@
             </div>
 
             <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900">User Directory</h3>
+                        <p class="mt-1 text-sm text-slate-500">Manage admin, security, and staff accounts from one table.</p>
+                    </div>
+                    <form method="GET" action="{{ route('users.index') }}" class="flex flex-wrap items-end gap-3">
+                        @if ($filterQ !== '')
+                            <input type="hidden" name="q" value="{{ $filterQ }}">
+                        @endif
+                        @if ($filterRole !== '')
+                            <input type="hidden" name="role" value="{{ $filterRole }}">
+                        @endif
+                        @if ($filterSubdivision !== null && $filterSubdivision !== '')
+                            <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                        @endif
+                        <input type="hidden" name="view" value="{{ $filterView }}">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                            <div class="mt-1 flex flex-wrap items-center gap-2">
+                                <select name="per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    @foreach ([10, 25, 50, 100] as $size)
+                                        <option value="{{ $size }}" @selected($perPage === $size)>{{ $size }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="number" name="per_page_custom" min="1" max="100" value="" placeholder="{{ $perPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom user rows per page">
+                                <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50">
@@ -67,9 +97,18 @@
                         <tbody class="divide-y divide-slate-100 bg-white">
                             @forelse ($users as $user)
                                 <tr>
-                                    <td class="px-6 py-4 font-medium text-slate-900">{{ $user->full_name }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $user->email }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ ucfirst($user->role) }}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="min-w-[12rem]">
+                                            <div class="font-medium text-slate-900">{{ $user->full_name }}</div>
+                                            <div class="mt-1 text-xs text-slate-500">{{ $user->subdivision?->subdivision_name ?? ($user->role === 'admin' ? 'All subdivisions' : 'Unassigned subdivision') }}</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <div class="max-w-[16rem] truncate" title="{{ $user->email }}">{{ $user->email }}</div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <span class="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ ucfirst($user->role) }}</span>
+                                    </td>
                                     <td class="px-6 py-4">
                                         <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $user->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
                                             {{ $user->is_active ? 'Active' : 'Inactive' }}
@@ -77,13 +116,20 @@
                                     </td>
                                     @if ($filterView !== 'active')
                                         <td class="px-6 py-4 text-slate-600">
-                                            {{ $user->deleted_at?->format('M j, Y H:i') ?? '-' }}
+                                            @if ($user->deleted_at)
+                                                <div class="min-w-[9rem]">
+                                                    <div class="whitespace-nowrap font-medium text-slate-700">{{ $user->deleted_at->format('M j, Y') }}</div>
+                                                    <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $user->deleted_at->format('h:i A') }}</div>
+                                                </div>
+                                            @else
+                                                -
+                                            @endif
                                         </td>
                                     @endif
                                     <td class="px-6 py-4">
                                         <div class="flex flex-wrap items-center gap-3">
                                             <a
-                                                href="{{ route('users.show', array_merge(['user' => $user], array_filter(['q' => $filterQ, 'role' => $filterRole, 'subdivision_id' => $filterSubdivision, 'view' => $filterView !== 'active' ? $filterView : null], static fn ($value) => $value !== null && $value !== ''))) }}"
+                                                href="{{ route('users.show', array_merge(['user' => $user], array_filter(['q' => $filterQ, 'role' => $filterRole, 'subdivision_id' => $filterSubdivision, 'view' => $filterView !== 'active' ? $filterView : null, 'per_page' => $perPage], static fn ($value) => $value !== null && $value !== ''))) }}"
                                                 class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
                                             >
                                                 View
@@ -114,6 +160,7 @@
                                                     <input type="hidden" name="role" value="{{ $filterRole }}">
                                                     <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                                     <input type="hidden" name="view" value="{{ $filterView }}">
+                                                    <input type="hidden" name="per_page" value="{{ $perPage }}">
                                                     <button
                                                         type="submit"
                                                         class="inline-flex items-center rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 transition hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-800"
@@ -140,6 +187,30 @@
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+                <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-slate-500">
+                        @if ($users->total() > 0)
+                            Showing {{ $users->firstItem() }}-{{ $users->lastItem() }} of {{ $users->total() }} users
+                        @else
+                            No user records to paginate
+                        @endif
+                    </p>
+                    <div class="flex items-center gap-2">
+                        @if ($users->onFirstPage())
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
+                        @else
+                            <a href="{{ $users->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
+                        @endif
+                        <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
+                            Page {{ $users->currentPage() }} of {{ max($users->lastPage(), 1) }}
+                        </span>
+                        @if ($users->hasMorePages())
+                            <a href="{{ $users->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
+                        @else
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -254,6 +325,7 @@
                                 <input type="hidden" name="role" value="{{ $filterRole }}">
                                 <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                 <input type="hidden" name="view" value="{{ $filterView }}">
+                                <input type="hidden" name="per_page" value="{{ $perPage }}">
 
                                 <button
                                     type="button"
@@ -294,6 +366,7 @@
                                 <input type="hidden" name="role" value="{{ $filterRole }}">
                                 <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                 <input type="hidden" name="view" value="{{ $filterView }}">
+                                <input type="hidden" name="per_page" value="{{ $perPage }}">
 
                                 <button
                                     type="button"

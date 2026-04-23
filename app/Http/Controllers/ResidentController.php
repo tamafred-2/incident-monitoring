@@ -22,6 +22,11 @@ class ResidentController extends Controller
         $filterQ = trim((string) $request->query('q', ''));
         $filterStatus = trim((string) $request->query('status', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
+        $perPage = $this->resolvePerPageChoice(
+            $request->query('per_page_custom'),
+            $request->query('per_page'),
+            10
+        );
 
         $query = Resident::query()
             ->with(['subdivision', 'house', 'user'])
@@ -49,7 +54,9 @@ class ResidentController extends Controller
             $query->where('subdivision_id', $filterSubdivision);
         }
 
-        $residents = $query->get();
+        $residents = $query
+            ->paginate($perPage)
+            ->withQueryString();
         $subdivisions = $user->isAdmin()
             ? Subdivision::orderBy('subdivision_name')->get()
             : collect();
@@ -63,7 +70,8 @@ class ResidentController extends Controller
             'houses',
             'filterQ',
             'filterStatus',
-            'filterSubdivision'
+            'filterSubdivision',
+            'perPage'
         ));
     }
 
@@ -267,6 +275,32 @@ class ResidentController extends Controller
             'q' => $request->input('q', $request->query('q')),
             'status' => $request->input('status', $request->query('status')),
             'subdivision_id' => $request->input('subdivision_id', $request->query('subdivision_id')),
+            'per_page' => $this->resolvePerPageChoice(
+                $request->input('per_page_custom', $request->query('per_page_custom')),
+                $request->input('per_page', $request->query('per_page')),
+                10
+            ),
         ], static fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function resolvePerPage(mixed $value, int $default = 10): int
+    {
+        $perPage = (int) $value;
+
+        if ($perPage < 1) {
+            return $default;
+        }
+
+        return min($perPage, 100);
+    }
+
+    private function resolvePerPageChoice(mixed $customValue, mixed $selectedValue, int $default = 10): int
+    {
+        $custom = (int) $customValue;
+        if ($custom > 0) {
+            return $this->resolvePerPage($custom, $default);
+        }
+
+        return $this->resolvePerPage($selectedValue, $default);
     }
 }

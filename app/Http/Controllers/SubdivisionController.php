@@ -35,6 +35,11 @@ class SubdivisionController extends Controller
         }
 
         $filterQ = trim((string) $request->query('q', ''));
+        $perPage = $this->resolvePerPageChoice(
+            $request->query('per_page_custom'),
+            $request->query('per_page'),
+            10
+        );
 
         $housesQuery = $subdivision->houses()->with('residents');
 
@@ -45,9 +50,13 @@ class SubdivisionController extends Controller
             });
         }
 
-        $houses = $housesQuery->orderBy('block')->orderBy('lot')->get();
+        $houses = $housesQuery
+            ->orderBy('block')
+            ->orderBy('lot')
+            ->paginate($perPage)
+            ->withQueryString();
 
-        return view('subdivisions.show', compact('subdivision', 'houses', 'filterQ'));
+        return view('subdivisions.show', compact('subdivision', 'houses', 'filterQ', 'perPage'));
     }
 
     public function logo(Subdivision $subdivision): BinaryFileResponse
@@ -105,5 +114,26 @@ class SubdivisionController extends Controller
         $subdivision->update($data);
         return redirect()->route('subdivisions.show', $subdivision)
             ->with('success', 'Subdivision updated successfully.');
+    }
+
+    private function resolvePerPage(mixed $value, int $default = 10): int
+    {
+        $perPage = (int) $value;
+
+        if ($perPage < 1) {
+            return $default;
+        }
+
+        return min($perPage, 100);
+    }
+
+    private function resolvePerPageChoice(mixed $customValue, mixed $selectedValue, int $default = 10): int
+    {
+        $custom = (int) $customValue;
+        if ($custom > 0) {
+            return $this->resolvePerPage($custom, $default);
+        }
+
+        return $this->resolvePerPage($selectedValue, $default);
     }
 }

@@ -55,20 +55,22 @@
                 <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
                     <input type="hidden" name="tab" :value="activeMonitoringTab">
                     <input type="hidden" name="view" value="{{ $historyView }}">
+                    <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                    <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                     <div class="flex-1 min-w-48">
                         <label class="block text-sm font-medium text-slate-700">Search</label>
                         <input
                             type="search"
                             name="q"
                             value="{{ $filterQ }}"
-                            placeholder="Name, host, company, house, status"
+                            placeholder="Name, phone, host, house, plate, status"
                             class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                         >
                     </div>
                     <div class="flex items-center gap-2">
                         <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
                         <a
-                            href="{{ route('visitors.index', ['view' => $historyView]) }}"
+                            href="{{ route('visitors.index', ['view' => $historyView, 'history_per_page' => $historyPerPage, 'check_out_per_page' => $checkOutPerPage]) }}"
                             class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                         >
                             Clear
@@ -111,6 +113,8 @@
                         <input type="hidden" name="tab" value="check-in">
                         <input type="hidden" name="q" value="{{ $filterQ }}">
                         <input type="hidden" name="view" value="{{ $historyView }}">
+                        <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                        <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
 
                         <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                             <div class="mb-4">
@@ -415,16 +419,43 @@
                 >
                     <div class="h-full overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
                         <div class="px-6 py-4 border-b border-slate-200">
-                            <h3 class="text-lg font-semibold text-slate-900">Visitor Check-out</h3>
-                            <p class="mt-1 text-sm text-slate-500">Visitors who are still inside and ready to be checked out.</p>
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-slate-900">Visitor Check-out</h3>
+                                    <p class="mt-1 text-sm text-slate-500">Visitors who are still inside and ready to be checked out.</p>
+                                </div>
+                                <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
+                                    @if ($filterQ !== '')
+                                        <input type="hidden" name="q" value="{{ $filterQ }}">
+                                    @endif
+                                    @if ($filterSubdivision)
+                                        <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                                    @endif
+                                    <input type="hidden" name="tab" value="check-out">
+                                    <input type="hidden" name="view" value="{{ $historyView }}">
+                                    <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                                        <div class="mt-1 flex flex-wrap items-center gap-2">
+                                            <select name="check_out_per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                                @foreach ([10, 25, 50, 100] as $size)
+                                                    <option value="{{ $size }}" @selected($checkOutPerPage === $size)>{{ $size }}</option>
+                                                @endforeach
+                                            </select>
+                                            <input type="number" name="check_out_per_page_custom" min="1" max="100" value="" placeholder="{{ $checkOutPerPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom check-out rows per page">
+                                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                         <div class="overflow-x-auto">
                             <table class="min-w-full text-sm divide-y divide-slate-200">
                                 <thead class="bg-slate-50">
                                     <tr>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Name</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Company</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Host</th>
+                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Plate Number</th>
+                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Resident / Host</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Checked In</th>
                                         @if (auth()->user()->hasRole('security'))
@@ -435,16 +466,46 @@
                                 <tbody class="bg-white divide-y divide-slate-100">
                                     @forelse ($insideVisitors as $visitor)
                                         <tr>
-                                            <td class="px-6 py-4 font-medium text-slate-900">{{ $visitor->full_name }}</td>
-                                            <td class="px-6 py-4 text-slate-600">{{ $visitor->company ?: '-' }}</td>
-                                            <td class="px-6 py-4 text-slate-600">{{ $visitor->host_employee ?: '-' }}</td>
-                                            <td class="px-6 py-4 text-slate-600">{{ $visitor->house_address_or_unit ?: '-' }}</td>
-                                            <td class="px-6 py-4 text-slate-600">{{ optional($visitor->check_in)->format('M j, Y H:i') }}</td>
+                                            <td class="px-6 py-4">
+                                                <div class="min-w-[12rem]">
+                                                    <div class="font-medium text-slate-900">{{ $visitor->full_name }}</div>
+                                                    <div class="mt-1 text-xs text-slate-500">{{ $visitor->phone ?: 'No phone provided' }}</div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-slate-600">
+                                                <span class="inline-flex min-w-[7rem] whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                                    {{ $visitor->plate_number ?: 'No vehicle' }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 text-slate-600">
+                                                <div class="max-w-[14rem] truncate" title="{{ $visitor->host_employee ?: '-' }}">
+                                                    {{ $visitor->host_employee ?: '-' }}
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-slate-600">
+                                                <div class="max-w-[12rem] truncate" title="{{ $visitor->house_address_or_unit ?: '-' }}">
+                                                    {{ $visitor->house_address_or_unit ?: '-' }}
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-slate-600">
+                                                @if ($visitor->check_in)
+                                                    <div class="min-w-[9rem]">
+                                                        <div class="whitespace-nowrap font-medium text-slate-700">{{ $visitor->check_in->format('M j, Y') }}</div>
+                                                        <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $visitor->check_in->format('h:i A') }}</div>
+                                                    </div>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
                                             @if (auth()->user()->hasRole('security'))
                                                 <td class="px-6 py-4">
                                                     <form method="POST" action="{{ route('visitors.checkout', $visitor) }}">
                                                         @csrf
                                                         <input type="hidden" name="tab" value="check-out">
+                                                        <input type="hidden" name="q" value="{{ $filterQ }}">
+                                                        <input type="hidden" name="view" value="{{ $historyView }}">
+                                                        <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                                                        <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                                                         <button class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700">Check Out</button>
                                                     </form>
                                                 </td>
@@ -459,6 +520,30 @@
                             </table>
                         </div>
                     </div>
+                    <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+                        <p class="text-sm text-slate-500">
+                            @if ($insideVisitors->total() > 0)
+                                Showing {{ $insideVisitors->firstItem() }}-{{ $insideVisitors->lastItem() }} of {{ $insideVisitors->total() }} visitors
+                            @else
+                                No visitor records to paginate
+                            @endif
+                        </p>
+                        <div class="flex items-center gap-2">
+                            @if ($insideVisitors->onFirstPage())
+                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
+                            @else
+                                <a href="{{ $insideVisitors->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
+                            @endif
+                            <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
+                                Page {{ $insideVisitors->currentPage() }} of {{ max($insideVisitors->lastPage(), 1) }}
+                            </span>
+                            @if ($insideVisitors->hasMorePages())
+                                <a href="{{ $insideVisitors->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
+                            @else
+                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
+                            @endif
+                        </div>
+                    </div>
                 </section>
 
                 <section
@@ -469,7 +554,7 @@
                     class="min-w-0 scroll-mt-24"
                 >
                     <div class="h-full overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900">Visitor History</h3>
                             <p class="mt-1 text-sm text-slate-500">Browse previous visitor records, statuses, and timestamps.</p>
@@ -483,6 +568,7 @@
                                 <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                             @endif
                             <input type="hidden" name="tab" value="history">
+                            <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                             <div>
                                 <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">View</label>
                                 <select
@@ -493,6 +579,17 @@
                                     <option value="deleted" @selected($historyView === 'deleted')>Deleted</option>
                                     <option value="all" @selected($historyView === 'all')>All</option>
                                 </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                                <div class="mt-1 flex flex-wrap items-center gap-2">
+                                    <select name="history_per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                        @foreach ([10, 25, 50, 100] as $size)
+                                            <option value="{{ $size }}" @selected($historyPerPage === $size)>{{ $size }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input type="number" name="history_per_page_custom" min="1" max="100" value="" placeholder="{{ $historyPerPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom history rows per page">
+                                </div>
                             </div>
 
                             <button
@@ -507,6 +604,8 @@
                                     'tab' => 'history',
                                     'q' => $filterQ,
                                     'subdivision_id' => $filterSubdivision,
+                                    'history_per_page' => $historyPerPage,
+                                    'check_out_per_page' => $checkOutPerPage,
                                 ], fn ($value) => filled($value))) }}"
                                 class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                             >
@@ -520,9 +619,9 @@
                                 <tr>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Name</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Phone</th>
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Company</th>
+                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Plate Number</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Purpose</th>
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Host</th>
+                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Resident / Host</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check In</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check Out</th>
@@ -538,17 +637,71 @@
                             <tbody class="bg-white divide-y divide-slate-100">
                                 @forelse ($visitors as $visitor)
                                     <tr>
-                                        <td class="px-6 py-4 font-medium text-slate-900">{{ $visitor->full_name }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ $visitor->phone ?: '-' }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ $visitor->company ?: '-' }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ \Illuminate\Support\Str::limit($visitor->purpose ?: '-', 40) }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ $visitor->host_employee ?: '-' }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ $visitor->house_address_or_unit ?: '-' }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ optional($visitor->check_in)->format('M j, Y H:i') }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ optional($visitor->check_out)->format('M j, Y H:i') ?: '-' }}</td>
-                                        <td class="px-6 py-4 text-slate-600">{{ $visitor->status }}</td>
+                                        <td class="px-6 py-4">
+                                            <div class="min-w-[12rem]">
+                                                <div class="font-medium text-slate-900">{{ $visitor->full_name }}</div>
+                                                <div class="mt-1 text-xs text-slate-500">{{ $visitor->phone ?: 'No phone provided' }}</div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <div class="whitespace-nowrap">{{ $visitor->phone ?: '-' }}</div>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <span class="inline-flex min-w-[7rem] whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                                {{ $visitor->plate_number ?: 'No vehicle' }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <div class="max-w-[16rem] break-words" title="{{ $visitor->purpose ?: '-' }}">
+                                                {{ \Illuminate\Support\Str::limit($visitor->purpose ?: '-', 80) }}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <div class="max-w-[14rem] truncate" title="{{ $visitor->host_employee ?: '-' }}">
+                                                {{ $visitor->host_employee ?: '-' }}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <div class="max-w-[12rem] truncate" title="{{ $visitor->house_address_or_unit ?: '-' }}">
+                                                {{ $visitor->house_address_or_unit ?: '-' }}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            @if ($visitor->check_in)
+                                                <div class="min-w-[9rem]">
+                                                    <div class="whitespace-nowrap font-medium text-slate-700">{{ $visitor->check_in->format('M j, Y') }}</div>
+                                                    <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $visitor->check_in->format('h:i A') }}</div>
+                                                </div>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            @if ($visitor->check_out)
+                                                <div class="min-w-[9rem]">
+                                                    <div class="whitespace-nowrap font-medium text-slate-700">{{ $visitor->check_out->format('M j, Y') }}</div>
+                                                    <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $visitor->check_out->format('h:i A') }}</div>
+                                                </div>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold {{ $visitor->status === 'Inside' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
+                                                {{ $visitor->status }}
+                                            </span>
+                                        </td>
                                         @if ($historyView !== 'active')
-                                            <td class="px-6 py-4 text-slate-600">{{ optional($visitor->deleted_at)->format('M j, Y H:i') ?: '-' }}</td>
+                                            <td class="px-6 py-4 text-slate-600">
+                                                @if ($visitor->deleted_at)
+                                                    <div class="min-w-[9rem]">
+                                                        <div class="whitespace-nowrap font-medium text-slate-700">{{ $visitor->deleted_at->format('M j, Y') }}</div>
+                                                        <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $visitor->deleted_at->format('h:i A') }}</div>
+                                                    </div>
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
                                         @endif
                                         @if (auth()->user()->hasRole('security'))
                                             <td class="px-6 py-4">
@@ -559,6 +712,8 @@
                                                             <input type="hidden" name="q" value="{{ $filterQ }}">
                                                             <input type="hidden" name="tab" value="history">
                                                             <input type="hidden" name="view" value="{{ $historyView }}">
+                                                            <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                                                            <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                                                             <button class="px-3 py-2 text-xs font-semibold border rounded-lg border-emerald-200 text-emerald-700 hover:bg-emerald-50">Restore</button>
                                                         </form>
                                                         <button
@@ -591,6 +746,30 @@
                             </tbody>
                         </table>
                     </div>
+                    <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+                        <p class="text-sm text-slate-500">
+                            @if ($visitors->total() > 0)
+                                Showing {{ $visitors->firstItem() }}-{{ $visitors->lastItem() }} of {{ $visitors->total() }} visitor records
+                            @else
+                                No visitor records to paginate
+                            @endif
+                        </p>
+                        <div class="flex items-center gap-2">
+                            @if ($visitors->onFirstPage())
+                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
+                            @else
+                                <a href="{{ $visitors->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
+                            @endif
+                            <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
+                                Page {{ $visitors->currentPage() }} of {{ max($visitors->lastPage(), 1) }}
+                            </span>
+                            @if ($visitors->hasMorePages())
+                                <a href="{{ $visitors->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
+                            @else
+                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
+                            @endif
+                        </div>
+                    </div>
                     </div>
                 </section>
             </div>
@@ -620,6 +799,8 @@
                                 <input type="hidden" name="q" value="{{ $filterQ }}">
                                 <input type="hidden" name="tab" value="history">
                                 <input type="hidden" name="view" value="{{ $historyView }}">
+                                <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                                <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
 
                                 <button
                                     type="button"
@@ -659,6 +840,8 @@
                                 <input type="hidden" name="q" value="{{ $filterQ }}">
                                 <input type="hidden" name="tab" value="history">
                                 <input type="hidden" name="view" value="{{ $historyView }}">
+                                <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                                <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
 
                                 <button
                                     type="button"
@@ -678,5 +861,3 @@
         </div>
     </div>
 </x-app-layout>
-
-

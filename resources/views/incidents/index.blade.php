@@ -44,10 +44,12 @@
                         </div>
                         <div class="flex flex-wrap items-end gap-3 md:justify-end">
                             <input type="hidden" name="view" :value="activeIncidentTab === 'history' ? 'history' : 'active'">
+                            <input type="hidden" name="per_page" value="{{ $perPage }}">
                             <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
                             <a
                                 href="{{ route('incidents.index', array_filter([
                                     'view' => $activeIncidentTab === 'history' ? 'history' : null,
+                                    'per_page' => $perPage,
                                 ])) }}"
                                 class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                             >
@@ -74,6 +76,7 @@
                         href="{{ route('incidents.index', array_filter([
                             'q' => $filterQ ?: null,
                             'subdivision_id' => $filterSubdivision ?: null,
+                            'per_page' => $perPage,
                         ])) }}"
                         :class="activeIncidentTab === 'incident' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
                         class="px-1 pb-3 text-sm font-semibold transition border-b-2"
@@ -85,6 +88,7 @@
                             'q' => $filterQ ?: null,
                             'subdivision_id' => $filterSubdivision ?: null,
                             'view' => 'history',
+                            'per_page' => $perPage,
                         ])) }}"
                         :class="activeIncidentTab === 'history' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
                         class="px-1 pb-3 text-sm font-semibold transition border-b-2"
@@ -96,7 +100,7 @@
 
             <div class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
                 @if ($activeIncidentTab === 'history')
-                    <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900">Incident History</h3>
                             <p class="mt-1 text-sm text-slate-500">Browse resolved incidents and older records.</p>
@@ -120,6 +124,17 @@
                                     <option value="all" @selected($historyView === 'all')>All</option>
                                 </select>
                             </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                                <div class="mt-1 flex flex-wrap items-center gap-2">
+                                    <select name="per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                        @foreach ([10, 25, 50, 100] as $size)
+                                            <option value="{{ $size }}" @selected($perPage === $size)>{{ $size }}</option>
+                                        @endforeach
+                                    </select>
+                                    <input type="number" name="per_page_custom" min="1" max="100" value="" placeholder="{{ $perPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom incident rows per page">
+                                </div>
+                            </div>
 
                             <button
                                 type="submit"
@@ -133,6 +148,7 @@
                                     'q' => $filterQ ?: null,
                                     'subdivision_id' => $filterSubdivision ?: null,
                                     'view' => 'history',
+                                    'per_page' => $perPage,
                                 ])) }}"
                                 class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                             >
@@ -142,8 +158,33 @@
                     </div>
                 @else
                     <div class="px-6 py-4 border-b border-slate-200">
-                        <h3 class="text-lg font-semibold text-slate-900">Active Incidents</h3>
-                        <p class="mt-1 text-sm text-slate-500">Incidents that are newly reported or still being handled.</p>
+                        <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold text-slate-900">Active Incidents</h3>
+                                <p class="mt-1 text-sm text-slate-500">Incidents that are newly reported or still being handled.</p>
+                            </div>
+                            <form method="GET" action="{{ route('incidents.index') }}" class="flex flex-wrap items-end gap-3">
+                                @if ($filterQ !== '')
+                                    <input type="hidden" name="q" value="{{ $filterQ }}">
+                                @endif
+                                @if ($filterSubdivision)
+                                    <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                                @endif
+                                <input type="hidden" name="view" value="active">
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                                    <div class="mt-1 flex flex-wrap items-center gap-2">
+                                        <select name="per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                            @foreach ([10, 25, 50, 100] as $size)
+                                                <option value="{{ $size }}" @selected($perPage === $size)>{{ $size }}</option>
+                                            @endforeach
+                                        </select>
+                                        <input type="number" name="per_page_custom" min="1" max="100" value="" placeholder="{{ $perPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom active incident rows per page">
+                                        <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 @endif
                 <div class="overflow-x-auto">
@@ -177,6 +218,7 @@
                                                 'q' => $filterQ ?: null,
                                                 'subdivision_id' => $filterSubdivision ?: null,
                                                 'view' => $historyView !== 'active' ? $historyView : null,
+                                                'per_page' => $perPage,
                                             ])) }}"
                                             class="font-mono font-medium text-slate-900 hover:text-sky-700"
                                         >
@@ -184,12 +226,42 @@
                                         </a>
                                     </td>
                                     @if ($subdivisions->isNotEmpty())
-                                        <td class="px-6 py-4 text-slate-600">{{ $incident->subdivision->subdivision_name ?? '-' }}</td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <div class="max-w-[13rem] truncate" title="{{ $incident->subdivision->subdivision_name ?? '-' }}">
+                                                {{ $incident->subdivision->subdivision_name ?? '-' }}
+                                            </div>
+                                        </td>
                                     @endif
-                                    <td class="px-6 py-4 text-slate-600">{{ $incident->category ?: '-' }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $incident->status }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $incident->verifiedResident?->full_name ?? '-' }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ $incident->assignedStaff?->full_name ?? '-' }}</td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <div class="min-w-[11rem]">
+                                            <div class="font-medium text-slate-900">{{ $incident->category ?: '-' }}</div>
+                                            <div class="mt-1 max-w-[14rem] truncate text-xs text-slate-500" title="{{ $incident->location ?: 'No location provided' }}">
+                                                {{ $incident->location ?: 'No location provided' }}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold
+                                            {{ $incident->trashed()
+                                                ? 'bg-rose-100 text-rose-700'
+                                                : ($incident->status === 'Resolved'
+                                                    ? 'bg-emerald-100 text-emerald-700'
+                                                    : ($incident->status === 'Open'
+                                                        ? 'bg-amber-100 text-amber-700'
+                                                        : 'bg-sky-100 text-sky-700')) }}">
+                                            {{ $incident->trashed() ? 'Archived' : $incident->status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <div class="max-w-[13rem] truncate" title="{{ $incident->verifiedResident?->full_name ?? '-' }}">
+                                            {{ $incident->verifiedResident?->full_name ?? '-' }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <div class="max-w-[13rem] truncate" title="{{ $incident->assignedStaff?->full_name ?? '-' }}">
+                                            {{ $incident->assignedStaff?->full_name ?? '-' }}
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4 text-slate-600">
                                         @if ($incident->proofPhotos->isNotEmpty())
                                             @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proofPhotos->first()->photo_path]))
@@ -229,19 +301,47 @@
                                         @endif
                                     </td>
                                     @if ($historyView !== 'active')
-                                        <td class="px-6 py-4 text-slate-600">{{ optional($incident->deleted_at)->format('M j, Y H:i') ?: '-' }}</td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            @if ($incident->deleted_at)
+                                                <div class="min-w-[9rem]">
+                                                    <div class="whitespace-nowrap font-medium text-slate-700">{{ $incident->deleted_at->format('M j, Y') }}</div>
+                                                    <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $incident->deleted_at->format('h:i A') }}</div>
+                                                </div>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
                                     @endif
-                                    <td class="px-6 py-4 text-slate-600">{{ optional($incident->reported_at)->format('M j, Y H:i') ?: '-' }}</td>
-                                    <td class="px-6 py-4 text-slate-600">{{ optional($incident->resolved_at)->format('M j, Y H:i') ?: '-' }}</td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        @if ($incident->reported_at)
+                                            <div class="min-w-[9rem]">
+                                                <div class="whitespace-nowrap font-medium text-slate-700">{{ $incident->reported_at->format('M j, Y') }}</div>
+                                                <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $incident->reported_at->format('h:i A') }}</div>
+                                            </div>
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        @if ($incident->resolved_at)
+                                            <div class="min-w-[9rem]">
+                                                <div class="whitespace-nowrap font-medium text-slate-700">{{ $incident->resolved_at->format('M j, Y') }}</div>
+                                                <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $incident->resolved_at->format('h:i A') }}</div>
+                                            </div>
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-2 whitespace-nowrap">
                                             <a
                                                 href="{{ route('incidents.show', array_filter([
-                                                    'incidentId' => $incident->incident_id,
-                                                    'q' => $filterQ ?: null,
-                                                    'subdivision_id' => $filterSubdivision ?: null,
-                                                    'view' => $historyView !== 'active' ? $historyView : null,
-                                                ])) }}"
+                                                'incidentId' => $incident->incident_id,
+                                                'q' => $filterQ ?: null,
+                                                'subdivision_id' => $filterSubdivision ?: null,
+                                                'view' => $historyView !== 'active' ? $historyView : null,
+                                                'per_page' => $perPage,
+                                            ])) }}"
                                                 class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50"
                                             >
                                                 View
@@ -254,6 +354,7 @@
                                                         <input type="hidden" name="q" value="{{ $filterQ }}">
                                                         <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                                         <input type="hidden" name="view" value="{{ $historyView }}">
+                                                        <input type="hidden" name="per_page" value="{{ $perPage }}">
                                                         <button class="px-3 py-2 text-xs font-semibold border rounded-lg border-emerald-200 text-emerald-700 hover:bg-emerald-50">Restore</button>
                                                     </form>
                                                     <button
@@ -271,6 +372,7 @@
                                                             'q' => $filterQ ?: null,
                                                             'subdivision_id' => $filterSubdivision ?: null,
                                                             'view' => $historyView !== 'active' ? $historyView : null,
+                                                            'per_page' => $perPage,
                                                         ])) }}"
                                                         class="px-3 py-2 text-xs font-semibold border rounded-lg border-sky-200 text-sky-700 hover:bg-sky-50"
                                                     >
@@ -291,11 +393,35 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ $historyView !== 'active' ? 10 : 9 }}" class="px-6 py-10 text-center text-slate-500">No incidents found.</td>
+                                    <td colspan="{{ ($subdivisions->isNotEmpty() ? 1 : 0) + ($historyView !== 'active' ? 10 : 9) }}" class="px-6 py-10 text-center text-slate-500">No incidents found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                     </table>
+                </div>
+                <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-sm text-slate-500">
+                        @if ($incidents->total() > 0)
+                            Showing {{ $incidents->firstItem() }}-{{ $incidents->lastItem() }} of {{ $incidents->total() }} incidents
+                        @else
+                            No incident records to paginate
+                        @endif
+                    </p>
+                    <div class="flex items-center gap-2">
+                        @if ($incidents->onFirstPage())
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
+                        @else
+                            <a href="{{ $incidents->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
+                        @endif
+                        <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
+                            Page {{ $incidents->currentPage() }} of {{ max($incidents->lastPage(), 1) }}
+                        </span>
+                        @if ($incidents->hasMorePages())
+                            <a href="{{ $incidents->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
+                        @else
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -329,6 +455,7 @@
                                     <input type="hidden" name="q" value="{{ $filterQ }}">
                                     <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                     <input type="hidden" name="view" value="{{ $historyView }}">
+                                    <input type="hidden" name="per_page" value="{{ $perPage }}">
 
                                     <button
                                         type="button"
@@ -366,6 +493,7 @@
                                     <input type="hidden" name="q" value="{{ $filterQ }}">
                                     <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                     <input type="hidden" name="view" value="{{ $historyView }}">
+                                    <input type="hidden" name="per_page" value="{{ $perPage }}">
 
                                     <button
                                         type="button"

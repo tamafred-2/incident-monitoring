@@ -44,11 +44,18 @@
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Email</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $resident->email ?: '-' }}</dd>
+                                <dd class="max-w-[16rem] font-medium text-right text-slate-900 break-all">{{ $resident->email ?: '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Created</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $resident->created_at?->format('M j, Y h:i A') ?? '-' }}</dd>
+                                <dd class="font-medium text-right text-slate-900">
+                                    @if ($resident->created_at)
+                                        <span class="block whitespace-nowrap">{{ $resident->created_at->format('M j, Y') }}</span>
+                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $resident->created_at->format('h:i A') }}</span>
+                                    @else
+                                        -
+                                    @endif
+                                </dd>
                             </div>
                         </dl>
                     </div>
@@ -58,15 +65,15 @@
                         <dl class="mt-4 space-y-3 text-sm">
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Assigned House</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $resident->house?->display_address ?? 'Not assigned' }}</dd>
+                                <dd class="max-w-[16rem] font-medium text-right text-slate-900 break-words">{{ $resident->house?->display_address ?? 'Not assigned' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Street</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $resident->house?->street ?: ($resident->address_or_unit ?: '-') }}</dd>
+                                <dd class="max-w-[16rem] font-medium text-right text-slate-900 break-words">{{ $resident->house?->street ?: ($resident->address_or_unit ?: '-') }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Linked User Account</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $resident->user?->email ?? 'Not linked' }}</dd>
+                                <dd class="max-w-[16rem] font-medium text-right text-slate-900 break-all">{{ $resident->user?->email ?? 'Not linked' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Verified Incidents</dt>
@@ -103,9 +110,17 @@
                                                     {{ $incident->report_id }}
                                                 </a>
                                             </td>
-                                            <td class="px-4 py-3 text-slate-600">{{ $incident->category ?: '-' }}</td>
-                                            <td class="px-4 py-3 text-slate-600">{{ $incident->status }}</td>
-                                            <td class="px-4 py-3 text-slate-600">{{ $incident->reporter?->full_name ?? 'System' }}</td>
+                                            <td class="px-4 py-3 text-slate-600">
+                                                <div class="max-w-[12rem] truncate" title="{{ $incident->category ?: '-' }}">{{ $incident->category ?: '-' }}</div>
+                                            </td>
+                                            <td class="px-4 py-3 text-slate-600">
+                                                <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold {{ $incident->status === 'Resolved' ? 'bg-emerald-100 text-emerald-700' : ($incident->status === 'Open' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700') }}">
+                                                    {{ $incident->status }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-slate-600">
+                                                <div class="max-w-[12rem] truncate" title="{{ $incident->reporter?->full_name ?? 'System' }}">{{ $incident->reporter?->full_name ?? 'System' }}</div>
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
