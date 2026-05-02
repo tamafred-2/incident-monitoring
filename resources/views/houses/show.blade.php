@@ -1,15 +1,19 @@
 <x-app-layout>
+    @php
+        $isSecurityViewer = auth()->user()->role === 'security';
+    @endphp
+
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">House Details</h2>
-                <p class="mt-1 text-sm text-slate-500">Review the managed block and lot record.</p>
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $isSecurityViewer ? 'House Contacts' : 'House Details' }}</h2>
+                <p class="mt-1 text-sm text-slate-500">{{ $isSecurityViewer ? 'Review residents and contact numbers in this house.' : 'Review the managed block and lot record.' }}</p>
             </div>
             <a
-                href="{{ route('houses.index', $indexContext) }}"
+                href="{{ $backUrl }}"
                 class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
-                Back to Houses
+                {{ $backLabel }}
             </a>
         </div>
     </x-slot>
@@ -59,7 +63,7 @@
                                 <thead class="bg-slate-50">
                                     <tr>
                                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Resident</th>
-                                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Code</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Contact</th>
                                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
                                     </tr>
                                 </thead>
@@ -67,7 +71,7 @@
                                     @foreach ($house->residents as $resident)
                                         <tr>
                                             <td class="px-4 py-3 font-medium text-slate-900">{{ $resident->full_name }}</td>
-                                            <td class="px-4 py-3 text-slate-600">{{ $resident->resident_code }}</td>
+                                            <td class="px-4 py-3 text-slate-600">{{ $resident->phone ?: '-' }}</td>
                                             <td class="px-4 py-3 text-slate-600">{{ $resident->status }}</td>
                                         </tr>
                                     @endforeach

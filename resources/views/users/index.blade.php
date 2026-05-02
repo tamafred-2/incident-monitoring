@@ -55,30 +55,6 @@
                         <h3 class="text-lg font-semibold text-slate-900">User Directory</h3>
                         <p class="mt-1 text-sm text-slate-500">Manage admin, security, and staff accounts from one table.</p>
                     </div>
-                    <form method="GET" action="{{ route('users.index') }}" class="flex flex-wrap items-end gap-3">
-                        @if ($filterQ !== '')
-                            <input type="hidden" name="q" value="{{ $filterQ }}">
-                        @endif
-                        @if ($filterRole !== '')
-                            <input type="hidden" name="role" value="{{ $filterRole }}">
-                        @endif
-                        @if ($filterSubdivision !== null && $filterSubdivision !== '')
-                            <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
-                        @endif
-                        <input type="hidden" name="view" value="{{ $filterView }}">
-                        <div>
-                            <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
-                            <div class="mt-1 flex flex-wrap items-center gap-2">
-                                <select name="per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                                    @foreach ([10, 25, 50, 100] as $size)
-                                        <option value="{{ $size }}" @selected($perPage === $size)>{{ $size }}</option>
-                                    @endforeach
-                                </select>
-                                <input type="number" name="per_page_custom" min="1" max="100" value="" placeholder="{{ $perPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom user rows per page">
-                                <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
-                            </div>
-                        </div>
-                    </form>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -196,19 +172,54 @@
                             No user records to paginate
                         @endif
                     </p>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <form method="GET" action="{{ route('users.index') }}" class="flex items-center gap-2">
+                            @if ($filterQ !== '')
+                                <input type="hidden" name="q" value="{{ $filterQ }}">
+                            @endif
+                            @if ($filterRole !== '')
+                                <input type="hidden" name="role" value="{{ $filterRole }}">
+                            @endif
+                            @if ($filterSubdivision !== null && $filterSubdivision !== '')
+                                <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                            @endif
+                            <input type="hidden" name="view" value="{{ $filterView }}">
+                            <label for="users-rows-per-page" class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                            <input
+                                id="users-rows-per-page"
+                                type="text"
+                                name="per_page"
+                                list="users-row-size-options"
+                                value=""
+                                placeholder="{{ $perPage }}"
+                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                aria-label="Rows per page"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                pattern="[0-9]{1,3}"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)"
+                                onchange="if (this.value.trim() !== '') { this.form.requestSubmit(); }"
+                                onkeydown="if (event.key === 'Enter') { event.preventDefault(); if (this.value.trim() !== '') { this.form.requestSubmit(); } }"
+                            >
+                            <datalist id="users-row-size-options">
+                                <option value="10"></option>
+                                <option value="25"></option>
+                                <option value="50"></option>
+                                <option value="100"></option>
+                            </datalist>
+                        </form>
                         @if ($users->onFirstPage())
-                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></span>
                         @else
-                            <a href="{{ $users->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
+                            <a href="{{ $users->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></a>
                         @endif
                         <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
                             Page {{ $users->currentPage() }} of {{ max($users->lastPage(), 1) }}
                         </span>
                         @if ($users->hasMorePages())
-                            <a href="{{ $users->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
+                            <a href="{{ $users->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></a>
                         @else
-                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></span>
                         @endif
                     </div>
                 </div>

@@ -22,7 +22,7 @@
         </div>
 
         <div class="mt-6 rounded-2xl bg-slate-950 px-4 py-3 text-center text-sm font-semibold tracking-[0.18em] text-white">
-            {{ $resident->resident_code }}
+            Resident #{{ $resident->resident_id }}
         </div>
 
         <div class="mt-8 flex justify-center print:hidden">

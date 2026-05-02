@@ -17,7 +17,7 @@
     <x-slot name="header">
         <div>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">Report Incident</h2>
-            <p class="mt-1 text-sm text-slate-500">Submit a new incident report from inside the Laravel app.</p>
+            <p class="mt-1 text-sm text-slate-500">Submit an incident manually or through the system, then move it from pending to resolved.</p>
         </div>
     </x-slot>
 
@@ -43,25 +43,6 @@
                         <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">
                     @endif
 
-                    <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <div class="flex flex-col gap-3">
-                            <div>
-                                <h3 class="text-base font-semibold text-slate-900">Verify Reporter</h3>
-                                <p class="mt-1 text-sm text-slate-500">Optional: verify the reporting resident by code or QR before you submit the incident.</p>
-                            </div>
-                            <input type="hidden" name="verified_resident_id" id="verified_resident_id" value="{{ old('verified_resident_id') }}">
-                            <input type="hidden" name="verification_method" id="verification_method" value="{{ old('verification_method') }}">
-                            <div class="flex flex-col gap-3 sm:flex-row">
-                                <input type="text" id="resident_code_input" placeholder="Resident code" class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 sm:max-w-xs">
-                                <button type="button" id="verify_code_btn" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white">Verify by code</button>
-                                <button type="button" id="scan_qr_btn" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white">Scan QR</button>
-                                <button type="button" id="clear_verify_btn" class="hidden rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-white">Clear</button>
-                            </div>
-                            <p id="verified_display" class="hidden rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"></p>
-                            <p id="verify_error" class="hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800"></p>
-                        </div>
-                    </div>
-
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">Description</label>
                         <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description') }}</textarea>
@@ -69,6 +50,15 @@
                     @php
                         $selectedCategory = old('category');
                         $customCategory = old('category_other');
+                        $incidentStatusOptions = [
+                            'Open' => 'Pending (Open)',
+                            'Under Investigation' => 'Pending (Under Investigation)',
+                            'Reported' => 'Pending (Reported)',
+                            'Investigating' => 'Pending (Investigating)',
+                            'Ongoing' => 'Pending (Ongoing)',
+                            'Resolved' => 'Resolved',
+                            'Closed' => 'Resolved (Closed)',
+                        ];
                     @endphp
                     <div data-category-root>
                         <label class="block text-sm font-medium text-slate-700">Category</label>
@@ -104,8 +94,8 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>
                         <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-status-select>
-                            @foreach (['Open', 'Under Investigation', 'Resolved', 'Closed'] as $status)
-                                <option value="{{ $status }}" @selected(old('status', 'Open') === $status)>{{ $status }}</option>
+                            @foreach ($incidentStatusOptions as $statusValue => $statusLabel)
+                                <option value="{{ $statusValue }}" @selected(old('status', 'Open') === $statusValue)>{{ $statusLabel }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -136,18 +126,6 @@
         </div>
     </div>
 
-    <div id="scan_modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 px-4">
-        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <div class="mb-4 flex items-center justify-between">
-                <h3 class="text-lg font-semibold text-slate-900">Scan resident QR code</h3>
-                <button type="button" id="close_scan_modal" class="rounded-lg px-2 py-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700">&times;</button>
-            </div>
-            <div id="qr_reader" class="min-h-[260px]"></div>
-            <p id="scan_status" class="mt-3 text-sm text-slate-500"></p>
-        </div>
-    </div>
-
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
         (function () {
             function initializeCustomCategories() {
@@ -280,173 +258,6 @@
             }
 
             initializeProofPhotoPreviews();
-
-            var verifyUrl = @json(route('api.verify-resident'));
-            var modal = document.getElementById('scan_modal');
-            var qrReaderEl = document.getElementById('qr_reader');
-            var verifyError = document.getElementById('verify_error');
-            var verifiedDisplay = document.getElementById('verified_display');
-            var residentIdInput = document.getElementById('verified_resident_id');
-            var verificationMethodInput = document.getElementById('verification_method');
-            var clearButton = document.getElementById('clear_verify_btn');
-            var scanner = null;
-
-            function getSubdivisionId() {
-                var input = document.querySelector('[name="subdivision_id"]');
-                return input ? input.value : '';
-            }
-
-            function showError(message) {
-                verifyError.textContent = message;
-                verifyError.classList.remove('hidden');
-            }
-
-            function hideError() {
-                verifyError.textContent = '';
-                verifyError.classList.add('hidden');
-            }
-
-            function setVerified(residentId, method, name, address) {
-                residentIdInput.value = residentId;
-                verificationMethodInput.value = method;
-                verifiedDisplay.textContent = 'Verified: ' + name + (address ? ' - ' + address : '');
-                verifiedDisplay.classList.remove('hidden');
-                clearButton.classList.remove('hidden');
-                hideError();
-            }
-
-            function clearVerified() {
-                residentIdInput.value = '';
-                verificationMethodInput.value = '';
-                verifiedDisplay.textContent = '';
-                verifiedDisplay.classList.add('hidden');
-                clearButton.classList.add('hidden');
-                hideError();
-            }
-
-            function verifyCode(code, method) {
-                var subdivisionId = getSubdivisionId();
-                if (!code || !subdivisionId) {
-                    showError('Resident code and subdivision are required.');
-                    return;
-                }
-
-                fetch(verifyUrl + '?code=' + encodeURIComponent(code) + '&subdivision_id=' + encodeURIComponent(subdivisionId), {
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                })
-                    .then(function (response) { return response.json(); })
-                    .then(function (data) {
-                        if (data.success) {
-                            setVerified(data.resident_id, method, data.full_name, data.address_or_unit);
-                            return;
-                        }
-
-                        showError(data.error || 'Verification failed.');
-                    })
-                    .catch(function () {
-                        showError('Verification request failed.');
-                    });
-            }
-
-            function stopScanner() {
-                if (!scanner) {
-                    return Promise.resolve();
-                }
-
-                return scanner.stop().catch(function () {}).then(function () {
-                    scanner = null;
-                    qrReaderEl.innerHTML = '';
-                });
-            }
-
-            document.getElementById('verify_code_btn').addEventListener('click', function () {
-                verifyCode(document.getElementById('resident_code_input').value.trim(), 'manual_code');
-            });
-
-            clearButton.addEventListener('click', clearVerified);
-
-            document.getElementById('scan_qr_btn').addEventListener('click', function () {
-                var subdivisionId = getSubdivisionId();
-                if (!subdivisionId) {
-                    showError('Please select a subdivision first.');
-                    return;
-                }
-
-                hideError();
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                document.getElementById('scan_status').textContent = 'Starting camera...';
-
-                if (typeof Html5Qrcode === 'undefined') {
-                    document.getElementById('scan_status').textContent = 'QR scanner failed to load. Use manual code instead.';
-                    return;
-                }
-
-                scanner = new Html5Qrcode('qr_reader');
-
-                Html5Qrcode.getCameras()
-                    .then(function (cameras) {
-                        if (!cameras || !cameras.length) {
-                            throw new Error('No camera found');
-                        }
-
-                        var cameraId = cameras[0].id;
-                        for (var i = 0; i < cameras.length; i += 1) {
-                            if (cameras[i].label && cameras[i].label.toLowerCase().indexOf('back') !== -1) {
-                                cameraId = cameras[i].id;
-                                break;
-                            }
-                        }
-
-                        return scanner.start(
-                            cameraId,
-                            { fps: 10, qrbox: { width: 250, height: 250 } },
-                            function (decodedText) {
-                                var code = decodedText.indexOf('RESIDENT:') === 0 ? decodedText.slice(9) : decodedText;
-                                document.getElementById('resident_code_input').value = code;
-                                document.getElementById('scan_status').textContent = 'Verifying...';
-                                stopScanner().then(function () {
-                                    modal.classList.add('hidden');
-                                    modal.classList.remove('flex');
-                                    verifyCode(code, 'qr_scan');
-                                });
-                            },
-                            function () {}
-                        );
-                    })
-                    .then(function () {
-                        document.getElementById('scan_status').textContent = 'Point the camera at the resident QR code.';
-                    })
-                    .catch(function () {
-                        document.getElementById('scan_status').textContent = 'Could not start the camera. Use manual code instead.';
-                    });
-            });
-
-            document.getElementById('close_scan_modal').addEventListener('click', function () {
-                stopScanner().then(function () {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                });
-            });
-
-            modal.addEventListener('click', function (event) {
-                if (event.target !== modal) {
-                    return;
-                }
-
-                stopScanner().then(function () {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                });
-            });
-
-            if (residentIdInput.value && verificationMethodInput.value) {
-                verifiedDisplay.textContent = 'Resident verification will be kept on submit.';
-                verifiedDisplay.classList.remove('hidden');
-                clearButton.classList.remove('hidden');
-            }
         })();
     </script>
 </x-app-layout>

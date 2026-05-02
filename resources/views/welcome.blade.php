@@ -446,6 +446,96 @@
             background: linear-gradient(90deg, #0ea5e9, #38bdf8);
         }
 
+        .workflow-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 22px;
+        }
+
+        .workflow-card {
+            padding: 20px;
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(14, 165, 233, 0.12);
+        }
+
+        .workflow-card h3 {
+            margin: 0;
+            font-size: 1.12rem;
+            color: var(--heading);
+        }
+
+        .workflow-list {
+            margin: 12px 0 0;
+            padding-left: 22px;
+            color: var(--muted);
+        }
+
+        .workflow-list li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+        }
+
+        .label-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .flow-label {
+            display: inline-flex;
+            align-items: center;
+            padding: 9px 14px;
+            border-radius: 999px;
+            background: #f0f7ff;
+            border: 1px solid rgba(14, 165, 233, 0.18);
+            color: #0b4a6b;
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .table-wrap {
+            margin-top: 22px;
+            overflow-x: auto;
+            border-radius: 22px;
+            border: 1px solid rgba(14, 165, 233, 0.16);
+            background: rgba(255, 255, 255, 0.88);
+        }
+
+        .permissions-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 860px;
+        }
+
+        .permissions-table th,
+        .permissions-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #dce6f2;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .permissions-table th {
+            background: #e8f3ff;
+            color: #0f2940;
+            font-size: 0.78rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .permissions-table td {
+            color: #2f4460;
+            line-height: 1.55;
+        }
+
+        .permissions-table tr:last-child td {
+            border-bottom: 0;
+        }
+
         .page-footer {
             padding: 18px 0 34px;
             text-align: center;
@@ -454,7 +544,8 @@
 
         @media (max-width: 980px) {
             .hero-card,
-            .feature-grid {
+            .feature-grid,
+            .workflow-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -540,38 +631,39 @@
                 <nav class="nav-links">
                     <a href="#modules" class="nav-link">Modules</a>
                     <a href="#overview" class="nav-link">Overview</a>
+                    <a href="#process" class="nav-link">Process</a>
                     <a href="{{ route('login') }}" class="primary-btn">Get Started</a>
                 </nav>
             </header>
 
             <section class="hero-card">
                 <div class="hero-copy">
-                    <div class="eyebrow">Secure And Organized Operations</div>
+                    <div class="eyebrow">Manual And Automated Approval</div>
                     <h1 class="hero-title">
-                        Manage Your Visitors, <span class="accent">Track Incidents</span> &amp; Run Better Records
+                        Contact Residents Through <span class="accent">Registered Phone Numbers</span> And Track Every Response
                     </h1>
                     <p class="hero-description">
-                        Built for subdivision operations, the system helps staff manage visitor check-in, resident records,
-                        house assignments, and incident workflows in a cleaner and more professional interface.
+                        The Admin/Guard or system contacts the resident using the phone number registered in the system.
+                        Visitor approval, check-in/check-out, and incident handling follow one aligned workflow for manual and automated operations.
                     </p>
 
                     <div class="hero-actions">
                         <a href="{{ route('login') }}" class="primary-btn">Log In To Continue</a>
-                        <a href="#modules" class="ghost-btn">Explore Modules</a>
+                        <a href="#process" class="ghost-btn">View Corrected Process</a>
                     </div>
 
                     <div class="hero-metrics">
                         <div class="metric">
-                            <span class="metric-value">4 Core</span>
-                            <p class="metric-note">Visitors, residents, subdivisions, and incidents all connected in a single platform.</p>
+                            <span class="metric-value">Manual</span>
+                            <p class="metric-note">Admin/Guard records details and contacts the resident using the registered phone number in the system.</p>
                         </div>
                         <div class="metric">
-                            <span class="metric-value">Live Logs</span>
-                            <p class="metric-note">Check-ins and check-outs stay organized for staff monitoring at the gate.</p>
+                            <span class="metric-value">Automated</span>
+                            <p class="metric-note">System check-in triggers resident contact through the registered number and returns the resident response.</p>
                         </div>
                         <div class="metric">
-                            <span class="metric-value">Traceable</span>
-                            <p class="metric-note">Every incident and resident record is easier to review, verify, and present.</p>
+                            <span class="metric-value">Incident</span>
+                            <p class="metric-note">Incident status remains Pending until handled, then moves to Resolved with report-ready logs.</p>
                         </div>
                     </div>
                 </div>
@@ -584,32 +676,32 @@
 
                     <div class="preview-panel">
                         <div class="mini-label">Platform Modules</div>
-                        <h3>Everything you need for everyday subdivision monitoring.</h3>
-                        <p>The platform is organized around actual operations, making records easier to manage and present.</p>
+                        <h3>Aligned to your diagram and corrected call process.</h3>
+                        <p>Every visitor and incident step now uses the same wording and flow for manual and automated operations.</p>
                         <div class="progress"><span></span></div>
-                        <p>Integrated workflow coverage for visitor entry, resident registry, and incident response.</p>
+                        <p>Resident contact always points to the registered phone number stored in the system.</p>
                     </div>
 
                     <div class="preview-grid">
                         <div class="preview-mini">
-                            <div class="mini-label">Visitor Logs</div>
-                            <span class="mini-value">Check-In</span>
-                            <p>Handle arrivals, departures, and active visitor records with cleaner tracking tables.</p>
+                            <div class="mini-label">Visitor Approval</div>
+                            <span class="mini-value">Phone-Based</span>
+                            <p>Contact resident using registered phone number and record the resident response.</p>
                         </div>
                         <div class="preview-mini">
-                            <div class="mini-label">Resident Registry</div>
-                            <span class="mini-value">Profiles</span>
-                            <p>Connect residents to house assignments, subdivision records, and supporting details.</p>
+                            <div class="mini-label">Resident Response</div>
+                            <span class="mini-value">Approve / Deny</span>
+                            <p>Resident response controls whether visitor entry is allowed or denied.</p>
                         </div>
                         <div class="preview-mini">
-                            <div class="mini-label">Incident Flow</div>
+                            <div class="mini-label">Incident Reporting</div>
                             <span class="mini-value">Tracked</span>
-                            <p>Report, verify, assign, and resolve incidents with visible status updates.</p>
+                            <p>Report incident through call or system, then track Pending and Resolved states.</p>
                         </div>
                         <div class="preview-mini">
-                            <div class="mini-label">Subdivision Data</div>
-                            <span class="mini-value">Linked</span>
-                            <p>Keep houses, residents, and staff context aligned inside one monitoring system.</p>
+                            <div class="mini-label">Reports</div>
+                            <span class="mini-value">Generated</span>
+                            <p>Generate visitor and incident reports from logged responses and status updates.</p>
                         </div>
                     </div>
                 </aside>
@@ -623,40 +715,148 @@
                 <div class="overview-head">
                     <div>
                         <div class="card-eyebrow">Platform Overview</div>
-                        <h2 class="overview-heading">A more professional front door for your monitoring system.</h2>
+                        <h2 class="overview-heading">System flow aligned to your manual and automated diagram.</h2>
                         <p class="overview-copy">
-                            The landing page now highlights the actual core workflows instead of stretching empty space.
-                            It introduces the system clearly for staff, administrators, and subdivision stakeholders.
+                            This system now centers the corrected process wording: the Admin/Guard or system contacts the resident using the
+                            registered phone number in the system, then records the resident response to allow or deny entry.
                         </p>
                     </div>
                     <div class="overview-stat">
-                        <strong>100%</strong>
-                        <span>Operationally connected modules</span>
+                        <strong>2</strong>
+                        <span>Main paths: Manual and Automated</span>
                     </div>
                 </div>
             </div>
 
             <div class="feature-grid">
                 <article class="feature-card">
-                    <div class="card-eyebrow">Visitor Logs</div>
-                    <h3>Check-In Monitoring</h3>
+                    <div class="card-eyebrow">Resident Contact</div>
+                    <h3>Registered Phone Number</h3>
                     <div class="accent-line"></div>
-                    <p>Handle arrivals, departures, and active visitor records with cleaner tracking tables and a more readable workflow.</p>
+                    <p>Use the resident phone number saved in the system for visitor confirmation and incident-related calls.</p>
                 </article>
 
                 <article class="feature-card">
-                    <div class="card-eyebrow">Resident Registry</div>
-                    <h3>Profiles And Houses</h3>
+                    <div class="card-eyebrow">Visitor Control</div>
+                    <h3>Approve Or Deny Entry</h3>
                     <div class="accent-line"></div>
-                    <p>Keep resident profiles, house assignments, subdivision placement, and contact records connected in one place.</p>
+                    <p>Resident response is captured and shown to Admin/Guard before visitor check-in and final entry decision.</p>
                 </article>
 
                 <article class="feature-card">
-                    <div class="card-eyebrow" style="color: #0369a1;">Incident Flow</div>
-                    <h3>Report And Resolve</h3>
+                    <div class="card-eyebrow" style="color: #0369a1;">Incident Status</div>
+                    <h3>Pending To Resolved</h3>
                     <div class="accent-line"></div>
-                    <p>Track incident reports from submission to verification, assignment, and status updates without losing context.</p>
+                    <p>Manage incidents with clear pending and resolved outcomes, then generate visitor and incident reports.</p>
                 </article>
+            </div>
+
+            <div class="overview-card" id="process">
+                <div class="card-eyebrow">Corrected Main Process</div>
+                <h2 class="overview-heading">Manual and automated flows now use one consistent approval logic.</h2>
+                <p class="overview-copy">The corrected wording is applied system-wide: <strong>Contact resident using registered phone number</strong>.</p>
+
+                <div class="workflow-grid">
+                    <article class="workflow-card">
+                        <h3>Manual Visitor Approval</h3>
+                        <ol class="workflow-list">
+                            <li>Visitor arrives.</li>
+                            <li>Admin/Guard records visitor details.</li>
+                            <li>Admin/Guard gets the resident phone number from the system.</li>
+                            <li>Admin/Guard contacts the resident using the registered phone number.</li>
+                            <li>Resident response is recorded.</li>
+                            <li>Visitor approved? If yes, allow entry. If no, deny entry.</li>
+                            <li>Visitor checks out before leaving.</li>
+                        </ol>
+                    </article>
+
+                    <article class="workflow-card">
+                        <h3>System/Automated Visitor Approval</h3>
+                        <ol class="workflow-list">
+                            <li>Visitor checks in through the system.</li>
+                            <li>System identifies the resident being visited.</li>
+                            <li>System uses the resident registered phone number.</li>
+                            <li>System automatically contacts the resident.</li>
+                            <li>Resident responds through call, SMS, app, or system prompt.</li>
+                            <li>System shows the response to Admin/Guard.</li>
+                            <li>Visitor approved? If yes, allow entry and track check-out.</li>
+                        </ol>
+                    </article>
+
+                    <article class="workflow-card">
+                        <h3>Manual Incident Reporting</h3>
+                        <ol class="workflow-list">
+                            <li>Resident, Admin/Guard, or Admin/Staff notices an incident.</li>
+                            <li>Incident is reported manually.</li>
+                            <li>Admin/Guard or Admin/Staff records the incident.</li>
+                            <li>Admin/Staff reviews and manages incident status.</li>
+                            <li>Status remains Incident pending until handled.</li>
+                            <li>Once handled, mark as Incident resolved.</li>
+                        </ol>
+                    </article>
+
+                    <article class="workflow-card">
+                        <h3>System/Automated Incident Reporting</h3>
+                        <ol class="workflow-list">
+                            <li>Incident is submitted through the system.</li>
+                            <li>System records the incident and notifies Admin/Staff.</li>
+                            <li>Admin/Staff reviews updates and assigns actions.</li>
+                            <li>System tracks Incident pending until resolved.</li>
+                            <li>Once fixed, status is changed to Incident resolved.</li>
+                            <li>Generate visitor/incident report when needed.</li>
+                        </ol>
+                    </article>
+                </div>
+
+                <div class="label-cloud">
+                    <span class="flow-label">Contact resident using registered phone number</span>
+                    <span class="flow-label">Resident response</span>
+                    <span class="flow-label">Visitor approved?</span>
+                    <span class="flow-label">Report incident using registered phone number/system</span>
+                    <span class="flow-label">Generate visitor/incident report</span>
+                    <span class="flow-label">Manage incident status</span>
+                    <span class="flow-label">Incident resolved</span>
+                    <span class="flow-label">Incident pending</span>
+                </div>
+            </div>
+
+            <div class="overview-card">
+                <div class="card-eyebrow">Permission Summary</div>
+                <h2 class="overview-heading">Manual and automated responsibilities by user type.</h2>
+
+                <div class="table-wrap">
+                    <table class="permissions-table">
+                        <thead>
+                            <tr>
+                                <th>User Type</th>
+                                <th>Manual Actions</th>
+                                <th>System/Automated Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Resident</strong></td>
+                                <td>Answer call, approve visitor, deny visitor, report incident.</td>
+                                <td>Receive automated call/SMS/app notification, approve or deny visitor through system.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Visitor</strong></td>
+                                <td>Give details to Admin/Guard, wait for approval, check in, check out.</td>
+                                <td>Use system check-in/check-out and wait for automated approval result.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Admin/Guard</strong></td>
+                                <td>Contact resident using registered phone number, record response, allow/deny visitor, assist incident report.</td>
+                                <td>Monitor resident response from system, confirm entry decision, review automated records.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Admin/Staff</strong></td>
+                                <td>Manage incidents, update status, generate reports.</td>
+                                <td>View automated logs, receive unresolved notifications, generate scheduled reports.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </section>
@@ -664,7 +864,7 @@
     <footer class="page-footer">
         <div class="shell">
             <strong>{{ $brandName }}</strong><br>
-            Visitor monitoring, resident records, subdivision houses, and incident tracking in one platform.
+            Visitor approval and incident reporting aligned to registered phone number contact logic.
         </div>
     </footer>
 </body>

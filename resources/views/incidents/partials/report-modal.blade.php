@@ -3,7 +3,7 @@
         <div class="flex items-start justify-between gap-4">
             <div>
                 <h3 class="text-lg font-semibold text-slate-900">Report Incident</h3>
-                <p class="mt-1 text-sm text-slate-500">Submit a new incident report from inside the Laravel app.</p>
+                <p class="mt-1 text-sm text-slate-500">Submit an incident manually or through the system, then track status from pending to resolved.</p>
             </div>
 
             <button
@@ -21,21 +21,14 @@
             @php
                 $residentUser = auth()->user()?->isResident();
                 $autoSubdivisionId = (int) old('subdivision_id', $effectiveSubdivision);
-                $autoSubdivisionName = $reportSubdivisions->firstWhere('subdivision_id', $autoSubdivisionId)?->subdivision_name
-                    ?? 'System subdivision';
                 $selectedLocation = old('location');
                 $houseLocations = $houses->pluck('display_address')->filter()->values();
                 $isOtherLocation = filled($selectedLocation) && !$houseLocations->contains($selectedLocation);
                 $locationSelectValue = $isOtherLocation ? '__other__' : ($selectedLocation ?? '');
             @endphp
 
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                <input type="hidden" name="subdivision_id" id="report_subdivision_id" value="{{ $autoSubdivisionId }}">
-                <div class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-                    {{ $autoSubdivisionName }}
-                </div>
-            </div>
+            <input type="hidden" name="subdivision_id" id="report_subdivision_id" value="{{ $autoSubdivisionId }}">
+            <input type="hidden" name="status" value="Open">
 
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-slate-700">House</label>
@@ -49,7 +42,6 @@
 
             @if ($residentUser)
                 <input type="hidden" name="reported_at" value="{{ now()->format('Y-m-d\TH:i') }}">
-                <input type="hidden" name="status" value="Open">
             @endif
 
             <div class="md:col-span-2">
@@ -107,34 +99,6 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Date Reported</label>
                     <input type="datetime-local" name="reported_at" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700">Status</label>
-                <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-status-select>
-                    @foreach (['Open', 'Under Investigation', 'Resolved', 'Closed'] as $status)
-                        <option value="{{ $status }}" @selected(old('status', 'Open') === $status)>{{ $status }}</option>
-                    @endforeach
-                </select>
-            </div>
-            @if (auth()->user()->isAdmin())
-                <div>
-                    <label class="block text-sm font-medium text-slate-700">Assign Staff (optional)</label>
-                    <select name="assigned_to" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                        <option value="">Unassigned</option>
-                        @foreach ($assignableStaff as $assignee)
-                            <option value="{{ $assignee->user_id }}" @selected((int) old('assigned_to') === (int) $assignee->user_id)>
-                                {{ $assignee->full_name }} - {{ ucfirst($assignee->role) }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('assigned_to')
-                        <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-                    @enderror
-                </div>
-            @endif
-            <div class="md:col-span-2 @if (!in_array(old('status', 'Open'), ['Resolved', 'Closed'], true)) hidden @endif" data-resolved-wrapper>
-                <label class="block text-sm font-medium text-slate-700">Date Resolved</label>
-                <input type="datetime-local" name="resolved_at" value="{{ old('resolved_at') }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-resolved-input>
                 </div>
             @endif
             <div class="md:col-span-2" data-proof-preview-root>
@@ -307,40 +271,6 @@
             }
 
             initializeLocationFields();
-
-            function initializeResolvedDateFields() {
-                var statusSelects = document.querySelectorAll('[data-status-select]');
-
-                statusSelects.forEach(function (select) {
-                    var root = select.closest('form');
-                    var resolvedWrapper = root ? root.querySelector('[data-resolved-wrapper]') : null;
-                    var resolvedInput = root ? root.querySelector('[data-resolved-input]') : null;
-                    var reportedInput = root ? root.querySelector('[name="reported_at"]') : null;
-
-                    if (!resolvedWrapper || !resolvedInput) {
-                        return;
-                    }
-
-                    function syncResolvedField() {
-                        var isResolved = select.value === 'Resolved' || select.value === 'Closed';
-                        resolvedWrapper.classList.toggle('hidden', !isResolved);
-
-                        if (isResolved) {
-                            if (!resolvedInput.value && reportedInput && reportedInput.value) {
-                                resolvedInput.value = reportedInput.value;
-                            }
-                            return;
-                        }
-
-                        resolvedInput.value = '';
-                    }
-
-                    select.addEventListener('change', syncResolvedField);
-                    syncResolvedField();
-                });
-            }
-
-            initializeResolvedDateFields();
 
             // Reload houses when subdivision changes
             var subdivisionSelect = document.getElementById('report_subdivision_id');

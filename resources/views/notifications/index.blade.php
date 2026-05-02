@@ -47,8 +47,29 @@
                         @endforeach
                     </div>
 
-                    <div class="mt-6">
-                        {{ $notifications->links() }}
+                    <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p class="text-sm text-slate-500">
+                            @if ($notifications->total() > 0)
+                                Showing {{ $notifications->firstItem() }}-{{ $notifications->lastItem() }} of {{ $notifications->total() }} notifications
+                            @else
+                                No notifications to paginate
+                            @endif
+                        </p>
+                        <div class="flex flex-wrap items-center gap-2">
+                            @if ($notifications->onFirstPage())
+                                <span class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-400"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></span>
+                            @else
+                                <a href="{{ $notifications->previousPageUrl() }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></a>
+                            @endif
+                            <span class="rounded-xl bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">
+                                Page {{ $notifications->currentPage() }} of {{ max($notifications->lastPage(), 1) }}
+                            </span>
+                            @if ($notifications->hasMorePages())
+                                <a href="{{ $notifications->nextPageUrl() }}" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></a>
+                            @else
+                                <span class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-400"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></span>
+                            @endif
+                        </div>
                     </div>
                 @endif
             </div>

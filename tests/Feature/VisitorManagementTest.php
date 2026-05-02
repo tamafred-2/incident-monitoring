@@ -255,4 +255,35 @@ class VisitorManagementTest extends TestCase
             ->assertDontSee('Beta Logistics')
             ->assertSee('value="Alpha"', false);
     }
+
+    public function test_staff_cannot_access_visitor_monitoring_pages(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Green Field',
+            'status' => 'Active',
+        ]);
+
+        $staff = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $visitor = Visitor::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'surname' => 'Flores',
+            'first_name' => 'Rina',
+            'check_in' => now(),
+            'status' => 'Inside',
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('visitors.index'))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('error', 'You do not have permission to access that page.');
+
+        $this->actingAs($staff)
+            ->get(route('visitors.show', ['visitor' => $visitor->visitor_id]))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('error', 'You do not have permission to access that page.');
+    }
 }

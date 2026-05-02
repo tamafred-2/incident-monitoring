@@ -3,7 +3,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">Edit Incident</h2>
-                <p class="mt-1 text-sm text-slate-500">Update incident information and add more proof images when needed.</p>
+                <p class="mt-1 text-sm text-slate-500">Update incident information while keeping pending and resolved status tracking clear.</p>
             </div>
             <div class="flex flex-wrap gap-3">
                 <a
@@ -66,21 +66,9 @@
                         <label class="block text-sm font-medium text-slate-700">Report ID</label>
                         <input type="text" value="{{ $incident->report_id }}" disabled class="mt-1 w-full rounded-xl border-slate-200 bg-slate-50 text-sm text-slate-500 shadow-sm">
                     </div>
-                    @if (auth()->user()->isAdmin())
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-slate-700">Assign Responder</label>
-                            <select name="assigned_to" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                                <option value="">Unassigned</option>
-                                @foreach ($assignableStaff as $assignee)
-                                    <option value="{{ $assignee->user_id }}" @selected((int) old('assigned_to', $incident->assigned_to) === (int) $assignee->user_id)>
-                                        {{ $assignee->full_name }} - {{ ucfirst($assignee->role) }}{{ !$assignee->is_active ? ' (Inactive)' : '' }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    @else
+                    @if (!$isFullEditor)
                         <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600">
-                            Assigned responder mode. Report details are shown for reference; saving here updates the incident status and resolved date after on-site verification.
+                            Security mode: report details are shown for reference; saving here updates the incident status and resolved date.
                         </div>
                     @endif
                     <div class="md:col-span-2">
@@ -90,6 +78,18 @@
                     @php
                         $selectedCategory = old('category', in_array($incident->category, $incidentCategories, true) ? $incident->category : ($incident->category ? 'Other' : ''));
                         $customCategory = old('category_other', in_array($incident->category, $incidentCategories, true) ? '' : $incident->category);
+                        $removedProofPhotos = collect(old('remove_proof_photos', []))
+                            ->filter(fn ($path) => is_string($path))
+                            ->all();
+                        $incidentStatusOptions = [
+                            'Open' => 'Pending (Open)',
+                            'Under Investigation' => 'Pending (Under Investigation)',
+                            'Reported' => 'Pending (Reported)',
+                            'Investigating' => 'Pending (Investigating)',
+                            'Ongoing' => 'Pending (Ongoing)',
+                            'Resolved' => 'Resolved',
+                            'Closed' => 'Resolved (Closed)',
+                        ];
                     @endphp
                     <div data-category-root>
                         <label class="block text-sm font-medium text-slate-700">Category</label>
@@ -125,8 +125,8 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>
                         <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-status-select>
-                            @foreach (['Open', 'Under Investigation', 'Resolved', 'Closed'] as $status)
-                                <option value="{{ $status }}" @selected(old('status', $incident->status) === $status)>{{ $status }}</option>
+                            @foreach ($incidentStatusOptions as $statusValue => $statusLabel)
+                                <option value="{{ $statusValue }}" @selected(old('status', $incident->status) === $statusValue)>{{ $statusLabel }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -140,16 +140,30 @@
                         @if ($proofPhotos->isNotEmpty())
                             <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach ($proofPhotos as $photo)
-                                    <button
-                                        type="button"
-                                        @click="openPreview('{{ $photo['url'] }}', 'Existing proof image {{ $loop->iteration }}')"
-                                        class="overflow-hidden rounded-2xl border border-slate-200 bg-white transition hover:-translate-y-0.5 hover:shadow-md"
-                                    >
-                                        <img src="{{ $photo['url'] }}" alt="Existing proof image {{ $loop->iteration }}" class="h-40 w-full object-cover">
-                                        <div class="px-4 py-3 text-sm font-medium text-slate-700">Proof image {{ $loop->iteration }}</div>
-                                    </button>
+                                    @php $markedForRemoval = in_array($photo['path'], $removedProofPhotos, true); @endphp
+                                    <div class="overflow-hidden rounded-2xl border {{ $markedForRemoval ? 'border-rose-300 bg-rose-50/30' : 'border-slate-200 bg-white' }}">
+                                        <button
+                                            type="button"
+                                            @click="openPreview('{{ $photo['url'] }}', 'Existing proof image {{ $loop->iteration }}')"
+                                            class="w-full transition hover:-translate-y-0.5 hover:shadow-md"
+                                        >
+                                            <img src="{{ $photo['url'] }}" alt="Existing proof image {{ $loop->iteration }}" class="h-40 w-full object-cover">
+                                            <div class="px-4 py-3 text-sm font-medium text-slate-700">Proof image {{ $loop->iteration }}</div>
+                                        </button>
+                                        <label class="flex items-center gap-2 border-t border-slate-200 px-4 py-3 text-sm font-medium {{ $markedForRemoval ? 'text-rose-700' : 'text-slate-700' }}">
+                                            <input
+                                                type="checkbox"
+                                                name="remove_proof_photos[]"
+                                                value="{{ $photo['path'] }}"
+                                                class="rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                                                @checked($markedForRemoval)
+                                            >
+                                            Remove this image when saving
+                                        </label>
+                                    </div>
                                 @endforeach
                             </div>
+                            <p class="mt-3 text-xs text-slate-500">Checked images will be deleted after you click Save Changes.</p>
                         @else
                             <p class="mt-3 text-sm text-slate-500">This incident does not have any proof images yet.</p>
                         @endif
