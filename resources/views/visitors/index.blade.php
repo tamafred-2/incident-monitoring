@@ -25,7 +25,7 @@
                     @click="reminderOpen = !reminderOpen"
                     @focus="reminderOpen = true"
                     @blur="reminderOpen = false"
-                    class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                    class="inline-flex items-center justify-center transition border rounded-full w-9 h-9 border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
                     aria-label="Visitor approval reminder"
                 >
                     <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -133,7 +133,7 @@
             </div>
 
             @if (auth()->user()->hasRole('security'))
-                <x-modal name="visitor-check-in" :show="$errors->any()" maxWidth="4xl" focusable>
+                <x-modal name="visitor-check-in" :show="$errors->any()" maxWidth="6xl" focusable>
                     <div class="p-6 bg-white sm:p-8">
                         <div class="flex items-center justify-between gap-4 mb-5">
                             <div>
@@ -164,12 +164,12 @@
 
                         <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                             <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Type</h4>
-                            <div class="mt-3 inline-flex rounded-xl border border-slate-300 bg-white p-1">
+                            <div class="inline-flex p-1 mt-3 bg-white border rounded-xl border-slate-300">
                                 <button
                                     type="button"
                                     x-on:click="setVisitType('resident')"
                                     :class="visitType === 'resident' ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
-                                    class="rounded-lg px-3 py-2 text-sm font-semibold transition"
+                                    class="px-3 py-2 text-sm font-semibold transition rounded-lg"
                                 >
                                     Resident Visit
                                 </button>
@@ -177,7 +177,7 @@
                                     type="button"
                                     x-on:click="setVisitType('walk_in')"
                                     :class="visitType === 'walk_in' ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
-                                    class="rounded-lg px-3 py-2 text-sm font-semibold transition"
+                                    class="px-3 py-2 text-sm font-semibold transition rounded-lg"
                                 >
                                     Walk-in
                                 </button>
@@ -204,21 +204,21 @@
                                 <p class="mt-1 text-sm text-slate-500">Enter the visitor's name exactly as shown on their valid ID.</p>
                             </div>
 
-                            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.2fr_1.2fr_0.7fr_0.7fr]">
+                            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-slate-700">Surname</label>
+                                    <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">Surname</label>
                                     <input type="text" name="surname" value="{{ old('surname') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-slate-700">First Name</label>
+                                    <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">First Name</label>
                                     <input type="text" name="first_name" value="{{ old('first_name') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-slate-700">Middle Initials</label>
+                                    <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">Middle Initials</label>
                                     <input type="text" name="middle_initials" value="{{ old('middle_initials') }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" placeholder="M.I.">
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-slate-700">Extension</label>
+                                    <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">Extension</label>
                                     <input type="text" name="extension" value="{{ old('extension') }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" placeholder="Jr.">
                                 </div>
                             </div>
@@ -255,7 +255,7 @@
                                 Visitor is on vehicle
                             </label>
 
-                            <div x-show="isVehicle" x-cloak class="mt-4 grid gap-4 md:grid-cols-2">
+                            <div x-show="isVehicle" x-cloak class="grid gap-4 mt-4 md:grid-cols-2">
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700">Plate Number</label>
                                     <input
@@ -357,7 +357,7 @@
                                         x-model="walkInLocation"
                                         :required="visitType === 'walk_in'"
                                         :disabled="visitType !== 'walk_in'"
-                                        placeholder="e.g., Clubhouse Court, Gate Drop-off, Admin Office"
+                                        placeholder="e.g., Basketball Court, Gate Drop-off, Admin Office, Delivery"
                                         class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                 </div>
@@ -455,8 +455,8 @@
                                             <td class="px-6 py-4 text-slate-600">
                                                 @if ($visitor->check_in)
                                                     <div class="min-w-[9rem]">
-                                                        <div class="whitespace-nowrap font-medium text-slate-700">{{ $visitor->check_in->format('M j, Y') }}</div>
-                                                        <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $visitor->check_in->format('h:i A') }}</div>
+                                                        <div class="font-medium whitespace-nowrap text-slate-700">{{ $visitor->check_in->format('M j, Y') }}</div>
+                                                        <div class="mt-1 text-xs whitespace-nowrap text-slate-500">{{ $visitor->check_in->format('h:i A') }}</div>
                                                     </div>
                                                 @else
                                                     -
@@ -509,7 +509,7 @@
                                         list="check-out-row-size-options"
                                         value=""
                                         placeholder="{{ $checkOutPerPage }}"
-                                        class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                        class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                                         aria-label="Rows per page"
                                         inputmode="numeric"
                                         autocomplete="off"
@@ -614,8 +614,8 @@
                                         <td class="px-6 py-4 text-slate-600">
                                             @if ($visitor->check_in)
                                                 <div class="min-w-[9rem]">
-                                                    <div class="whitespace-nowrap font-medium text-slate-700">{{ $visitor->check_in->format('M j, Y') }}</div>
-                                                    <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $visitor->check_in->format('h:i A') }}</div>
+                                                    <div class="font-medium whitespace-nowrap text-slate-700">{{ $visitor->check_in->format('M j, Y') }}</div>
+                                                    <div class="mt-1 text-xs whitespace-nowrap text-slate-500">{{ $visitor->check_in->format('h:i A') }}</div>
                                                 </div>
                                             @else
                                                 -
@@ -624,8 +624,8 @@
                                         <td class="px-6 py-4 text-slate-600">
                                             @if ($visitor->check_out)
                                                 <div class="min-w-[9rem]">
-                                                    <div class="whitespace-nowrap font-medium text-slate-700">{{ $visitor->check_out->format('M j, Y') }}</div>
-                                                    <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $visitor->check_out->format('h:i A') }}</div>
+                                                    <div class="font-medium whitespace-nowrap text-slate-700">{{ $visitor->check_out->format('M j, Y') }}</div>
+                                                    <div class="mt-1 text-xs whitespace-nowrap text-slate-500">{{ $visitor->check_out->format('h:i A') }}</div>
                                                 </div>
                                             @else
                                                 -
@@ -671,7 +671,7 @@
                                     list="history-row-size-options"
                                     value=""
                                     placeholder="{{ $historyPerPage }}"
-                                    class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                    class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                                     aria-label="Rows per page"
                                     inputmode="numeric"
                                     autocomplete="off"
