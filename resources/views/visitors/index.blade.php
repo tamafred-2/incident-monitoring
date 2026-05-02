@@ -133,7 +133,7 @@
             </div>
 
             @if (auth()->user()->hasRole('security'))
-                <x-modal name="visitor-check-in" :show="$errors->any()" maxWidth="6xl" focusable>
+                <x-modal name="visitor-check-in" :show="$errors->any()" maxWidth="6xl" contentOverflow="visible" focusable>
                     <div class="p-6 bg-white sm:p-8">
                         <div class="flex items-center justify-between gap-4 mb-5">
                             <div>
@@ -152,7 +152,7 @@
                             </button>
                         </div>
 
-                    <form method="POST" action="{{ route('visitors.store') }}" class="space-y-6">
+                    <form method="POST" action="{{ route('visitors.store') }}" enctype="multipart/form-data" class="space-y-6">
                         @csrf
                         <input type="hidden" name="tab" value="check-in">
                         <input type="hidden" name="q" value="{{ $filterQ }}">
@@ -244,6 +244,26 @@
 
                         <div class="p-5 bg-white border rounded-2xl border-slate-200">
                             <div class="mb-4">
+                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">ID Photo</h4>
+                                <p class="mt-1 text-sm text-slate-500">A valid ID photo is required before submitting.</p>
+                            </div>
+
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Upload ID Photo</label>
+                                    <input
+                                        type="file"
+                                        name="id_photo"
+                                        accept="image/*"
+                                        required
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 bg-white border rounded-2xl border-slate-200">
+                            <div class="mb-4">
                                 <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Vehicle Option</h4>
                                 <p class="mt-1 text-sm text-slate-500">Enable this when the visitor arrives by vehicle.</p>
                             </div>
@@ -327,7 +347,7 @@
                                     <ul
                                         x-cloak
                                         x-show="hostOpen && availableResidents.length > 0"
-                                        class="absolute z-20 w-full mt-1 overflow-hidden text-sm bg-white border shadow-lg rounded-xl border-slate-200"
+                                        class="absolute z-20 w-full mt-1 max-h-64 overflow-y-auto text-sm bg-white border shadow-lg rounded-xl border-slate-200"
                                     >
                                         <template x-for="resident in availableResidents" :key="resident.id">
                                             <li
@@ -428,9 +448,7 @@
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Resident / Host</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Checked In</th>
-                                        @if (auth()->user()->hasRole('security'))
-                                            <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
-                                        @endif
+                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-slate-100">
@@ -462,22 +480,30 @@
                                                     -
                                                 @endif
                                             </td>
-                                            @if (auth()->user()->hasRole('security'))
-                                                <td class="px-6 py-4">
-                                                    <form method="POST" action="{{ route('visitors.checkout', $visitor) }}">
-                                                        @csrf
-                                                        <input type="hidden" name="tab" value="check-out">
-                                                        <input type="hidden" name="q" value="{{ $filterQ }}">
-                                                        <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
-                                                        <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
-                                                        <button class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700">Check Out</button>
-                                                    </form>
-                                                </td>
-                                            @endif
+                                            <td class="px-6 py-4">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <a
+                                                        href="{{ route('visitors.show', ['visitor' => $visitor->visitor_id]) }}"
+                                                        class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
+                                                    >
+                                                        View
+                                                    </a>
+                                                    @if (auth()->user()->hasRole('security'))
+                                                        <form method="POST" action="{{ route('visitors.checkout', $visitor) }}">
+                                                            @csrf
+                                                            <input type="hidden" name="tab" value="check-out">
+                                                            <input type="hidden" name="q" value="{{ $filterQ }}">
+                                                            <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                                                            <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
+                                                            <button class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700">Check Out</button>
+                                                        </form>
+                                                    @endif
+                                                </div>
+                                            </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ auth()->user()->hasRole('security') ? 5 : 4 }}" class="px-6 py-10 text-center text-slate-500">No visitors are currently inside.</td>
+                                            <td colspan="5" class="px-6 py-10 text-center text-slate-500">No visitors are currently inside.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -582,6 +608,7 @@
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check In</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check Out</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
+                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-slate-100">
@@ -636,10 +663,18 @@
                                                 {{ $visitor->status }}
                                             </span>
                                         </td>
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <a
+                                                href="{{ route('visitors.show', ['visitor' => $visitor->visitor_id]) }}"
+                                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
+                                            >
+                                                View
+                                            </a>
+                                        </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
+                                        <td colspan="9" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

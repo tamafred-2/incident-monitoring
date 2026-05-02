@@ -7,6 +7,7 @@ use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class VisitorCheckInFlowTest extends TestCase
@@ -51,6 +52,7 @@ class VisitorCheckInFlowTest extends TestCase
                 'on_vehicle' => 1,
                 'plate_number' => 'ABC 1234',
                 'passenger_count' => 3,
+                'id_photo' => UploadedFile::fake()->create('visitor-id.jpg', 120, 'image/jpeg'),
                 'house_address_or_unit' => 'Block 3 Lot 12',
                 'resident_id' => $resident->resident_id,
             ]);
@@ -98,6 +100,7 @@ class VisitorCheckInFlowTest extends TestCase
                 'on_vehicle' => 1,
                 'plate_number' => 'XYZ 9876',
                 'passenger_count' => 4,
+                'id_photo' => UploadedFile::fake()->create('walk-in-id.jpg', 120, 'image/jpeg'),
                 'house_address_or_unit' => 'Clubhouse Court',
             ]);
 

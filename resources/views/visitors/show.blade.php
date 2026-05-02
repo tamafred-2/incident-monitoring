@@ -100,7 +100,20 @@
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">ID Photo</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ $visitor->id_photo_path ? 'Uploaded' : 'Not uploaded' }}</dd>
+                                <dd class="text-right font-medium text-slate-900">
+                                    @if ($visitor->id_photo_path)
+                                        <a
+                                            href="{{ route('visitors.photo', ['visitor' => $visitor->visitor_id]) }}"
+                                            target="_blank"
+                                            rel="noopener"
+                                            class="text-sky-700 hover:text-sky-800 hover:underline"
+                                        >
+                                            View uploaded photo
+                                        </a>
+                                    @else
+                                        Not uploaded
+                                    @endif
+                                </dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Checked In</dt>
@@ -133,6 +146,19 @@
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Purpose</h4>
                         <p class="mt-3 text-sm leading-7 text-slate-700 break-words">{{ $visitor->purpose ?: 'No purpose provided.' }}</p>
                     </div>
+
+                    @if ($visitor->id_photo_path)
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5">
+                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">ID Photo Preview</h4>
+                            <a href="{{ route('visitors.photo', ['visitor' => $visitor->visitor_id]) }}" target="_blank" rel="noopener" class="mt-3 block">
+                                <img
+                                    src="{{ route('visitors.photo', ['visitor' => $visitor->visitor_id]) }}"
+                                    alt="Visitor ID photo"
+                                    class="max-h-64 w-full rounded-xl border border-slate-200 object-contain"
+                                >
+                            </a>
+                        </div>
+                    @endif
 
                     <div class="rounded-2xl border border-slate-200 bg-white p-5">
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Summary</h4>
