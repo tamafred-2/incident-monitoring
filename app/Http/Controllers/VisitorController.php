@@ -10,8 +10,11 @@ use App\Models\VisitorRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class VisitorController extends Controller
 {
@@ -137,6 +140,18 @@ class VisitorController extends Controller
         ]);
     }
 
+    public function idPhoto(Request $request, Visitor $visitor): BinaryFileResponse
+    {
+        if (!$request->user()->canAccessSubdivision($visitor->subdivision_id)) {
+            abort(403);
+        }
+
+        $absolutePath = $this->visitorPhotoAbsolutePath($visitor->id_photo_path);
+        abort_unless($absolutePath !== null, 404);
+
+        return response()->file($absolutePath);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
@@ -151,6 +166,7 @@ class VisitorController extends Controller
             'on_vehicle'            => ['nullable', 'boolean'],
             'plate_number'          => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
             'passenger_count'       => ['nullable', 'integer', 'min:1', 'max:20', 'required_if:on_vehicle,1'],
+            'id_photo'              => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'host_employee'         => ['nullable', 'string', 'max:150'],
             'house_address_or_unit' => ['nullable', 'string', 'max:120', 'required_if:visit_type,resident', 'required_if:visit_type,walk_in'],
             'resident_id'           => ['nullable', 'integer', 'required_if:visit_type,resident'],
@@ -160,6 +176,8 @@ class VisitorController extends Controller
         if (!$subdivisionId) {
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
+
+        $idPhotoPath = $this->storeVisitorIdPhoto($request);
 
         if (($data['visit_type'] ?? 'resident') === 'walk_in') {
             $onVehicle = (bool) ($data['on_vehicle'] ?? false);
@@ -179,6 +197,7 @@ class VisitorController extends Controller
                 'phone'                 => $data['phone'],
                 'plate_number'          => $plateNumber,
                 'passenger_count'       => $passengerCount,
+                'id_photo_path'         => $idPhotoPath,
                 'purpose'               => $data['purpose'] ?? null,
                 'host_employee'         => null,
                 'house_address_or_unit' => trim((string) ($data['house_address_or_unit'] ?? '')) ?: null,
@@ -242,7 +261,7 @@ class VisitorController extends Controller
             'phone'                 => $data['phone'],
             'plate_number'          => $plateNumber,
             'passenger_count'       => $passengerCount,
-            'id_photo_path'         => null,
+            'id_photo_path'         => $idPhotoPath,
             'purpose'               => $data['purpose'] ?? null,
             'house_address_or_unit' => $house->display_address,
             'status'                => 'Pending',
@@ -405,5 +424,30 @@ class VisitorController extends Controller
         }
 
         return $this->resolvePerPage($selectedValue, $default);
+    }
+
+    private function storeVisitorIdPhoto(Request $request): string
+    {
+        $file = $request->file('id_photo');
+        if (!$file) {
+            abort(422, 'ID photo is required.');
+        }
+
+        return $file->store('uploads/visitors/id-photos', 'public');
+    }
+
+    private function visitorPhotoAbsolutePath(?string $path): ?string
+    {
+        if (!$path || !str_starts_with($path, 'uploads/visitors/id-photos/')) {
+            return null;
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            return Storage::disk('public')->path($path);
+        }
+
+        $legacyPath = public_path($path);
+
+        return File::exists($legacyPath) ? $legacyPath : null;
     }
 }
