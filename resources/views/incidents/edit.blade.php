@@ -42,22 +42,14 @@
                         <input type="hidden" name="view" value="{{ request('view') }}">
                     @endif
 
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                        <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
-                            <option value="">Select subdivision</option>
-                            @foreach ($subdivisions as $subdivision)
-                                <option value="{{ $subdivision->subdivision_id }}" @selected((int) old('subdivision_id', $incident->subdivision_id) === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
+                    <input type="hidden" name="subdivision_id" value="{{ $incident->subdivision_id }}">
 
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">House</label>
-                        <select name="house_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
+                        <select name="house_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required data-house-select>
                             <option value="">Select house</option>
                             @foreach ($houses as $house)
-                                <option value="{{ $house->house_id }}" @selected((int) old('house_id', $incident->house_id) === $house->house_id)>{{ $house->display_address }}</option>
+                                <option value="{{ $house->house_id }}" data-address="{{ $house->display_address }}" @selected((int) old('house_id', $incident->house_id) === $house->house_id)>{{ $house->display_address }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -90,6 +82,16 @@
                             'Resolved' => 'Resolved',
                             'Closed' => 'Resolved (Closed)',
                         ];
+                        $selectedHouseId = (int) old('house_id', $incident->house_id);
+                        $selectedHouseAddress = optional($houses->firstWhere('house_id', $selectedHouseId))->display_address;
+                        $effectiveLocation = old('location', $incident->location);
+                        if (!filled($effectiveLocation)) {
+                            $effectiveLocation = $selectedHouseAddress;
+                        }
+
+                        $isCustomLocation = filled($effectiveLocation) && filled($selectedHouseAddress) && $effectiveLocation !== $selectedHouseAddress;
+                        $customLocationValue = $isCustomLocation ? old('location_other', $effectiveLocation) : old('location_other', '');
+                        $locationInputValue = $isCustomLocation ? $customLocationValue : ($selectedHouseAddress ?? $effectiveLocation ?? '');
                     @endphp
                     <div data-category-root>
                         <label class="block text-sm font-medium text-slate-700">Category</label>
@@ -110,9 +112,26 @@
                             >
                         </div>
                     </div>
-                    <div>
+                    <div data-location-root>
                         <label class="block text-sm font-medium text-slate-700">Location</label>
-                        <input type="text" name="location" value="{{ old('location', $incident->location) }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                        <input type="hidden" name="location" value="{{ $locationInputValue }}" data-location-hidden required>
+                        <label class="mt-2 inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input type="checkbox" class="rounded border-slate-300 text-sky-600 focus:ring-sky-500" data-location-custom-toggle @checked($isCustomLocation)>
+                            Use custom location instead of selected house
+                        </label>
+                        <div class="@if (!$isCustomLocation) hidden @endif mt-3" data-location-other-wrapper>
+                            <input
+                                type="text"
+                                name="location_other"
+                                value="{{ $customLocationValue }}"
+                                placeholder="Enter other location"
+                                class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                data-location-other
+                            >
+                        </div>
+                        <p class="mt-2 text-xs text-slate-500" data-location-summary>
+                            Location follows the selected house unless custom location is enabled.
+                        </p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Incident Date & Time</label>
@@ -279,6 +298,56 @@
 
                 select.addEventListener('change', syncResolvedField);
                 syncResolvedField();
+            });
+
+            var locationRoots = document.querySelectorAll('[data-location-root]');
+            locationRoots.forEach(function (root) {
+                if (root.dataset.locationInitialized === 'true') {
+                    return;
+                }
+
+                root.dataset.locationInitialized = 'true';
+
+                var form = root.closest('form');
+                var houseSelect = form ? form.querySelector('[data-house-select]') : null;
+                var hiddenLocationInput = root.querySelector('[data-location-hidden]');
+                var customToggle = root.querySelector('[data-location-custom-toggle]');
+                var otherWrapper = root.querySelector('[data-location-other-wrapper]');
+                var otherInput = root.querySelector('[data-location-other]');
+                var summary = root.querySelector('[data-location-summary]');
+
+                if (!houseSelect || !hiddenLocationInput || !customToggle || !otherWrapper || !otherInput || !summary) {
+                    return;
+                }
+
+                function selectedHouseAddress() {
+                    var selectedHouseOption = houseSelect.options[houseSelect.selectedIndex];
+                    return selectedHouseOption ? (selectedHouseOption.getAttribute('data-address') || '') : '';
+                }
+
+                function syncLocationField() {
+                    var usingCustom = customToggle.checked;
+                    otherWrapper.classList.toggle('hidden', !usingCustom);
+                    summary.classList.toggle('hidden', usingCustom);
+
+                    if (usingCustom) {
+                        otherInput.setAttribute('required', 'required');
+                        hiddenLocationInput.value = otherInput.value.trim();
+                        return;
+                    }
+
+                    otherInput.removeAttribute('required');
+                    otherInput.value = '';
+                    var houseAddress = selectedHouseAddress();
+                    if (houseAddress) {
+                        hiddenLocationInput.value = houseAddress;
+                    }
+                }
+
+                customToggle.addEventListener('change', syncLocationField);
+                otherInput.addEventListener('input', syncLocationField);
+                houseSelect.addEventListener('change', syncLocationField);
+                syncLocationField();
             });
 
             var previewRoots = document.querySelectorAll('[data-proof-preview-root]');

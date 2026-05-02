@@ -167,6 +167,11 @@ class IncidentController extends Controller
         $proofPhotoPaths = $this->storeProofPhotos($request);
 
         $houseId = $this->resolveHouseId($data, $subdivisionId);
+        if (!$houseId) {
+            return back()->withErrors([
+                'house_id' => 'Please select a valid house for the selected subdivision.',
+            ])->withInput();
+        }
 
         $status = $this->mapIncidentStatusForStorage((string) $data['status']);
 
@@ -203,7 +208,6 @@ class IncidentController extends Controller
 
         return view('incidents.edit', [
             'incident' => $incident,
-            'subdivisions' => Subdivision::where('status', 'Active')->orderBy('subdivision_name')->get(),
             'houses' => House::where('subdivision_id', $incident->subdivision_id)->orderBy('block')->orderBy('lot')->get(),
             'indexContext' => $this->indexContext($request),
             'proofPhotos' => $this->proofPhotosFor($incident),
@@ -230,6 +234,11 @@ class IncidentController extends Controller
             }
 
             $houseId = $this->resolveHouseId($data, $subdivisionId);
+            if (!$houseId) {
+                return back()->withErrors([
+                    'house_id' => 'Please select a valid house for the selected subdivision.',
+                ])->withInput();
+            }
             $status = $this->mapIncidentStatusForStorage((string) $data['status']);
 
             $incident->update([
