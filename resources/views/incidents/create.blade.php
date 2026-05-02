@@ -29,17 +29,7 @@
                 <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="grid gap-4 md:grid-cols-2">
                     @csrf
 
-                    @if ($subdivisions->isNotEmpty())
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-slate-700">Subdivision</label>
-                            <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
-                                <option value="">Select subdivision</option>
-                                @foreach ($subdivisions as $subdivision)
-                                    <option value="{{ $subdivision->subdivision_id }}" @selected((int) old('subdivision_id', $effectiveSubdivision) === $subdivision->subdivision_id)>{{ $subdivision->subdivision_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    @elseif ($effectiveSubdivision)
+                    @if ($effectiveSubdivision)
                         <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">
                     @endif
 
