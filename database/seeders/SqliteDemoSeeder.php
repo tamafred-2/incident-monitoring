@@ -174,6 +174,8 @@ class SqliteDemoSeeder extends Seeder
                     'middle_initials' => null,
                     'phone' => '09170001111',
                     'purpose' => 'Family visit',
+                    'plate_number' => null,
+                    'passenger_count' => null,
                     'resident' => $residents[0],
                     'house_address_or_unit' => $house1->display_address,
                     'status' => 'Pending',
@@ -187,6 +189,8 @@ class SqliteDemoSeeder extends Seeder
                     'middle_initials' => 'L.',
                     'phone' => '09181230000',
                     'purpose' => 'Delivery for homeowner',
+                    'plate_number' => 'ABC 1234',
+                    'passenger_count' => 2,
                     'resident' => $residents[0],
                     'house_address_or_unit' => $house1->display_address,
                     'status' => 'Approved',
@@ -200,6 +204,8 @@ class SqliteDemoSeeder extends Seeder
                     'middle_initials' => null,
                     'phone' => '09175554444',
                     'purpose' => 'Unannounced visit',
+                    'plate_number' => null,
+                    'passenger_count' => null,
                     'resident' => $residents[2],
                     'house_address_or_unit' => $house2->display_address,
                     'status' => 'Declined',
@@ -213,6 +219,8 @@ class SqliteDemoSeeder extends Seeder
                     'middle_initials' => 'P.',
                     'phone' => '09209876543',
                     'purpose' => 'Plumbing repair',
+                    'plate_number' => 'XYZ 9876',
+                    'passenger_count' => 1,
                     'resident' => $residents[3],
                     'house_address_or_unit' => $house2->display_address,
                     'status' => 'Approved',
@@ -224,7 +232,7 @@ class SqliteDemoSeeder extends Seeder
             $createdRequests = [];
 
             foreach ($visitorRequests as $requestData) {
-                $createdRequests[] = VisitorRequest::create([
+                $visitorRequestPayload = [
                     'visitor_id' => null,
                     'resident_id' => $requestData['resident']->resident_id,
                     'subdivision_id' => $subdivision->subdivision_id,
@@ -234,14 +242,20 @@ class SqliteDemoSeeder extends Seeder
                     'middle_initials' => $requestData['middle_initials'],
                     'extension' => null,
                     'phone' => $requestData['phone'],
-                    'plate_number' => null,
+                    'plate_number' => $requestData['plate_number'] ?? null,
                     'id_photo_path' => null,
                     'house_address_or_unit' => $requestData['house_address_or_unit'],
                     'purpose' => $requestData['purpose'],
                     'status' => $requestData['status'],
                     'requested_at' => $requestData['requested_at'],
                     'responded_at' => $requestData['responded_at'],
-                ]);
+                ];
+
+                if (Schema::hasColumn('visitor_requests', 'passenger_count')) {
+                    $visitorRequestPayload['passenger_count'] = $requestData['passenger_count'] ?? null;
+                }
+
+                $createdRequests[] = VisitorRequest::create($visitorRequestPayload);
             }
 
             $approvedInsideVisitorPayload = [
@@ -259,11 +273,11 @@ class SqliteDemoSeeder extends Seeder
             ];
 
             if (Schema::hasColumn('visitors', 'plate_number')) {
-                $approvedInsideVisitorPayload['plate_number'] = null;
+                $approvedInsideVisitorPayload['plate_number'] = 'ABC 1234';
             }
 
             if (Schema::hasColumn('visitors', 'passenger_count')) {
-                $approvedInsideVisitorPayload['passenger_count'] = null;
+                $approvedInsideVisitorPayload['passenger_count'] = 2;
             }
 
             $approvedInsideVisitor = Visitor::create($approvedInsideVisitorPayload);
@@ -283,11 +297,11 @@ class SqliteDemoSeeder extends Seeder
             ];
 
             if (Schema::hasColumn('visitors', 'plate_number')) {
-                $approvedCheckedOutVisitorPayload['plate_number'] = null;
+                $approvedCheckedOutVisitorPayload['plate_number'] = 'XYZ 9876';
             }
 
             if (Schema::hasColumn('visitors', 'passenger_count')) {
-                $approvedCheckedOutVisitorPayload['passenger_count'] = null;
+                $approvedCheckedOutVisitorPayload['passenger_count'] = 1;
             }
 
             $approvedCheckedOutVisitor = Visitor::create($approvedCheckedOutVisitorPayload);
