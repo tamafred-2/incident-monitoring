@@ -56,9 +56,11 @@
                 housesBySubdivision: {{ \Illuminate\Support\Js::from($housesBySubdivision) }},
                 residentsByHouse: {{ \Illuminate\Support\Js::from($residentsByHouse) }},
                 selectedSubdivision: '{{ $effectiveSubdivision }}',
-                selectedHouse: @js(old('house_address_or_unit', '')),
+                visitType: @js(old('visit_type', 'resident')),
+                selectedHouse: @js(old('visit_type', 'resident') === 'resident' ? old('house_address_or_unit', '') : ''),
+                walkInLocation: @js(old('visit_type') === 'walk_in' ? old('house_address_or_unit', '') : ''),
+                isVehicle: @js(old('on_vehicle') == '1' || old('plate_number') || old('passenger_count')),
                 selectedResidentId: @js(old('resident_id', '')),
-                hostEmployee: @js(old('host_employee', '')),
                 hostSearch: @js(old('host_employee', '')),
                 selectedResidentPhone: '',
                 hostOpen: false,
@@ -76,16 +78,18 @@
                 },
                 selectResident(resident) {
                     this.selectedResidentId = resident.id;
-                    this.hostEmployee = resident.name;
                     this.hostSearch = resident.name;
                     this.selectedResidentPhone = resident.phone || '';
                     this.hostOpen = false;
                 },
                 onHouseChange() {
                     this.selectedResidentId = '';
-                    this.hostEmployee = '';
                     this.hostSearch = '';
                     this.selectedResidentPhone = '';
+                },
+                setVisitType(type) {
+                    this.visitType = type;
+                    this.hostOpen = false;
                 }
             }"
             class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
@@ -121,7 +125,7 @@
                                 x-on:click="$dispatch('open-modal', 'visitor-check-in')"
                                 class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
                             >
-                                Submit Visitor Request
+                                Register Visitor
                             </button>
                         @endif
                     </div>
@@ -133,8 +137,8 @@
                     <div class="p-6 bg-white sm:p-8">
                         <div class="flex items-center justify-between gap-4 mb-5">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900">Submit Visitor Request</h3>
-                                <p class="mt-1 text-sm text-slate-500">Record identity and visit details, then wait for resident approval through registered phone contact or automated response.</p>
+                                <h3 class="text-lg font-semibold text-slate-900">Register Visitor</h3>
+                                <p class="mt-1 text-sm text-slate-500">Use resident approval for home visits, or direct walk-in check-in for deliveries and amenity access.</p>
                             </div>
                             <button
                                 type="button"
@@ -156,12 +160,41 @@
                         <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
 
                         <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">
-                        <input type="hidden" name="visit_type" value="resident">
+                        <input type="hidden" name="visit_type" :value="visitType">
 
-                        <div class="p-5 border rounded-2xl border-sky-200 bg-sky-50/60">
+                        <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
+                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Type</h4>
+                            <div class="mt-3 inline-flex rounded-xl border border-slate-300 bg-white p-1">
+                                <button
+                                    type="button"
+                                    x-on:click="setVisitType('resident')"
+                                    :class="visitType === 'resident' ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
+                                    class="rounded-lg px-3 py-2 text-sm font-semibold transition"
+                                >
+                                    Resident Visit
+                                </button>
+                                <button
+                                    type="button"
+                                    x-on:click="setVisitType('walk_in')"
+                                    :class="visitType === 'walk_in' ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
+                                    class="rounded-lg px-3 py-2 text-sm font-semibold transition"
+                                >
+                                    Walk-in
+                                </button>
+                            </div>
+                        </div>
+
+                        <div x-show="visitType === 'resident'" x-cloak class="p-5 border rounded-2xl border-sky-200 bg-sky-50/60">
                             <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-800">Approval Step</h4>
                             <p class="mt-2 text-sm leading-6 text-sky-700">
                                 After submission, the resident response must be recorded first. Only approved requests should proceed to visitor entry.
+                            </p>
+                        </div>
+
+                        <div x-show="visitType === 'walk_in'" x-cloak class="p-5 border rounded-2xl border-emerald-200 bg-emerald-50/60">
+                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-800">Direct Entry</h4>
+                            <p class="mt-2 text-sm leading-6 text-emerald-700">
+                                Use this for delivery riders, amenity users, and other visitors without a specific resident host.
                             </p>
                         </div>
 
@@ -211,6 +244,50 @@
 
                         <div class="p-5 bg-white border rounded-2xl border-slate-200">
                             <div class="mb-4">
+                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Vehicle Option</h4>
+                                <p class="mt-1 text-sm text-slate-500">Enable this when the visitor arrives by vehicle.</p>
+                            </div>
+
+                            <input type="hidden" name="on_vehicle" :value="isVehicle ? 1 : 0">
+
+                            <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                                <input type="checkbox" x-model="isVehicle" class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                                Visitor is on vehicle
+                            </label>
+
+                            <div x-show="isVehicle" x-cloak class="mt-4 grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Plate Number</label>
+                                    <input
+                                        type="text"
+                                        name="plate_number"
+                                        value="{{ old('plate_number') }}"
+                                        :required="isVehicle"
+                                        :disabled="!isVehicle"
+                                        placeholder="e.g., ABC 1234"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Passenger Count</label>
+                                    <input
+                                        type="number"
+                                        name="passenger_count"
+                                        value="{{ old('passenger_count') }}"
+                                        :required="isVehicle"
+                                        :disabled="!isVehicle"
+                                        min="1"
+                                        max="20"
+                                        step="1"
+                                        placeholder="e.g., 2"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-show="visitType === 'resident'" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
+                            <div class="mb-4">
                                 <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Resident Visit Details</h4>
                                 <p class="mt-1 text-sm text-slate-500">Select the house and resident being visited for approval tracking.</p>
                             </div>
@@ -218,7 +295,7 @@
                             <div class="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700">House / Unit</label>
-                                    <select name="house_address_or_unit" x-model="selectedHouse" x-on:change="onHouseChange()" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    <select name="house_address_or_unit" x-model="selectedHouse" x-on:change="onHouseChange()" :required="visitType === 'resident'" :disabled="visitType !== 'resident'" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400">
                                         <option value="">Select house / unit</option>
                                         <template x-for="house in availableHouses" :key="house">
                                             <option :value="house" x-text="house"></option>
@@ -227,17 +304,16 @@
                                 </div>
                                 <div x-data class="relative">
                                     <label class="block text-sm font-medium text-slate-700">Resident</label>
-                                    <input type="hidden" name="resident_id" :value="selectedResidentId">
-                                    <input type="hidden" name="host_employee" :value="hostEmployee">
+                                    <input type="hidden" name="resident_id" :value="visitType === 'resident' ? selectedResidentId : ''">
                                     <input
                                         type="text"
                                         x-model="hostSearch"
-                                        x-on:input="hostOpen = true; selectedResidentId = ''; hostEmployee = hostSearch; selectedResidentPhone = ''"
+                                        x-on:input="hostOpen = true; selectedResidentId = ''; selectedResidentPhone = ''"
                                         x-on:focus="hostOpen = availableResidents.length > 0"
                                         x-on:click.away="hostOpen = false"
                                         :placeholder="selectedHouse ? 'Type to search residents...' : 'Select a house first'"
-                                        :disabled="!selectedHouse"
-                                        required
+                                        :disabled="visitType !== 'resident' || !selectedHouse"
+                                        :required="visitType === 'resident'"
                                         autocomplete="off"
                                         class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
@@ -267,6 +343,27 @@
                             </div>
                         </div>
 
+                        <div x-show="visitType === 'walk_in'" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
+                            <div class="mb-4">
+                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Walk-in Details</h4>
+                                <p class="mt-1 text-sm text-slate-500">Enter where the visitor is going inside the subdivision.</p>
+                            </div>
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-slate-700">Destination / Location</label>
+                                    <input
+                                        type="text"
+                                        name="house_address_or_unit"
+                                        x-model="walkInLocation"
+                                        :required="visitType === 'walk_in'"
+                                        :disabled="visitType !== 'walk_in'"
+                                        placeholder="e.g., Clubhouse Court, Gate Drop-off, Admin Office"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="flex flex-wrap justify-end gap-3">
                             <button
                                 type="button"
@@ -275,7 +372,10 @@
                             >
                                 Cancel
                             </button>
-                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Submit Request</button>
+                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">
+                                <span x-show="visitType === 'resident'" x-cloak>Submit Request</span>
+                                <span x-show="visitType === 'walk_in'" x-cloak>Check In Visitor</span>
+                            </button>
                         </div>
                     </form>
                     </div>
@@ -316,7 +416,7 @@
                             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                                 <div>
                                     <h3 class="text-lg font-semibold text-slate-900">Visitor Check-out</h3>
-                                    <p class="mt-1 text-sm text-slate-500">Visitors already approved and currently inside can be checked out here.</p>
+                                    <p class="mt-1 text-sm text-slate-500">Visitors currently inside, whether resident-approved or walk-in, can be checked out here.</p>
                                 </div>
                             </div>
                         </div>
@@ -343,8 +443,8 @@
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 text-slate-600">
-                                                <div class="max-w-[14rem] truncate" title="{{ $visitor->host_employee ?: '-' }}">
-                                                    {{ $visitor->host_employee ?: '-' }}
+                                                <div class="max-w-[14rem] truncate" title="{{ $visitor->host_employee ?: 'Walk-in' }}">
+                                                    {{ $visitor->host_employee ?: 'Walk-in' }}
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 text-slate-600">
@@ -502,8 +602,8 @@
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
-                                            <div class="max-w-[14rem] truncate" title="{{ $visitor->host_employee ?: '-' }}">
-                                                {{ $visitor->host_employee ?: '-' }}
+                                            <div class="max-w-[14rem] truncate" title="{{ $visitor->host_employee ?: 'Walk-in' }}">
+                                                {{ $visitor->host_employee ?: 'Walk-in' }}
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
@@ -610,4 +710,3 @@
         </div>
     </div>
 </x-app-layout>
-

@@ -23,6 +23,7 @@ class VisitorRequest extends Model
         'extension',
         'phone',
         'plate_number',
+        'passenger_count',
         'id_photo_path',
         'house_address_or_unit',
         'purpose',
@@ -36,6 +37,7 @@ class VisitorRequest extends Model
         return [
             'requested_at' => 'datetime',
             'responded_at' => 'datetime',
+            'passenger_count' => 'integer',
         ];
     }
 

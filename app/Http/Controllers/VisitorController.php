@@ -10,6 +10,7 @@ use App\Models\VisitorRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class VisitorController extends Controller
@@ -140,20 +141,54 @@ class VisitorController extends Controller
     {
         $data = $request->validate([
             'subdivision_id'        => ['nullable', 'integer'],
+            'visit_type'            => ['required', Rule::in(['resident', 'walk_in'])],
             'surname'               => ['required', 'string', 'max:100'],
             'first_name'            => ['required', 'string', 'max:100'],
             'middle_initials'       => ['nullable', 'string', 'max:20'],
             'extension'             => ['nullable', 'string', 'max:20'],
             'phone'                 => ['required', 'string', 'max:40'],
             'purpose'               => ['nullable', 'string'],
-            'host_employee'         => ['required', 'string', 'max:150'],
-            'house_address_or_unit' => ['required', 'string', 'max:120'],
-            'resident_id'           => ['required', 'integer'],
+            'on_vehicle'            => ['nullable', 'boolean'],
+            'plate_number'          => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
+            'passenger_count'       => ['nullable', 'integer', 'min:1', 'max:20', 'required_if:on_vehicle,1'],
+            'host_employee'         => ['nullable', 'string', 'max:150'],
+            'house_address_or_unit' => ['nullable', 'string', 'max:120', 'required_if:visit_type,resident', 'required_if:visit_type,walk_in'],
+            'resident_id'           => ['nullable', 'integer', 'required_if:visit_type,resident'],
         ]);
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
         if (!$subdivisionId) {
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
+        }
+
+        if (($data['visit_type'] ?? 'resident') === 'walk_in') {
+            $onVehicle = (bool) ($data['on_vehicle'] ?? false);
+            $plateNumber = $onVehicle
+                ? (trim((string) ($data['plate_number'] ?? '')) ?: null)
+                : null;
+            $passengerCount = $onVehicle
+                ? (int) ($data['passenger_count'] ?? 0)
+                : null;
+
+            Visitor::create([
+                'subdivision_id'        => $subdivisionId,
+                'surname'               => $data['surname'],
+                'first_name'            => $data['first_name'],
+                'middle_initials'       => $data['middle_initials'] ?? null,
+                'extension'             => $data['extension'] ?? null,
+                'phone'                 => $data['phone'],
+                'plate_number'          => $plateNumber,
+                'passenger_count'       => $passengerCount,
+                'purpose'               => $data['purpose'] ?? null,
+                'host_employee'         => null,
+                'house_address_or_unit' => trim((string) ($data['house_address_or_unit'] ?? '')) ?: null,
+                'check_in'              => now(),
+                'check_out'             => null,
+                'status'                => 'Inside',
+            ]);
+
+            return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
+                ->with('success', 'Walk-in visitor checked in successfully.');
         }
 
         $normalizedAddress = strtoupper(trim($data['house_address_or_unit']));
@@ -182,6 +217,14 @@ class VisitorController extends Controller
             ])->withInput();
         }
 
+        $onVehicle = (bool) ($data['on_vehicle'] ?? false);
+        $plateNumber = $onVehicle
+            ? (trim((string) ($data['plate_number'] ?? '')) ?: null)
+            : null;
+        $passengerCount = $onVehicle
+            ? (int) ($data['passenger_count'] ?? 0)
+            : null;
+
         VisitorRequest::create([
             'visitor_id'            => null,
             'resident_id'           => $resident->resident_id,
@@ -197,7 +240,8 @@ class VisitorController extends Controller
             'middle_initials'       => $data['middle_initials'] ?? null,
             'extension'             => $data['extension'] ?? null,
             'phone'                 => $data['phone'],
-            'plate_number'          => null,
+            'plate_number'          => $plateNumber,
+            'passenger_count'       => $passengerCount,
             'id_photo_path'         => null,
             'purpose'               => $data['purpose'] ?? null,
             'house_address_or_unit' => $house->display_address,
