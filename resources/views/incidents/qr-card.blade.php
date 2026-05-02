@@ -15,10 +15,6 @@
             @if ($incident->house)
                 <p class="mt-1 text-sm text-slate-600">{{ $incident->house->display_address }}</p>
             @endif
-            @if ($incident->assignedStaff)
-                <p class="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Assigned Responder</p>
-                <p class="mt-1 text-sm text-slate-700">{{ $incident->assignedStaff->full_name }}</p>
-            @endif
         </div>
 
         <div class="p-4 mt-8 text-center border rounded-2xl border-slate-200 bg-slate-50">

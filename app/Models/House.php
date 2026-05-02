@@ -39,11 +39,52 @@ class House extends Model
         return self::formatAddress($this->block, $this->lot);
     }
 
+    public function setBlockAttribute(?string $value): void
+    {
+        $this->attributes['block'] = self::normalizeBlock($value);
+    }
+
+    public function setLotAttribute(?string $value): void
+    {
+        $this->attributes['lot'] = self::normalizeLot($value);
+    }
+
+    public static function normalizeBlock(?string $value): string
+    {
+        return self::normalizeAddressComponent($value, '/^(?:BLOCK|BLK)\b[\s\-.:#]*/');
+    }
+
+    public static function normalizeLot(?string $value): string
+    {
+        return self::normalizeAddressComponent($value, '/^(?:LOT|LT)\b[\s\-.:#]*/');
+    }
+
     public static function formatAddress(?string $block, ?string $lot): string
     {
-        $block = trim((string) $block);
-        $lot = trim((string) $lot);
+        $block = self::normalizeBlock($block);
+        $lot = self::normalizeLot($lot);
 
         return "Block {$block} Lot {$lot}";
+    }
+
+    private static function normalizeAddressComponent(?string $value, string $prefixPattern): string
+    {
+        $normalized = strtoupper((string) $value);
+        $normalized = preg_replace('/\s+/', ' ', $normalized) ?? '';
+        $normalized = trim($normalized);
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        $normalized = preg_replace($prefixPattern, '', $normalized) ?? $normalized;
+        $normalized = trim($normalized);
+
+        if (preg_match('/^\d+$/', $normalized) === 1) {
+            $normalized = ltrim($normalized, '0');
+            $normalized = $normalized === '' ? '0' : $normalized;
+        }
+
+        return $normalized;
     }
 }

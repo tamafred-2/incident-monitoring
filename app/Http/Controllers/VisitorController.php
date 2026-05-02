@@ -6,10 +6,10 @@ use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
+use App\Models\VisitorRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class VisitorController extends Controller
@@ -19,7 +19,6 @@ class VisitorController extends Controller
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
-        $historyView = $this->resolveHistoryView($request->query('view'));
         $historyPerPage = $this->resolvePerPageChoice(
             $request->query('history_per_page_custom'),
             $request->query('history_per_page'),
@@ -49,8 +48,6 @@ class VisitorController extends Controller
             });
         }
 
-        $this->applyHistoryViewScope($query, $historyView);
-
         if (!$user->isAdmin()) {
             $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
@@ -73,12 +70,13 @@ class VisitorController extends Controller
 
         $residentsByHouse = House::query()
             ->with(['residents' => fn ($q) => $q->where('status', 'Active')
-                ->select('house_id', 'resident_id', 'full_name')])
+                ->select('house_id', 'resident_id', 'full_name', 'phone')])
             ->get()
             ->mapWithKeys(fn (House $house) => [
                 $house->display_address => $house->residents->map(fn (Resident $r) => [
-                    'id'   => $r->resident_id,
-                    'name' => $r->full_name,
+                    'id'    => $r->resident_id,
+                    'name'  => $r->full_name,
+                    'phone' => $r->phone,
                 ])->values()->all(),
             ]);
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
@@ -119,7 +117,6 @@ class VisitorController extends Controller
             'subdivisions',
             'filterQ',
             'filterSubdivision',
-            'historyView',
             'effectiveSubdivision',
             'insideVisitors',
             'housesBySubdivision',
@@ -148,14 +145,10 @@ class VisitorController extends Controller
             'middle_initials'       => ['nullable', 'string', 'max:20'],
             'extension'             => ['nullable', 'string', 'max:20'],
             'phone'                 => ['required', 'string', 'max:40'],
-            'has_vehicle'           => ['nullable', 'boolean'],
-            'plate_number'          => ['nullable', 'string', 'max:30'],
-            'passenger_count'       => ['nullable', 'integer', 'min:1', 'max:50'],
-            'id_photo'              => ['required', 'image', 'max:4096'],
             'purpose'               => ['nullable', 'string'],
-            'host_employee'         => ['nullable', 'string', 'max:150'],
-            'house_address_or_unit' => ['nullable', 'string', 'max:120'],
-            'visit_type'            => ['nullable', 'string', Rule::in(['resident', 'general'])],
+            'host_employee'         => ['required', 'string', 'max:150'],
+            'house_address_or_unit' => ['required', 'string', 'max:120'],
+            'resident_id'           => ['required', 'integer'],
         ]);
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
@@ -163,57 +156,58 @@ class VisitorController extends Controller
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
 
-        $hasVehicle = $request->boolean('has_vehicle');
-        if ($hasVehicle && empty($data['plate_number'])) {
-            return back()->withErrors(['plate_number' => 'Plate number is required when visitor has a vehicle.'])->withInput();
-        }
-        if ($hasVehicle && empty($data['passenger_count'])) {
-            return back()->withErrors(['passenger_count' => 'Passenger count is required when visitor has a vehicle.'])->withInput();
-        }
+        $normalizedAddress = strtoupper(trim($data['house_address_or_unit']));
 
-        $visitType = $data['visit_type'] ?? 'resident';
-        $isGeneralVisit = $visitType === 'general';
+        $house = House::query()
+            ->where('subdivision_id', $subdivisionId)
+            ->get()
+            ->first(fn (House $house) => strtoupper($house->display_address) === $normalizedAddress);
 
-        if (!$isGeneralVisit && !empty($data['house_address_or_unit'])) {
-            $normalizedAddress = strtoupper(trim($data['house_address_or_unit']));
-
-            $houseExists = House::query()
-                ->where('subdivision_id', $subdivisionId)
-                ->get()
-                ->contains(fn (House $house) => strtoupper($house->display_address) === $normalizedAddress);
-
-            if (!$houseExists) {
-                return back()->withErrors([
-                    'house_address_or_unit' => 'Please select a valid house / unit for the chosen subdivision.',
-                ])->withInput();
-            }
+        if (!$house) {
+            return back()->withErrors([
+                'house_address_or_unit' => 'Please select a valid house / unit for the chosen subdivision.',
+            ])->withInput();
         }
 
-        $photoPath = null;
-        if ($request->hasFile('id_photo')) {
-            $photoPath = $request->file('id_photo')->store('visitor-ids', 'public');
+        $resident = Resident::query()
+            ->whereKey((int) $data['resident_id'])
+            ->where('subdivision_id', $subdivisionId)
+            ->where('house_id', $house->house_id)
+            ->where('status', 'Active')
+            ->first();
+
+        if (!$resident) {
+            return back()->withErrors([
+                'resident_id' => 'Please select a valid active resident for the chosen house / unit.',
+            ])->withInput();
         }
 
-        Visitor::create([
+        VisitorRequest::create([
+            'visitor_id'            => null,
+            'resident_id'           => $resident->resident_id,
             'subdivision_id'        => $subdivisionId,
+            'visitor_name'          => Visitor::formatFullName(
+                $data['first_name'],
+                $data['middle_initials'] ?? null,
+                $data['surname'],
+                $data['extension'] ?? null
+            ),
             'surname'               => $data['surname'],
             'first_name'            => $data['first_name'],
             'middle_initials'       => $data['middle_initials'] ?? null,
             'extension'             => $data['extension'] ?? null,
             'phone'                 => $data['phone'],
-            'plate_number'          => $hasVehicle ? ($data['plate_number'] ?? null) : null,
-            'passenger_count'       => $hasVehicle ? (int) ($data['passenger_count'] ?? 0) : null,
-            'id_photo_path'         => $photoPath,
+            'plate_number'          => null,
+            'id_photo_path'         => null,
             'purpose'               => $data['purpose'] ?? null,
-            'host_employee'         => $isGeneralVisit ? null : ($data['host_employee'] ?? null),
-            'house_address_or_unit' => $isGeneralVisit ? null : ($data['house_address_or_unit'] ?? null),
-            'check_in'              => now(),
-            'check_out'             => null,
-            'status'                => 'Inside',
+            'house_address_or_unit' => $house->display_address,
+            'status'                => 'Pending',
+            'requested_at'          => now(),
+            'responded_at'          => null,
         ]);
 
         return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
-            ->with('success', 'Visitor checked in successfully.');
+            ->with('success', 'Visitor request submitted. Contact the resident using the registered phone number in the system or wait for automated response before allowing entry.');
     }
 
     public function checkout(Request $request, Visitor $visitor): RedirectResponse
@@ -321,7 +315,6 @@ class VisitorController extends Controller
 
         $context = [
             'tab' => $tab,
-            'view' => $this->resolveHistoryView($request->input('view', $request->query('view'))),
         ];
 
         $filterQ = trim((string) $request->input('q', $request->query('q', '')));
@@ -347,24 +340,6 @@ class VisitorController extends Controller
         }
 
         return $context;
-    }
-
-    private function resolveHistoryView(?string $view): string
-    {
-        return in_array($view, ['active', 'deleted', 'all'], true) ? $view : 'active';
-    }
-
-    private function applyHistoryViewScope(Builder $query, string $historyView): void
-    {
-        if ($historyView === 'deleted') {
-            $query->onlyTrashed();
-
-            return;
-        }
-
-        if ($historyView === 'all') {
-            $query->withTrashed();
-        }
     }
 
     private function resolvePerPage(mixed $value, int $default = 10): int

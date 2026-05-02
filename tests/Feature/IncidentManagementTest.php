@@ -407,6 +407,94 @@ class IncidentManagementTest extends TestCase
             ->assertOk();
     }
 
+    public function test_full_editor_can_remove_existing_incident_proof_images_during_update(): void
+    {
+        Storage::fake('public');
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Sunset Hills',
+            'status' => 'Active',
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $reporter = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '7',
+            'lot' => '2',
+        ]);
+
+        $photoOnePath = 'uploads/incidents/proof-one.jpg';
+        $photoTwoPath = 'uploads/incidents/proof-two.jpg';
+        Storage::disk('public')->put($photoOnePath, 'photo-one');
+        Storage::disk('public')->put($photoTwoPath, 'photo-two');
+
+        $incident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Fence post is leaning toward the street.',
+            'category' => 'Property Damage',
+            'location' => 'South perimeter',
+            'incident_date' => now()->subHour(),
+            'reported_at' => now()->subMinutes(30),
+            'status' => 'Open',
+            'proof_photo_path' => $photoOnePath,
+            'reported_by' => $reporter->user_id,
+        ]);
+
+        IncidentPhoto::create([
+            'incident_id' => $incident->incident_id,
+            'photo_path' => $photoOnePath,
+            'sort_order' => 0,
+        ]);
+        IncidentPhoto::create([
+            'incident_id' => $incident->incident_id,
+            'photo_path' => $photoTwoPath,
+            'sort_order' => 1,
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->put(route('incidents.update', $incident->incident_id), [
+                'subdivision_id' => $subdivision->subdivision_id,
+                'house_id' => $house->house_id,
+                'description' => 'Fence post is leaning toward the street.',
+                'category' => 'Property Damage',
+                'location' => 'South perimeter',
+                'incident_date' => now()->subHour()->format('Y-m-d H:i:s'),
+                'reported_at' => now()->subMinutes(30)->format('Y-m-d H:i:s'),
+                'status' => 'Open',
+                'remove_proof_photos' => [$photoOnePath],
+            ]);
+
+        $response
+            ->assertStatus(302)
+            ->assertSessionHas('success', 'Incident updated successfully.');
+
+        Storage::disk('public')->assertMissing($photoOnePath);
+        Storage::disk('public')->assertExists($photoTwoPath);
+
+        $this->assertDatabaseMissing('incident_photos', [
+            'incident_id' => $incident->incident_id,
+            'photo_path' => $photoOnePath,
+        ]);
+        $this->assertDatabaseHas('incident_photos', [
+            'incident_id' => $incident->incident_id,
+            'photo_path' => $photoTwoPath,
+            'sort_order' => 0,
+        ]);
+
+        $incident->refresh();
+        $this->assertSame($photoTwoPath, $incident->proof_photo_path);
+    }
+
     public function test_admin_can_assign_incident_to_staff(): void
     {
         $subdivision = Subdivision::create([
@@ -545,5 +633,54 @@ class IncidentManagementTest extends TestCase
             ->assertOk()
             ->assertSee($incident->report_id)
             ->assertSee('Perimeter light is flickering.');
+    }
+
+    public function test_security_cannot_access_incident_edit_routes(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Willow Heights',
+            'status' => 'Active',
+        ]);
+
+        $security = User::factory()->create([
+            'role' => 'security',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $reporter = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '1',
+            'lot' => '7',
+        ]);
+
+        $incident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Loose wiring near the gym corridor.',
+            'category' => 'Safety',
+            'location' => 'Gym corridor',
+            'incident_date' => now()->subMinutes(25),
+            'reported_at' => now()->subMinutes(10),
+            'status' => 'Open',
+            'reported_by' => $reporter->user_id,
+        ]);
+
+        $this->actingAs($security)
+            ->get(route('incidents.edit', ['incidentId' => $incident->incident_id]))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('error', 'You do not have permission to access that page.');
+
+        $this->actingAs($security)
+            ->put(route('incidents.update', ['incidentId' => $incident->incident_id]), [
+                'status' => 'Resolved',
+                'resolved_at' => now()->format('Y-m-d H:i:s'),
+            ])
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('error', 'You do not have permission to access that page.');
     }
 }

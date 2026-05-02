@@ -64,7 +64,7 @@ class ResidentVisitorController extends Controller
             'visitor_id'   => $visitor->visitor_id,
         ]);
 
-        return back()->with('success', 'Visitor approved and checked in.');
+        return back()->with('success', 'Visitor approved. Admin/Guard can now allow entry based on your response.');
     }
 
     public function decline(Request $request, VisitorRequest $visitorRequest): RedirectResponse
@@ -73,7 +73,7 @@ class ResidentVisitorController extends Controller
 
         $visitorRequest->update(['status' => 'Declined', 'responded_at' => now()]);
 
-        return back()->with('success', 'Visitor request declined.');
+        return back()->with('success', 'Visitor request declined. Admin/Guard should deny entry.');
     }
 
     private function authorizeRequest(Request $request, VisitorRequest $visitorRequest): void

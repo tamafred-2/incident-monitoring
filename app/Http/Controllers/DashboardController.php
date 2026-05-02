@@ -7,14 +7,14 @@ use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
-use App\Support\VisitorActivityFeed;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+    private ?bool $incidentStatusSchemaIsLegacy = null;
+
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -24,7 +24,14 @@ class DashboardController extends Controller
             $request->query('inside_per_page'),
             10
         );
+        $pendingIncidentsPerPage = $this->resolvePerPageChoice(
+            $request->query('pending_incidents_per_page_custom'),
+            $request->query('pending_incidents_per_page'),
+            10
+        );
         $isResidentDashboard = $user->isResident();
+        $isStaffDashboard = !$isResidentDashboard && $user->role === 'staff';
+        $showPendingIncidentList = !$isResidentDashboard && ($isStaffDashboard || $user->isAdmin());
 
         $totalSubdivisions = $user->isAdmin()
             ? Subdivision::count()
@@ -82,18 +89,56 @@ class DashboardController extends Controller
 
         $residentOpenIncidents = $isResidentDashboard
             ? Incident::where('reported_by', $user->user_id)
-                ->whereIn('status', ['Open', 'Under Investigation'])
+                ->whereIn('status', $this->pendingIncidentStatuses())
                 ->count()
             : 0;
 
         $residentResolvedIncidents = $isResidentDashboard
             ? Incident::where('reported_by', $user->user_id)
-                ->whereIn('status', ['Resolved', 'Closed'])
+                ->whereIn('status', $this->resolvedIncidentStatuses())
                 ->count()
             : 0;
 
+        $staffActiveIncidents = $isStaffDashboard
+            ? Incident::query()
+                ->when(
+                    !$user->isAdmin(),
+                    fn ($query) => $query->where('subdivision_id', $allowedId)
+                )
+                ->whereNotIn('status', $this->resolvedIncidentStatuses())
+                ->count()
+            : 0;
+
+        $staffPendingIncidents = $isStaffDashboard
+            ? Incident::query()
+                ->when(
+                    !$user->isAdmin(),
+                    fn ($query) => $query->where('subdivision_id', $allowedId)
+                )
+                ->whereIn('status', $this->pendingIncidentStatuses())
+                ->count()
+            : 0;
+
+        $dashboardPendingIncidentList = $showPendingIncidentList
+            ? Incident::query()
+                ->with(['house', 'reporter'])
+                ->when(
+                    !$user->isAdmin(),
+                    fn ($query) => $query->where('subdivision_id', $allowedId)
+                )
+                ->whereIn('status', $this->pendingIncidentStatuses())
+                ->orderByDesc('reported_at')
+                ->orderByDesc('incident_date')
+                ->paginate($pendingIncidentsPerPage, ['*'], 'pending_page')
+                ->withQueryString()
+            : Incident::query()
+                ->whereRaw('1 = 0')
+                ->paginate($pendingIncidentsPerPage, ['*'], 'pending_page');
+
         return view('dashboard', compact(
             'isResidentDashboard',
+            'isStaffDashboard',
+            'showPendingIncidentList',
             'totalSubdivisions',
             'totalIncidents',
             'totalResidents',
@@ -102,90 +147,13 @@ class DashboardController extends Controller
             'visitorsInside',
             'insideVisitors',
             'insidePerPage',
+            'pendingIncidentsPerPage',
             'residentOpenIncidents',
-            'residentResolvedIncidents'
+            'residentResolvedIncidents',
+            'staffActiveIncidents',
+            'staffPendingIncidents',
+            'dashboardPendingIncidentList',
         ));
-    }
-
-    public function notificationsPage(Request $request): View
-    {
-        $user = $request->user();
-        $notifications = $user->notifications()->orderByDesc('created_at')->paginate(15);
-
-        $user->unreadNotifications->markAsRead();
-
-        return view('notifications.index', [
-            'notifications' => $notifications,
-        ]);
-    }
-
-    public function notifications(Request $request): JsonResponse
-    {
-        abort_unless($request->user()?->isAdmin(), 403);
-
-        return response()->json([
-            'notifications' => VisitorActivityFeed::recentForUser($request->user())->values(),
-            'unread_count' => VisitorActivityFeed::unreadCountForUser($request->user()),
-        ]);
-    }
-
-    public function markNotificationsRead(Request $request): JsonResponse
-    {
-        $user = $request->user();
-
-        abort_unless($user?->isAdmin(), 403);
-
-        $user->forceFill([
-            'visitor_notifications_read_at' => now(),
-            'visitor_notification_read_keys' => [],
-        ])->save();
-
-        return response()->json([
-            'success' => true,
-            'unread_count' => 0,
-        ]);
-    }
-
-    public function markNotificationRead(Request $request): JsonResponse
-    {
-        $user = $request->user();
-
-        abort_unless($user?->isAdmin(), 403);
-
-        $data = $request->validate([
-            'key' => ['required', 'string', 'max:255'],
-        ]);
-
-        $readKeys = collect($user->visitor_notification_read_keys ?? [])
-            ->push($data['key'])
-            ->unique()
-            ->take(-100)
-            ->values()
-            ->all();
-
-        $user->forceFill([
-            'visitor_notification_read_keys' => $readKeys,
-        ])->save();
-
-        return response()->json([
-            'success' => true,
-            'unread_count' => VisitorActivityFeed::unreadCountForUser($user->fresh()),
-        ]);
-    }
-
-    public function clearNotifications(Request $request): Response
-    {
-        $user = $request->user();
-
-        abort_unless($user?->isAdmin(), 403);
-
-        $user->forceFill([
-            'visitor_notifications_read_at' => now(),
-            'visitor_notifications_cleared_at' => now(),
-            'visitor_notification_read_keys' => [],
-        ])->save();
-
-        return response()->noContent();
     }
 
     private function resolvePerPage(mixed $value, int $default = 10): int
@@ -207,5 +175,39 @@ class DashboardController extends Controller
         }
 
         return $this->resolvePerPage($selectedValue, $default);
+    }
+
+    private function pendingIncidentStatuses(): array
+    {
+        return $this->usesLegacyIncidentStatusSchema()
+            ? ['Reported', 'Investigating', 'Ongoing']
+            : ['Open', 'Under Investigation'];
+    }
+
+    private function resolvedIncidentStatuses(): array
+    {
+        return $this->usesLegacyIncidentStatusSchema()
+            ? ['Resolved', 'Closed', 'Completed']
+            : ['Resolved', 'Closed', 'Completed'];
+    }
+
+    private function usesLegacyIncidentStatusSchema(): bool
+    {
+        if ($this->incidentStatusSchemaIsLegacy !== null) {
+            return $this->incidentStatusSchemaIsLegacy;
+        }
+
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            return $this->incidentStatusSchemaIsLegacy = false;
+        }
+
+        $tableSql = DB::table('sqlite_master')
+            ->where('type', 'table')
+            ->where('name', 'incidents')
+            ->value('sql');
+
+        return $this->incidentStatusSchemaIsLegacy = is_string($tableSql)
+            && str_contains($tableSql, "'Reported'")
+            && str_contains($tableSql, "'Investigating'");
     }
 }

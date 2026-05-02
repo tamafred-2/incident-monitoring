@@ -46,7 +46,8 @@ class SubdivisionController extends Controller
         if ($filterQ !== '') {
             $housesQuery->where(function ($builder) use ($filterQ) {
                 $builder->where('block', 'like', "%{$filterQ}%")
-                    ->orWhere('lot', 'like', "%{$filterQ}%");
+                    ->orWhere('lot', 'like', "%{$filterQ}%")
+                    ->orWhere('street', 'like', "%{$filterQ}%");
             });
         }
 
@@ -56,7 +57,17 @@ class SubdivisionController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        return view('subdivisions.show', compact('subdivision', 'houses', 'filterQ', 'perPage'));
+        $houseCount = $subdivision->houses()->count();
+        $residentCount = $subdivision->residents()->count();
+
+        return view('subdivisions.show', compact(
+            'subdivision',
+            'houses',
+            'filterQ',
+            'perPage',
+            'houseCount',
+            'residentCount'
+        ));
     }
 
     public function logo(Subdivision $subdivision): BinaryFileResponse

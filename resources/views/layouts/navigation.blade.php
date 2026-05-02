@@ -21,14 +21,21 @@
     $brandName = $brandingSubdivision?->subdivision_name ?? 'Doña Maria Dizon';
     $brandNameUpper = Str::upper($brandName);
     $brandLogo = $brandingSubdivision?->logo_url ?? asset('imgsrc/logo.png');
+    $isStaffUser = $user?->role === 'staff';
+    $isSecurityUser = $user?->role === 'security';
+    $isAdminUser = $user?->isAdmin() ?? false;
 
     $sections = [
         [
             'key' => 'overview',
-            'title' => 'Overview',
+            'title' => 'Core',
             'items' => array_values(array_filter([
                 ['label' => 'Dashboard', 'href' => route('dashboard'), 'active' => 'dashboard'],
-                ['label' => 'Subdivision', 'href' => route('subdivisions.index'), 'active' => 'subdivisions.*'],
+                ($isStaffUser || $isSecurityUser || $isAdminUser) ? [
+                    'label' => $isAdminUser ? 'House Management' : 'Contacts',
+                    'href' => route('subdivisions.index'),
+                    'active' => 'subdivisions.*',
+                ] : null,
                 $user->isAdmin() ? ['label' => 'Users', 'href' => route('users.index'), 'active' => 'users.*'] : null,
             ])),
         ],
@@ -38,7 +45,8 @@
             'items' => array_values(array_filter([
                 ['label' => 'Incidents', 'href' => route('incidents.index'), 'active' => 'incidents.index'],
                 $user->hasRole(['staff']) ? ['label' => 'Residents', 'href' => route('residents.index'), 'active' => 'residents.*'] : null,
-                $user->hasRole(['security', 'staff']) ? ['label' => 'Visitors', 'href' => route('visitors.index'), 'active' => 'visitors.*'] : null,
+                ($isSecurityUser || $isAdminUser) ? ['label' => 'Visitors', 'href' => route('visitors.index'), 'active' => 'visitors.*'] : null,
+                $user->isResident() ? ['label' => 'My Visitors', 'href' => route('resident.visitors.index'), 'active' => 'resident.visitors.*'] : null,
             ])),
         ],
     ];

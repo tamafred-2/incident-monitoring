@@ -29,7 +29,7 @@
     <section class="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
         <div class="mb-4">
             <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Identity</h4>
-            <p class="mt-1 text-sm text-slate-500">Basic resident information and code assignment.</p>
+            <p class="mt-1 text-sm text-slate-500">Basic resident information.</p>
         </div>
 
         <div class="grid gap-4 md:grid-cols-2">
@@ -76,44 +76,22 @@
             </div>
         </div>
 
-        <div class="mt-4 grid gap-4 md:grid-cols-2">
-            <div>
-                <label class="block text-sm font-medium text-slate-700">Resident Code</label>
-                @if ($resident?->resident_code)
-                    <input
-                        type="text"
-                        value="{{ $resident->resident_code }}"
-                        disabled
-                        class="mt-1 w-full rounded-xl border-slate-200 bg-slate-50 text-sm text-slate-500 shadow-sm cursor-not-allowed"
-                    >
-                    <p class="mt-1 text-xs text-slate-400">Auto-generated, cannot be changed.</p>
-                @else
-                    <input
-                        type="text"
-                        value=""
-                        disabled
-                        placeholder="Will be generated on save"
-                        class="mt-1 w-full rounded-xl border-slate-200 bg-slate-50 text-sm text-slate-400 shadow-sm cursor-not-allowed"
-                    >
-                @endif
+        @if ($resident)
+            <div class="mt-4 md:max-w-sm">
+                <label class="block text-sm font-medium text-slate-700">Status</label>
+                <select
+                    name="status"
+                    required
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                >
+                    @foreach (['Active', 'Inactive'] as $status)
+                        <option value="{{ $status }}" @selected(old('status', $resident->status ?? 'Active') === $status)>{{ $status }}</option>
+                    @endforeach
+                </select>
             </div>
-            <div>
-                @if ($resident)
-                    <label class="block text-sm font-medium text-slate-700">Status</label>
-                    <select
-                        name="status"
-                        required
-                        class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
-                    >
-                        @foreach (['Active', 'Inactive'] as $status)
-                            <option value="{{ $status }}" @selected(old('status', $resident->status ?? 'Active') === $status)>{{ $status }}</option>
-                        @endforeach
-                    </select>
-                @else
-                    <input type="hidden" name="status" value="Active">
-                @endif
-            </div>
-        </div>
+        @else
+            <input type="hidden" name="status" value="Active">
+        @endif
     </section>
 
     <section class="rounded-2xl border border-slate-200 bg-white p-5">

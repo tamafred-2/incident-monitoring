@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -25,6 +26,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class IncidentController extends Controller
 {
+    private ?bool $statusSchemaIsLegacy = null;
+
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -38,7 +41,7 @@ class IncidentController extends Controller
         );
 
         $query = Incident::query()
-            ->with(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter', 'assignedStaff'])
+            ->with(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter'])
             ->orderByDesc('incident_date');
 
         if ($filterQ !== '') {
@@ -81,9 +84,6 @@ class IncidentController extends Controller
         $incidentCategories = $this->incidentCategories();
         $residentReporter = null;
         $houses = $this->housesForUser($user, $effectiveSubdivision);
-        $assignableStaff = $user->isAdmin()
-            ? $this->assignableStaffForSubdivision($effectiveSubdivision)
-            : collect();
 
         return view('incidents.index', compact(
             'incidents',
@@ -97,15 +97,14 @@ class IncidentController extends Controller
             'incidentCategories',
             'residentReporter',
             'houses',
-            'assignableStaff',
             'perPage',
         ));
     }
 
     public function show(Request $request, int $incidentId): View
     {
-        $incident = $this->findIncidentOrFail($request, $incidentId, true);
-        $incident->load(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter', 'assignedStaff']);
+        $incident = $this->findIncidentOrFail($request, $incidentId);
+        $incident->load(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter']);
 
         return view('incidents.show', [
             'incident' => $incident,
@@ -117,7 +116,7 @@ class IncidentController extends Controller
     public function showByReportId(Request $request, string $reportId): View
     {
         $incident = Incident::query()
-            ->with(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter', 'assignedStaff'])
+            ->with(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter'])
             ->where('report_id', strtoupper(trim($reportId)))
             ->firstOrFail();
 
@@ -132,8 +131,8 @@ class IncidentController extends Controller
 
     public function qrCard(Request $request, int $incidentId): View|Response
     {
-        $incident = $this->findIncidentOrFail($request, $incidentId, true);
-        $incident->load(['subdivision', 'house', 'reporter', 'assignedStaff']);
+        $incident = $this->findIncidentOrFail($request, $incidentId);
+        $incident->load(['subdivision', 'house', 'reporter']);
 
         return view('incidents.qr-card', [
             'incident' => $incident,
@@ -155,8 +154,7 @@ class IncidentController extends Controller
         $data = $request->validate(
             $this->incidentValidationRules(
                 false,
-                true,
-                $request->user()->isAdmin()
+                true
             )
         );
 
@@ -170,23 +168,7 @@ class IncidentController extends Controller
 
         $houseId = $this->resolveHouseId($data, $subdivisionId);
 
-        $assignedTo = null;
-        $status = $data['status'];
-
-        if ($request->user()->isAdmin()) {
-            $requestedAssignedTo = (int) ($data['assigned_to'] ?? 0);
-            $assignedTo = $this->resolveAssignedStaffId($data, $subdivisionId);
-
-            if ($requestedAssignedTo > 0 && !$assignedTo) {
-                return back()->withErrors([
-                    'assigned_to' => 'Please select an active staff/security account for assignment.',
-                ])->withInput();
-            }
-
-            if ($assignedTo && $status === 'Open') {
-                $status = 'Under Investigation';
-            }
-        }
+        $status = $this->mapIncidentStatusForStorage((string) $data['status']);
 
         $incident = Incident::create([
             'subdivision_id' => $subdivisionId,
@@ -200,14 +182,13 @@ class IncidentController extends Controller
             'status' => $status,
             'proof_photo_path' => $proofPhotoPaths[0] ?? null,
             'reported_by' => $request->user()->user_id,
-            'assigned_to' => $assignedTo,
+            'assigned_to' => null,
             'verified_resident_id' => $verifiedResidentId,
             'verification_method' => $verificationMethod,
             'verified_at' => $verifiedAt,
         ]);
 
         $this->syncIncidentPhotoRecords($incident, $proofPhotoPaths, false);
-        $this->notifyIncidentAssignmentIfNeeded($incident, null);
         $this->notifyIncidentTeamNewReport($incident);
 
         return redirect()->route('incidents.index', $this->routeContext($request, $subdivisionId))
@@ -217,7 +198,7 @@ class IncidentController extends Controller
     public function edit(Request $request, int $incidentId): View
     {
         $incident = $this->findIncidentOrFail($request, $incidentId);
-        $incident->load(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter', 'assignedStaff']);
+        $incident->load(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter']);
         $this->authorizeIncidentEdit($request, $incident);
 
         return view('incidents.edit', [
@@ -227,8 +208,7 @@ class IncidentController extends Controller
             'indexContext' => $this->indexContext($request),
             'proofPhotos' => $this->proofPhotosFor($incident),
             'incidentCategories' => $this->incidentCategories(),
-            'assignableStaff' => $this->assignableStaffForSubdivision($incident->subdivision_id, $incident->assigned_to),
-            'isStaffVerificationMode' => !$request->user()->isAdmin(),
+            'isFullEditor' => $request->user()->isAdmin() || $request->user()->hasRole(['staff']),
         ]);
     }
 
@@ -236,34 +216,21 @@ class IncidentController extends Controller
     {
         $incident = $this->findIncidentOrFail($request, $incidentId);
         $this->authorizeIncidentEdit($request, $incident);
-        $isAdminEditor = $request->user()->isAdmin();
-        $previousAssignedTo = $incident->assigned_to;
+        $isFullEditor = $request->user()->isAdmin() || $request->user()->hasRole(['staff']);
         $previousStatus = $incident->status;
-        $data = $request->validate($isAdminEditor
-            ? $this->incidentValidationRules(false, false, true)
+        $data = $request->validate($isFullEditor
+            ? $this->incidentValidationRules(false, false)
             : $this->incidentStatusValidationRules()
         );
 
-        if ($isAdminEditor) {
+        if ($isFullEditor) {
             $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
             if (!$subdivisionId) {
                 return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
             }
 
             $houseId = $this->resolveHouseId($data, $subdivisionId);
-            $requestedAssignedTo = (int) ($data['assigned_to'] ?? 0);
-            $assignedTo = $this->resolveAssignedStaffId($data, $subdivisionId, $incident->assigned_to);
-
-            if ($requestedAssignedTo > 0 && !$assignedTo) {
-                return back()->withErrors([
-                    'assigned_to' => 'Please select an active staff/security account for assignment.',
-                ])->withInput();
-            }
-
-            $status = $data['status'];
-            if ($assignedTo && $incident->assigned_to !== $assignedTo && $status === 'Open') {
-                $status = 'Under Investigation';
-            }
+            $status = $this->mapIncidentStatusForStorage((string) $data['status']);
 
             $incident->update([
                 'subdivision_id' => $subdivisionId,
@@ -275,13 +242,12 @@ class IncidentController extends Controller
                 'reported_at' => $data['reported_at'],
                 'resolved_at' => $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $data['reported_at']], $incident),
                 'status' => $status,
-                'assigned_to' => $assignedTo,
+                'assigned_to' => null,
             ]);
 
-            $this->notifyIncidentAssignmentIfNeeded($incident, $previousAssignedTo);
             $this->notifyIncidentStatusIfNeeded($incident, $previousStatus);
         } else {
-            $status = $data['status'];
+            $status = $this->mapIncidentStatusForStorage((string) $data['status']);
             $incident->update([
                 'resolved_at' => $this->resolveResolvedAt([
                     'status' => $status,
@@ -295,15 +261,23 @@ class IncidentController extends Controller
             $this->notifyIncidentStatusIfNeeded($incident, $previousStatus);
         }
 
-        $proofPhotoPaths = $this->storeProofPhotos($request);
-        if ($proofPhotoPaths !== []) {
-            $this->syncIncidentPhotoRecords($incident, $proofPhotoPaths, true);
-        } else {
-            $existingProofPhotos = $this->proofPhotosFor($incident->fresh('proofPhotos'));
-            $incident->forceFill([
-                'proof_photo_path' => $existingProofPhotos->first()['path'] ?? $incident->proof_photo_path,
-            ])->save();
+        $existingProofPhotoPaths = $this->proofPhotosFor($incident->fresh('proofPhotos'))
+            ->pluck('path')
+            ->all();
+        $proofPhotosToRemove = $this->resolveRemovableProofPhotoPaths(
+            $existingProofPhotoPaths,
+            $data['remove_proof_photos'] ?? []
+        );
+
+        foreach ($proofPhotosToRemove as $photoPath) {
+            $this->deleteProofPhoto($photoPath);
         }
+
+        $remainingProofPhotoPaths = array_values(array_diff($existingProofPhotoPaths, $proofPhotosToRemove));
+        $newProofPhotoPaths = $this->storeProofPhotos($request);
+        $finalProofPhotoPaths = array_values(array_unique(array_merge($remainingProofPhotoPaths, $newProofPhotoPaths)));
+
+        $this->syncIncidentPhotoRecords($incident, $finalProofPhotoPaths, false);
 
         return redirect()->route('incidents.show', array_merge(
             ['incidentId' => $incident->incident_id],
@@ -324,7 +298,9 @@ class IncidentController extends Controller
             return back()->with('success', 'This incident has already been verified on site.');
         }
 
-        $status = $incident->status === 'Open' ? 'Under Investigation' : $incident->status;
+        $status = $this->isPrimaryPendingStatus($incident->status)
+            ? $this->secondaryPendingStatus()
+            : $incident->status;
         $incident->update([
             'verified_by_staff_id' => $user->user_id,
             'verified_on_site_at' => now(),
@@ -454,7 +430,7 @@ class IncidentController extends Controller
         return response()->file($absolutePath);
     }
 
-    private function incidentValidationRules(bool $forResident = false, bool $includeVerification = true, bool $includeAssignment = false): array
+    private function incidentValidationRules(bool $forResident = false, bool $includeVerification = true): array
     {
         $rules = [
             'subdivision_id' => ['nullable', 'integer'],
@@ -467,6 +443,8 @@ class IncidentController extends Controller
             'incident_date' => ['required', 'date'],
             'proof_photos' => ['required', 'array', 'min:1', 'max:10'],
             'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'remove_proof_photos' => ['nullable', 'array'],
+            'remove_proof_photos.*' => ['string'],
         ];
 
         if ($forResident) {
@@ -475,10 +453,7 @@ class IncidentController extends Controller
 
         $rules['reported_at'] = ['required', 'date'];
         $rules['resolved_at'] = ['nullable', 'date', 'after_or_equal:reported_at'];
-        $rules['status'] = ['required', 'in:Open,Under Investigation,Resolved,Closed'];
-        if ($includeAssignment) {
-            $rules['assigned_to'] = ['nullable', 'integer', 'exists:users,user_id'];
-        }
+        $rules['status'] = ['required', Rule::in($this->allowedIncidentStatusesForInput())];
 
         if ($includeVerification) {
             $rules['verified_resident_id'] = ['nullable', 'integer'];
@@ -496,8 +471,12 @@ class IncidentController extends Controller
     private function incidentStatusValidationRules(): array
     {
         return [
-            'status' => ['required', 'in:Under Investigation,Resolved,Closed'],
+            'status' => ['required', Rule::in($this->allowedIncidentStatusesForInput())],
             'resolved_at' => ['nullable', 'date'],
+            'proof_photos' => ['nullable', 'array', 'max:10'],
+            'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'remove_proof_photos' => ['nullable', 'array'],
+            'remove_proof_photos.*' => ['string'],
         ];
     }
 
@@ -520,51 +499,6 @@ class IncidentController extends Controller
         }
 
         return trim((string) ($data['location'] ?? '')) ?: null;
-    }
-
-    private function resolveAssignedStaffId(array $data, int $subdivisionId, ?int $currentAssignedTo = null): ?int
-    {
-        $assignedTo = (int) ($data['assigned_to'] ?? 0);
-        if ($assignedTo < 1) {
-            return null;
-        }
-
-        $assignee = User::query()
-            ->where('user_id', $assignedTo)
-            ->where('subdivision_id', $subdivisionId)
-            ->whereIn('role', ['security', 'staff'])
-            ->first();
-
-        if (!$assignee) {
-            return null;
-        }
-
-        if ($assignee->is_active || (int) $assignee->user_id === (int) $currentAssignedTo) {
-            return $assignedTo;
-        }
-
-        return null;
-    }
-
-    private function assignableStaffForSubdivision(?int $subdivisionId, ?int $currentAssignedTo = null): Collection
-    {
-        if (!$subdivisionId) {
-            return collect();
-        }
-
-        return User::query()
-            ->where('subdivision_id', $subdivisionId)
-            ->whereIn('role', ['security', 'staff'])
-            ->where(function (Builder $query) use ($currentAssignedTo) {
-                $query->where('is_active', true);
-
-                if ($currentAssignedTo) {
-                    $query->orWhere('user_id', $currentAssignedTo);
-                }
-            })
-            ->orderBy('role')
-            ->orderBy('full_name')
-            ->get();
     }
 
     private function housesForUser($user, ?int $subdivisionId): \Illuminate\Support\Collection
@@ -723,34 +657,38 @@ class IncidentController extends Controller
         ])->save();
     }
 
+    private function resolveRemovableProofPhotoPaths(array $existingPaths, mixed $requestedPaths): array
+    {
+        if (!is_array($requestedPaths) || $requestedPaths === []) {
+            return [];
+        }
+
+        $allowedExistingPaths = array_flip($existingPaths);
+
+        return collect($requestedPaths)
+            ->filter(fn (mixed $path) => is_string($path) && str_starts_with($path, 'uploads/incidents/'))
+            ->filter(fn (string $path) => isset($allowedExistingPaths[$path]))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     private function resolveHistoryView(?string $view): string
     {
-        return in_array($view, ['active', 'history', 'deleted', 'all'], true) ? $view : 'active';
+        return in_array($view, ['active', 'history'], true) ? $view : 'active';
     }
 
     private function applyHistoryViewScope(Builder $query, string $historyView): void
     {
-        if ($historyView === 'deleted') {
-            $query->onlyTrashed();
-
-            return;
-        }
-
-        if ($historyView === 'all') {
-            $query->withTrashed();
-
-            return;
-        }
-
         $query->whereNull('deleted_at');
 
         if ($historyView === 'history') {
-            $query->whereIn('status', ['Resolved', 'Closed']);
+            $query->whereIn('status', $this->resolvedStatuses());
 
             return;
         }
 
-        $query->whereNotIn('status', ['Resolved', 'Closed']);
+        $query->whereNotIn('status', $this->resolvedStatuses());
     }
 
     private function findIncidentOrFail(Request $request, int $incidentId, bool $withTrashed = false): Incident
@@ -786,7 +724,7 @@ class IncidentController extends Controller
 
         abort_unless(
             $user->canAccessSubdivision($incident->subdivision_id)
-            && $user->hasRole(['security', 'staff']),
+            && $user->hasRole(['staff']),
             403
         );
     }
@@ -835,33 +773,6 @@ class IncidentController extends Controller
         }
     }
 
-    private function notifyIncidentAssignmentIfNeeded(Incident $incident, ?int $previousAssignedTo): void
-    {
-        $newAssignedTo = $incident->assigned_to;
-
-        if (!$newAssignedTo || $newAssignedTo === $previousAssignedTo) {
-            return;
-        }
-
-        $assignedUser = User::find($newAssignedTo);
-        if ($assignedUser) {
-            Notification::send($assignedUser, new IncidentUpdatedNotification(
-                $incident,
-                'Incident Assigned',
-                "You have been assigned to incident {$incident->report_id}."
-            ));
-        }
-
-        $reporter = $incident->reporter;
-        if ($reporter && (! $assignedUser || $reporter->user_id !== $assignedUser->user_id)) {
-            Notification::send($reporter, new IncidentUpdatedNotification(
-                $incident,
-                'Staff Assigned',
-                "Staff has been assigned to your incident {$incident->report_id}."
-            ));
-        }
-    }
-
     private function notifyIncidentTeamNewReport(Incident $incident): void
     {
         $team = User::query()
@@ -893,14 +804,6 @@ class IncidentController extends Controller
                 $incident,
                 'Incident Status Updated',
                 "Your incident {$incident->report_id} is now {$incident->status}."
-            ));
-        }
-
-        if ($incident->assignedStaff) {
-            Notification::send($incident->assignedStaff, new IncidentUpdatedNotification(
-                $incident,
-                'Incident Status Updated',
-                "Incident {$incident->report_id} status is now {$incident->status}."
             ));
         }
     }
@@ -955,7 +858,7 @@ class IncidentController extends Controller
 
     private function resolveResolvedAt(array $data, ?Incident $incident): ?string
     {
-        if (!in_array($data['status'] ?? null, ['Resolved', 'Closed'], true)) {
+        if (!in_array($data['status'] ?? null, $this->resolvedStatuses(), true)) {
             return null;
         }
 
@@ -968,6 +871,79 @@ class IncidentController extends Controller
         }
 
         return $data['reported_at'] ?? null;
+    }
+
+    private function allowedIncidentStatusesForInput(): array
+    {
+        return [
+            'Open',
+            'Under Investigation',
+            'Resolved',
+            'Closed',
+            'Reported',
+            'Investigating',
+            'Ongoing',
+        ];
+    }
+
+    private function mapIncidentStatusForStorage(string $status): string
+    {
+        if ($this->usesLegacyIncidentStatusSchema()) {
+            return match ($status) {
+                'Open' => 'Reported',
+                'Under Investigation' => 'Investigating',
+                'Closed' => 'Resolved',
+                default => $status,
+            };
+        }
+
+        return match ($status) {
+            'Reported' => 'Open',
+            'Investigating', 'Ongoing' => 'Under Investigation',
+            default => $status,
+        };
+    }
+
+    private function usesLegacyIncidentStatusSchema(): bool
+    {
+        if ($this->statusSchemaIsLegacy !== null) {
+            return $this->statusSchemaIsLegacy;
+        }
+
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            return $this->statusSchemaIsLegacy = false;
+        }
+
+        $tableSql = DB::table('sqlite_master')
+            ->where('type', 'table')
+            ->where('name', 'incidents')
+            ->value('sql');
+
+        return $this->statusSchemaIsLegacy = is_string($tableSql)
+            && str_contains($tableSql, "'Reported'")
+            && str_contains($tableSql, "'Investigating'");
+    }
+
+    private function primaryPendingStatus(): string
+    {
+        return $this->usesLegacyIncidentStatusSchema() ? 'Reported' : 'Open';
+    }
+
+    private function secondaryPendingStatus(): string
+    {
+        return $this->usesLegacyIncidentStatusSchema() ? 'Investigating' : 'Under Investigation';
+    }
+
+    private function isPrimaryPendingStatus(?string $status): bool
+    {
+        return $status === $this->primaryPendingStatus();
+    }
+
+    private function resolvedStatuses(): array
+    {
+        return $this->usesLegacyIncidentStatusSchema()
+            ? ['Resolved']
+            : ['Resolved', 'Closed'];
     }
 
     private function resolvePerPage(mixed $value, int $default = 10): int

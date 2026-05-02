@@ -1,11 +1,15 @@
+@php
+    $isSecurityViewer = auth()->user()->role === 'security';
+@endphp
+
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-center gap-4">
                 <img src="{{ $subdivision->logo_url }}" alt="{{ $subdivision->subdivision_name }} logo" class="object-cover border rounded-full h-14 w-14 border-slate-200">
                 <div>
-                    <h2 class="text-xl font-semibold leading-tight text-gray-800">{{ $subdivision->subdivision_name }}</h2>
-                    <p class="mt-1 text-sm text-slate-500">{{ $subdivision->full_address ?: 'No address provided.' }}</p>
+                    <h2 class="text-xl font-semibold leading-tight text-gray-800">{{ $isSecurityViewer ? 'Contacts' : 'House Management' }}</h2>
+                    <p class="mt-1 text-sm text-slate-500">{{ $subdivision->subdivision_name }} - {{ $subdivision->full_address ?: 'No address provided.' }}</p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
@@ -13,7 +17,7 @@
                     href="{{ route('dashboard') }}"
                     class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                 >
-                    View Dashboard Summary
+                    Back to Dashboard
                 </a>
                 @if (auth()->user()->isAdmin())
                     <button
@@ -22,7 +26,7 @@
                         x-on:click="$dispatch('open-modal', 'edit-subdivision')"
                         class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
                     >
-                        Edit Subdivision
+                        Edit Subdivision Profile
                     </button>
                 @endif
             </div>
@@ -36,8 +40,12 @@
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Contact Information</h4>
-                        <p class="mt-1 text-sm text-slate-500">Contact details are available on-demand to keep this page clean.</p>
+                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">{{ $isSecurityViewer ? 'Resident Contact Overview' : 'House Registry Overview' }}</h4>
+                        <p class="mt-1 text-sm text-slate-500">{{ $isSecurityViewer ? 'Browse houses and resident contact details for '.$subdivision->subdivision_name.'.' : 'Manage and maintain block and lot records for '.$subdivision->subdivision_name.'.' }}</p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ $houseCount }} house{{ $houseCount === 1 ? '' : 's' }}</span>
+                            <span class="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">{{ $residentCount }} resident{{ $residentCount === 1 ? '' : 's' }}</span>
+                        </div>
                     </div>
                     <button
                         type="button"
@@ -45,7 +53,7 @@
                         x-on:click="$dispatch('open-modal', 'subdivision-contact-info')"
                         class="inline-flex items-center px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                     >
-                        View Contact Info
+                        View Subdivision Contact Info
                     </button>
                 </div>
             </div>
@@ -53,33 +61,16 @@
             {{-- Houses --}}
             <div class="bg-white border shadow-sm rounded-2xl border-slate-200">
                 <div class="flex flex-col gap-3 p-6 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
-                    <h3 class="text-base font-semibold text-slate-900">Houses</h3>
+                    <h3 class="text-base font-semibold text-slate-900">House Records</h3>
                     <div class="flex flex-wrap items-end gap-3">
                         <form method="GET" action="{{ route('subdivisions.show', $subdivision) }}" class="flex items-center gap-2">
                             <input type="hidden" name="per_page" value="{{ $perPage }}">
-                            <input type="search" name="q" value="{{ $filterQ }}" placeholder="Search block or lot"
+                            <input type="search" name="q" value="{{ $filterQ }}" placeholder="Search block, lot, or street"
                                    class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                             <button class="px-3 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Search</button>
                             @if ($filterQ)
                                 <a href="{{ route('subdivisions.show', ['subdivision' => $subdivision, 'per_page' => $perPage]) }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Clear</a>
                             @endif
-                        </form>
-                        <form method="GET" action="{{ route('subdivisions.show', $subdivision) }}" class="flex items-end gap-2">
-                            @if ($filterQ !== '')
-                                <input type="hidden" name="q" value="{{ $filterQ }}">
-                            @endif
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
-                                <div class="mt-1 flex flex-wrap items-center gap-2">
-                                    <select name="per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                                        @foreach ([10, 25, 50, 100] as $size)
-                                            <option value="{{ $size }}" @selected($perPage === $size)>{{ $size }}</option>
-                                        @endforeach
-                                    </select>
-                                    <input type="number" name="per_page_custom" min="1" max="100" value="" placeholder="{{ $perPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom house rows per page">
-                                    <button class="px-3 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
-                                </div>
-                            </div>
                         </form>
                         @if (auth()->user()->isAdmin())
                             <button
@@ -88,7 +79,7 @@
                                 x-on:click="$dispatch('open-modal', 'create-house')"
                                 class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
                             >
-                                Add House
+                                Add House Record
                             </button>
                         @endif
                     </div>
@@ -102,9 +93,7 @@
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Lot</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Street</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Residents</th>
-                                @if (auth()->user()->isAdmin())
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
-                                @endif
+                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-slate-100">
@@ -124,15 +113,24 @@
                                             {{ $house->residents->count() }} resident{{ $house->residents->count() === 1 ? '' : 's' }}
                                         </span>
                                     </td>
-                                    @if (auth()->user()->isAdmin())
-                                        <td class="px-6 py-4">
-                                            <div class="flex items-center gap-3">
-                                                <a
-                                                    href="{{ route('houses.show', $house) }}"
-                                                    class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                                                >
-                                                    View
-                                                </a>
+                                    <td class="px-6 py-4">
+                                        @php
+                                            $houseViewContext = array_filter([
+                                                'house' => $house,
+                                                'from_subdivision' => 1,
+                                                'q' => $filterQ,
+                                                'per_page' => $perPage,
+                                                'page' => $houses->currentPage(),
+                                            ], static fn ($value) => $value !== null && $value !== '');
+                                        @endphp
+                                        <div class="flex items-center gap-3">
+                                            <a
+                                                href="{{ route('houses.show', $houseViewContext) }}"
+                                                class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                                            >
+                                                View
+                                            </a>
+                                            @if (auth()->user()->isAdmin())
                                                 <button
                                                     type="button"
                                                     x-data
@@ -149,13 +147,13 @@
                                                 >
                                                     Delete
                                                 </button>
-                                            </div>
-                                        </td>
-                                    @endif
+                                            @endif
+                                        </div>
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ auth()->user()->isAdmin() ? 5 : 4 }}" class="px-6 py-10 text-center text-slate-500">No houses found.</td>
+                                    <td colspan="5" class="px-6 py-10 text-center text-slate-500">No house records found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -169,19 +167,47 @@
                             No house records to paginate
                         @endif
                     </p>
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <form method="GET" action="{{ route('subdivisions.show', $subdivision) }}" class="flex items-center gap-2">
+                            @if ($filterQ !== '')
+                                <input type="hidden" name="q" value="{{ $filterQ }}">
+                            @endif
+                            <label for="house-rows-per-page" class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                            <input
+                                id="house-rows-per-page"
+                                type="text"
+                                name="per_page"
+                                list="house-row-size-options"
+                                value=""
+                                placeholder="{{ $perPage }}"
+                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                aria-label="Rows per page"
+                                inputmode="numeric"
+                                autocomplete="off"
+                                pattern="[0-9]{1,3}"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)"
+                                onchange="if (this.value.trim() !== '') { this.form.requestSubmit(); }"
+                                onkeydown="if (event.key === 'Enter') { event.preventDefault(); if (this.value.trim() !== '') { this.form.requestSubmit(); } }"
+                            >
+                            <datalist id="house-row-size-options">
+                                <option value="10"></option>
+                                <option value="25"></option>
+                                <option value="50"></option>
+                                <option value="100"></option>
+                            </datalist>
+                        </form>
                         @if ($houses->onFirstPage())
-                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></span>
                         @else
-                            <a href="{{ $houses->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
+                            <a href="{{ $houses->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></a>
                         @endif
                         <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
                             Page {{ $houses->currentPage() }} of {{ max($houses->lastPage(), 1) }}
                         </span>
                         @if ($houses->hasMorePages())
-                            <a href="{{ $houses->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
+                            <a href="{{ $houses->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></a>
                         @else
-                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
+                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></span>
                         @endif
                     </div>
                 </div>
@@ -194,7 +220,7 @@
             <div class="p-6 bg-white sm:p-8">
                 <div class="flex items-start justify-between gap-4">
                     <div>
-                        <h3 class="text-lg font-semibold text-slate-900">Edit Subdivision</h3>
+                        <h3 class="text-lg font-semibold text-slate-900">Edit Subdivision Profile</h3>
                         <p class="mt-1 text-sm text-slate-500">Update details for {{ $subdivision->subdivision_name }}.</p>
                     </div>
                     <button type="button" x-on:click="$dispatch('close')" class="p-2 transition border rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700" aria-label="Close">
@@ -313,12 +339,12 @@
         @endforeach
     @endif
 
-    <x-modal name="subdivision-contact-info" maxWidth="2xl" focusable>
+    <x-modal name="subdivision-contact-info" maxWidth="4xl" focusable>
         <div class="p-6 bg-white sm:p-8">
             <div class="flex items-start justify-between gap-4">
                 <div>
-                    <h3 class="text-lg font-semibold text-slate-900">Contact Information</h3>
-                    <p class="mt-1 text-sm text-slate-500">{{ $subdivision->subdivision_name }}</p>
+                    <h3 class="text-lg font-semibold text-slate-900">Subdivision Contact Information</h3>
+                    <p class="mt-1 text-sm text-slate-500">{{ $subdivision->subdivision_name }} registered call references</p>
                 </div>
                 <button
                     type="button"
@@ -335,25 +361,25 @@
             <div class="grid gap-6 mt-6 lg:grid-cols-2">
                 <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                     <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Primary Contact</h4>
-                    <dl class="mt-4 grid grid-cols-[auto,1fr] gap-x-4 gap-y-3 text-sm">
+                    <dl class="mt-4 grid grid-cols-[120px,minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
                         <dt class="text-slate-500">Person</dt>
-                        <dd class="font-medium text-right break-words text-slate-900">{{ $subdivision->contact_person ?: '-' }}</dd>
-                        <dt class="text-slate-500">Number</dt>
-                        <dd class="font-medium text-right break-words text-slate-900">{{ $subdivision->contact_number ?: '-' }}</dd>
+                        <dd class="font-medium break-words text-slate-900">{{ $subdivision->contact_person ?: '-' }}</dd>
+                        <dt class="text-slate-500">Registered Number</dt>
+                        <dd class="font-medium break-words text-slate-900">{{ $subdivision->contact_number ?: '-' }}</dd>
                         <dt class="text-slate-500">Email</dt>
-                        <dd class="font-medium text-right break-all text-slate-900">{{ $subdivision->email ?: '-' }}</dd>
+                        <dd class="font-medium break-all text-slate-900">{{ $subdivision->email ?: '-' }}</dd>
                     </dl>
                 </div>
 
                 <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                     <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Secondary Contact</h4>
-                    <dl class="mt-4 grid grid-cols-[auto,1fr] gap-x-4 gap-y-3 text-sm">
+                    <dl class="mt-4 grid grid-cols-[120px,minmax(0,1fr)] gap-x-4 gap-y-3 text-sm">
                         <dt class="text-slate-500">Person</dt>
-                        <dd class="font-medium text-right break-words text-slate-900">{{ $subdivision->secondary_contact_person ?: '-' }}</dd>
-                        <dt class="text-slate-500">Number</dt>
-                        <dd class="font-medium text-right break-words text-slate-900">{{ $subdivision->secondary_contact_number ?: '-' }}</dd>
+                        <dd class="font-medium break-words text-slate-900">{{ $subdivision->secondary_contact_person ?: '-' }}</dd>
+                        <dt class="text-slate-500">Registered Number</dt>
+                        <dd class="font-medium break-words text-slate-900">{{ $subdivision->secondary_contact_number ?: '-' }}</dd>
                         <dt class="text-slate-500">Email</dt>
-                        <dd class="font-medium text-right break-all text-slate-900">{{ $subdivision->secondary_email ?: '-' }}</dd>
+                        <dd class="font-medium break-all text-slate-900">{{ $subdivision->secondary_email ?: '-' }}</dd>
                     </dl>
                 </div>
             </div>

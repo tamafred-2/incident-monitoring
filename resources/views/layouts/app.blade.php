@@ -49,21 +49,9 @@
                             <div class="min-w-0 flex-1">
                                 {{ $header }}
                             </div>
-
-                            @if (auth()->user()?->isAdmin())
-                                <div class="shrink-0">
-                                    @include('layouts.admin-visitor-notifications')
-                                </div>
-                            @endif
                         </div>
                     </header>
                 @endisset
-
-                @if (! isset($header) && auth()->user()?->isAdmin())
-                    <div class="mx-auto flex max-w-7xl justify-end px-4 pt-6 sm:px-6 lg:px-8">
-                        @include('layouts.admin-visitor-notifications')
-                    </div>
-                @endif
 
                 <main class="pb-10">
                     {{ $slot }}

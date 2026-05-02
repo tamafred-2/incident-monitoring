@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div>
             <h2 class="text-xl font-semibold leading-tight text-gray-800">My Visitors</h2>
-            <p class="mt-1 text-sm text-slate-500">Approve or reject visitors requesting to visit your home. Approved visitors are automatically checked in at the gate.</p>
+            <p class="mt-1 text-sm text-slate-500">Respond to visitor requests so Admin/Guard can allow or deny entry using your confirmed resident response.</p>
         </div>
     </x-slot>
 
@@ -73,7 +73,7 @@
                                                         x-on:click="$dispatch('open-modal', 'decline-visitor-{{ $req->request_id }}')"
                                                         class="px-3 py-2 text-xs font-semibold border rounded-lg border-rose-200 text-rose-700 hover:bg-rose-50"
                                                     >
-                                                        Reject
+                                                        Deny
                                                     </button>
                                                 </div>
                                             @else
@@ -111,7 +111,7 @@
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900">Approve Visitor?</h3>
                             <p class="mt-2 text-sm text-slate-600">
-                                <span class="font-medium text-slate-900">{{ $req->visitor_name }}</span> will be approved and checked in immediately.
+                                <span class="font-medium text-slate-900">{{ $req->visitor_name }}</span> will be approved and this response will be sent to Admin/Guard for entry confirmation.
                             </p>
                         </div>
                     </div>
@@ -133,7 +133,7 @@
                             Cancel
                         </button>
                         <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-emerald-600 hover:bg-emerald-700">
-                            Approve &amp; Check In
+                            Approve And Allow Entry
                         </button>
                     </form>
                 </div>
@@ -148,9 +148,9 @@
                             </svg>
                         </div>
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900">Reject Visitor?</h3>
+                            <h3 class="text-lg font-semibold text-slate-900">Deny Visitor?</h3>
                             <p class="mt-2 text-sm text-slate-600">
-                                <span class="font-medium text-slate-900">{{ $req->visitor_name }}</span> will be declined and will not be allowed entry.
+                                <span class="font-medium text-slate-900">{{ $req->visitor_name }}</span> will be declined and should not be allowed entry.
                             </p>
                         </div>
                     </div>
@@ -165,7 +165,7 @@
                             Cancel
                         </button>
                         <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-rose-600 hover:bg-rose-700">
-                            Reject Visitor
+                            Deny Visitor
                         </button>
                     </form>
                 </div>

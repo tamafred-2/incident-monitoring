@@ -35,7 +35,6 @@ class ResidentController extends Controller
         if ($filterQ !== '') {
             $query->where(function ($builder) use ($filterQ) {
                 $builder->where('full_name', 'like', "%{$filterQ}%")
-                    ->orWhere('resident_code', 'like', "%{$filterQ}%")
                     ->orWhere('address_or_unit', 'like', "%{$filterQ}%")
                     ->orWhereHas('house', function ($houseQuery) use ($filterQ) {
                         $houseQuery->where('block', 'like', "%{$filterQ}%")
@@ -209,7 +208,7 @@ class ResidentController extends Controller
 
         return view('residents.qr-card', [
             'resident' => $resident,
-            'qrPayload' => 'RESIDENT:' . $resident->resident_code,
+            'qrPayload' => 'RESIDENT:' . $resident->resident_id,
         ]);
     }
 
@@ -226,7 +225,6 @@ class ResidentController extends Controller
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
             'house_id' => ['nullable', 'integer', 'exists:houses,house_id'],
             'address_or_unit' => ['nullable', 'string', 'max:150'],
-            'resident_code' => ['nullable', 'string', 'max:64', Rule::unique('residents', 'resident_code')->ignore($resident?->resident_id, 'resident_id')],
             'status' => ['nullable', Rule::in(['Active', 'Inactive'])],
         ]);
 

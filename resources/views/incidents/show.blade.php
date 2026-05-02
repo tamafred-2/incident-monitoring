@@ -3,7 +3,7 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <h2 class="text-xl font-semibold leading-tight text-gray-800">Incident Details</h2>
-                <p class="mt-1 text-sm text-slate-500">Full incident information, verification details, and proof images in one place.</p>
+                <p class="mt-1 text-sm text-slate-500">Full incident information with proof images and pending-to-resolved status tracking.</p>
             </div>
             <div class="flex flex-wrap gap-3">
                 <a
@@ -12,18 +12,7 @@
                 >
                     Back to Incidents
                 </a>
-                @if (! $incident->trashed() && (auth()->user()->isAdmin() || auth()->user()->hasRole(['security', 'staff'])) && ! $incident->verified_on_site_at)
-                    <form method="POST" action="{{ route('incidents.verify', array_merge(['incidentId' => $incident->incident_id], $indexContext)) }}">
-                        @csrf
-                        <button
-                            type="submit"
-                            class="px-4 py-2 text-sm font-semibold text-white transition rounded-xl bg-emerald-600 hover:bg-emerald-700"
-                        >
-                            Verify on Site
-                        </button>
-                    </form>
-                @endif
-                @if (auth()->user()->isAdmin() || auth()->user()->hasRole(['security', 'staff']))
+                @if (auth()->user()->isAdmin() || auth()->user()->hasRole(['staff']))
                     <a
                         href="{{ route('incidents.edit', array_merge(['incidentId' => $incident->incident_id], $indexContext)) }}"
                         class="px-4 py-2 text-sm font-semibold text-white transition rounded-xl bg-sky-600 hover:bg-sky-700"
@@ -52,6 +41,10 @@
             class="flex flex-col max-w-6xl gap-6 px-4 mx-auto sm:px-6 lg:px-8"
         >
             @include('partials.alerts')
+            @php
+                $isResolvedIncident = in_array($incident->status, ['Resolved', 'Closed'], true);
+                $statusLabel = $isResolvedIncident ? 'Resolved' : 'Pending';
+            @endphp
 
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
                 <div class="flex flex-col gap-4 pb-5 border-b border-slate-200 lg:flex-row lg:items-start lg:justify-between">
@@ -67,8 +60,8 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3">
-                        <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $incident->trashed() ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700' }}">
-                            {{ $incident->trashed() ? 'Archived' : $incident->status }}
+                        <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $incident->trashed() ? 'bg-rose-100 text-rose-700' : ($isResolvedIncident ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700') }}">
+                            {{ $incident->trashed() ? 'Archived' : $statusLabel }}
                         </span>
                         @if ($incident->trashed())
                             <span class="text-sm text-slate-500">Archived {{ optional($incident->deleted_at)->format('M j, Y h:i A') }}</span>
@@ -142,61 +135,49 @@
                                 <dt class="text-slate-500">Reported By</dt>
                                 <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->reporter?->full_name ?? '-' }}</dd>
                             </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Assigned Responder</dt>
-                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->assignedStaff?->full_name ?? '-' }}</dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Verified On Site</dt>
-                                <dd class="font-medium text-right text-slate-900">
-                                    @if ($incident->verified_on_site_at)
-                                        <span class="block whitespace-nowrap">{{ $incident->verified_on_site_at->format('M j, Y') }}</span>
-                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->verified_on_site_at->format('h:i A') }}</span>
-                                    @else
-                                        -
-                                    @endif
-                                </dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Verified By</dt>
-                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->verifiedStaff?->full_name ?? '-' }}</dd>
-                            </div>
                         </dl>
                     </div>
 
                     <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
-                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Verification</h4>
+                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Incident Tracking</h4>
                         <dl class="mt-4 space-y-3 text-sm">
                             <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Verified Reporter</dt>
-                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->verifiedResident?->full_name ?? '-' }}</dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Method</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $incident->verification_method ?: '-' }}</dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Verified At</dt>
-                                <dd class="font-medium text-right text-slate-900">
-                                    @if ($incident->verified_at)
-                                        <span class="block whitespace-nowrap">{{ $incident->verified_at->format('M j, Y') }}</span>
-                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->verified_at->format('h:i A') }}</span>
-                                    @else
-                                        -
-                                    @endif
-                                </dd>
+                                <dt class="text-slate-500">Reporter</dt>
+                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->reporter?->full_name ?? '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Current Status</dt>
                                 <dd>
-                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $incident->trashed() ? 'bg-rose-100 text-rose-700' : ($incident->status === 'Resolved' ? 'bg-emerald-100 text-emerald-700' : ($incident->status === 'Open' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700')) }}">
-                                        {{ $incident->trashed() ? 'Archived' : $incident->status }}
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $incident->trashed() ? 'bg-rose-100 text-rose-700' : ($isResolvedIncident ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700') }}">
+                                        {{ $incident->trashed() ? 'Archived' : $statusLabel }}
                                     </span>
                                 </dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">House / Unit</dt>
                                 <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->house?->display_address ?? '-' }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Date Reported</dt>
+                                <dd class="font-medium text-right text-slate-900">
+                                    @if ($incident->reported_at)
+                                        <span class="block whitespace-nowrap">{{ $incident->reported_at->format('M j, Y') }}</span>
+                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->reported_at->format('h:i A') }}</span>
+                                    @else
+                                        -
+                                    @endif
+                                </dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Date Resolved</dt>
+                                <dd class="font-medium text-right text-slate-900">
+                                    @if ($incident->resolved_at)
+                                        <span class="block whitespace-nowrap">{{ $incident->resolved_at->format('M j, Y') }}</span>
+                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->resolved_at->format('h:i A') }}</span>
+                                    @else
+                                        -
+                                    @endif
+                                </dd>
                             </div>
                         </dl>
                     </div>

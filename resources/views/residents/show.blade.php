@@ -35,10 +35,6 @@
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Resident Info</h4>
                         <dl class="mt-4 space-y-3 text-sm">
                             <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Resident Code</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $resident->resident_code }}</dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Phone</dt>
                                 <dd class="font-medium text-right text-slate-900">{{ $resident->phone ?: '-' }}</dd>
                             </div>
@@ -86,8 +82,8 @@
                 <div class="p-5 mt-6 bg-white border rounded-2xl border-slate-200">
                     <div class="flex items-center justify-between gap-4">
                         <div>
-                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Recent Verified Incidents</h4>
-                            <p class="mt-1 text-sm text-slate-500">Complaint and verification history tied to this resident.</p>
+                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Recent Incidents</h4>
+                            <p class="mt-1 text-sm text-slate-500">Recent incident history tied to this resident record.</p>
                         </div>
                     </div>
 
@@ -98,7 +94,7 @@
                                     <tr>
                                         <th class="px-4 py-3 font-semibold text-left text-slate-600">Report ID</th>
                                         <th class="px-4 py-3 font-semibold text-left text-slate-600">Category</th>
-                                        <th class="px-4 py-3 font-semibold text-left text-slate-600">Status</th>
+                                        <th class="px-4 py-3 font-semibold text-left text-slate-600">Incident Status</th>
                                         <th class="px-4 py-3 font-semibold text-left text-slate-600">Reported By</th>
                                     </tr>
                                 </thead>
@@ -114,8 +110,12 @@
                                                 <div class="max-w-[12rem] truncate" title="{{ $incident->category ?: '-' }}">{{ $incident->category ?: '-' }}</div>
                                             </td>
                                             <td class="px-4 py-3 text-slate-600">
-                                                <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold {{ $incident->status === 'Resolved' ? 'bg-emerald-100 text-emerald-700' : ($incident->status === 'Open' ? 'bg-amber-100 text-amber-700' : 'bg-sky-100 text-sky-700') }}">
-                                                    {{ $incident->status }}
+                                                @php
+                                                    $isResolvedIncident = in_array($incident->status, ['Resolved', 'Closed'], true);
+                                                    $incidentStatusLabel = $isResolvedIncident ? 'Resolved' : 'Pending';
+                                                @endphp
+                                                <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold {{ $isResolvedIncident ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                                    {{ $incidentStatusLabel }}
                                                 </span>
                                             </td>
                                             <td class="px-4 py-3 text-slate-600">
@@ -127,7 +127,7 @@
                             </table>
                         </div>
                     @else
-                        <p class="mt-3 text-sm text-slate-500">No verified incidents are linked to this resident yet.</p>
+                        <p class="mt-3 text-sm text-slate-500">No incidents are linked to this resident yet.</p>
                     @endif
                 </div>
             </div>

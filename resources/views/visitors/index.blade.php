@@ -8,9 +8,44 @@
     @endphp
 
     <x-slot name="header">
-        <div>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">Visitors</h2>
-            <p class="mt-1 text-sm text-slate-500">Visitor monitoring now keeps check-out and history visible together, with check-in available as a quick action.</p>
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h2 class="text-xl font-semibold leading-tight text-gray-800">Visitors</h2>
+                <p class="mt-1 text-sm text-slate-500">Visitor approval follows the corrected flow: contact resident using the registered phone number or use the automated resident response request.</p>
+            </div>
+
+            <div
+                x-data="{ reminderOpen: false }"
+                class="relative shrink-0"
+                @mouseenter="reminderOpen = true"
+                @mouseleave="reminderOpen = false"
+            >
+                <button
+                    type="button"
+                    @click="reminderOpen = !reminderOpen"
+                    @focus="reminderOpen = true"
+                    @blur="reminderOpen = false"
+                    class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                    aria-label="Visitor approval reminder"
+                >
+                    <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M18 10A8 8 0 114 4.223a8 8 0 0114 5.777zM9 8a1 1 0 112 0v4a1 1 0 11-2 0V8zm1-3a1.25 1.25 0 100 2.5A1.25 1.25 0 0010 5z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+
+                <div
+                    x-cloak
+                    x-show="reminderOpen"
+                    x-transition.origin.top.right.duration.150ms
+                    class="absolute right-0 z-30 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-sky-200 bg-white p-4 shadow-xl"
+                >
+                    <p class="text-sm font-semibold text-sky-800">Visitor Approval Reminder</p>
+                    <p class="mt-2 text-sm leading-6 text-sky-700">
+                        For resident visits, Admin/Guard should contact the resident using the phone number registered in the system and record the resident response before allowing entry.
+                        If automated approval is active, wait for the system response and apply the same allow or deny decision.
+                    </p>
+                </div>
+            </div>
         </div>
     </x-slot>
 
@@ -22,29 +57,35 @@
                 residentsByHouse: {{ \Illuminate\Support\Js::from($residentsByHouse) }},
                 selectedSubdivision: '{{ $effectiveSubdivision }}',
                 selectedHouse: @js(old('house_address_or_unit', '')),
+                selectedResidentId: @js(old('resident_id', '')),
                 hostEmployee: @js(old('host_employee', '')),
                 hostSearch: @js(old('host_employee', '')),
-                hasVehicle: @js((string) old('has_vehicle', '0')),
-                idPhotoPreview: null,
-                idPhotoName: null,
+                selectedResidentPhone: '',
                 hostOpen: false,
-                visitType: @js(old('visit_type', 'resident')),
                 get availableHouses() {
                     return this.housesBySubdivision[this.selectedSubdivision] || [];
                 },
                 get availableResidents() {
                     const residents = this.residentsByHouse[this.selectedHouse] || [];
                     if (!this.hostSearch.trim()) return residents;
-                    return residents.filter(r => r.name.toLowerCase().includes(this.hostSearch.toLowerCase()));
+                    const query = this.hostSearch.toLowerCase();
+                    return residents.filter(r =>
+                        r.name.toLowerCase().includes(query) ||
+                        (r.phone || '').toLowerCase().includes(query)
+                    );
                 },
                 selectResident(resident) {
+                    this.selectedResidentId = resident.id;
                     this.hostEmployee = resident.name;
                     this.hostSearch = resident.name;
+                    this.selectedResidentPhone = resident.phone || '';
                     this.hostOpen = false;
                 },
                 onHouseChange() {
+                    this.selectedResidentId = '';
                     this.hostEmployee = '';
                     this.hostSearch = '';
+                    this.selectedResidentPhone = '';
                 }
             }"
             class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
@@ -54,7 +95,6 @@
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
                 <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
                     <input type="hidden" name="tab" :value="activeMonitoringTab">
-                    <input type="hidden" name="view" value="{{ $historyView }}">
                     <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                     <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                     <div class="flex-1 min-w-48">
@@ -63,14 +103,14 @@
                             type="search"
                             name="q"
                             value="{{ $filterQ }}"
-                            placeholder="Name, phone, host, house, plate, status"
+                            placeholder="Name, phone, resident, house, status"
                             class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                         >
                     </div>
                     <div class="flex items-center gap-2">
                         <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
                         <a
-                            href="{{ route('visitors.index', ['view' => $historyView, 'history_per_page' => $historyPerPage, 'check_out_per_page' => $checkOutPerPage]) }}"
+                            href="{{ route('visitors.index', ['history_per_page' => $historyPerPage, 'check_out_per_page' => $checkOutPerPage]) }}"
                             class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                         >
                             Clear
@@ -81,7 +121,7 @@
                                 x-on:click="$dispatch('open-modal', 'visitor-check-in')"
                                 class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
                             >
-                                Check In Visitor
+                                Submit Visitor Request
                             </button>
                         @endif
                     </div>
@@ -93,8 +133,8 @@
                     <div class="p-6 bg-white sm:p-8">
                         <div class="flex items-center justify-between gap-4 mb-5">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900">Visitor Check-in</h3>
-                                <p class="mt-1 text-sm text-slate-500">Log a new visitor using grouped sections for identity, contact, and visit details.</p>
+                                <h3 class="text-lg font-semibold text-slate-900">Submit Visitor Request</h3>
+                                <p class="mt-1 text-sm text-slate-500">Record identity and visit details, then wait for resident approval through registered phone contact or automated response.</p>
                             </div>
                             <button
                                 type="button"
@@ -108,38 +148,27 @@
                             </button>
                         </div>
 
-                    <form method="POST" action="{{ route('visitors.store') }}" enctype="multipart/form-data" class="space-y-6">
+                    <form method="POST" action="{{ route('visitors.store') }}" class="space-y-6">
                         @csrf
                         <input type="hidden" name="tab" value="check-in">
                         <input type="hidden" name="q" value="{{ $filterQ }}">
-                        <input type="hidden" name="view" value="{{ $historyView }}">
                         <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                         <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
 
-                        <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
-                            <div class="mb-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Type</h4>
-                                <p class="mt-1 text-sm text-slate-500">Is the visitor here for a specific resident, or for a general purpose (delivery, amenity use, etc.)?</p>
-                            </div>
-                            <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">
-                            <div class="flex flex-wrap gap-3">
-                                <label class="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition"
-                                    :class="visitType === 'resident' ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'">
-                                    <input type="radio" name="visit_type" value="resident" x-model="visitType" class="border-slate-300 text-sky-600 focus:ring-sky-500">
-                                    Visiting a Resident
-                                </label>
-                                <label class="flex cursor-pointer items-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition"
-                                    :class="visitType === 'general' ? 'border-sky-500 bg-sky-50 text-sky-700' : 'border-slate-300 text-slate-700 hover:bg-slate-50'">
-                                    <input type="radio" name="visit_type" value="general" x-model="visitType" class="border-slate-300 text-sky-600 focus:ring-sky-500">
-                                    General / Walk-in
-                                </label>
-                            </div>
+                        <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">
+                        <input type="hidden" name="visit_type" value="resident">
+
+                        <div class="p-5 border rounded-2xl border-sky-200 bg-sky-50/60">
+                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-800">Approval Step</h4>
+                            <p class="mt-2 text-sm leading-6 text-sky-700">
+                                After submission, the resident response must be recorded first. Only approved requests should proceed to visitor entry.
+                            </p>
                         </div>
 
                         <div class="p-5 bg-white border rounded-2xl border-slate-200">
                             <div class="mb-4">
                                 <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visitor Identity</h4>
-                                <p class="mt-1 text-sm text-slate-500">Enter the visitor’s name exactly as shown on their valid ID.</p>
+                                <p class="mt-1 text-sm text-slate-500">Enter the visitor's name exactly as shown on their valid ID.</p>
                             </div>
 
                             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.2fr_1.2fr_0.7fr_0.7fr]">
@@ -164,196 +193,14 @@
 
                         <div class="p-5 bg-white border rounded-2xl border-slate-200">
                             <div class="mb-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Contact And ID</h4>
-                                <p class="mt-1 text-sm text-slate-500">Required contact and identification details.</p>
+                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Contact</h4>
+                                <p class="mt-1 text-sm text-slate-500">Visitor phone number is required for records and follow-up.</p>
                             </div>
 
                             <div class="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700">Phone</label>
                                     <input type="text" name="phone" value="{{ old('phone') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">With Vehicle?</label>
-                                    <select name="has_vehicle" x-model="hasVehicle" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                                        <option value="0">No</option>
-                                        <option value="1">Yes</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">Plate Number</label>
-                                    <input type="text" name="plate_number" value="{{ old('plate_number') }}" :required="hasVehicle === '1'" :disabled="hasVehicle !== '1'" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400">
-                                    <x-input-error :messages="$errors->get('plate_number')" class="mt-1" />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">Passenger Count</label>
-                                    <input type="number" min="1" max="50" name="passenger_count" value="{{ old('passenger_count') }}" :required="hasVehicle === '1'" :disabled="hasVehicle !== '1'" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400">
-                                    <p class="mt-1 text-xs text-slate-500">Only total passengers are required, no individual passenger forms needed.</p>
-                                    <x-input-error :messages="$errors->get('passenger_count')" class="mt-1" />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">ID Photo</label>
-                                    <div class="mt-1" x-data="{
-                                        photoMenuOpen: false,
-                                        cameraOpen: false,
-                                        stream: null,
-                                        async startCamera() {
-                                            this.photoMenuOpen = false;
-                                            this.cameraOpen = true;
-                                            await $nextTick();
-                                            try {
-                                                this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-                                                $refs.cameraVideo.srcObject = this.stream;
-                                            } catch(e) {
-                                                alert('Camera access denied or not available.');
-                                                this.cameraOpen = false;
-                                            }
-                                        },
-                                        stopCamera() {
-                                            if (this.stream) { this.stream.getTracks().forEach(t => t.stop()); this.stream = null; }
-                                            this.cameraOpen = false;
-                                        },
-                                        capturePhoto() {
-                                            const canvas = $refs.cameraCanvas;
-                                            const video = $refs.cameraVideo;
-                                            canvas.width = video.videoWidth;
-                                            canvas.height = video.videoHeight;
-                                            canvas.getContext('2d').drawImage(video, 0, 0);
-                                            const self = this;
-                                            canvas.toBlob(blob => {
-                                                const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
-                                                const dt = new DataTransfer();
-                                                dt.items.add(file);
-                                                $refs.uploadInput.files = dt.files;
-                                                $refs.uploadInput.dispatchEvent(new Event('change'));
-                                                self.cameraOpen = false;
-                                                if (self.stream) { self.stream.getTracks().forEach(t => t.stop()); self.stream = null; }
-                                            }, 'image/jpeg', 0.92);
-                                        }
-                                    }" @click.away="photoMenuOpen = false">
-
-                                        <div class="flex items-start gap-4">
-                                            <div class="relative">
-                                                <button
-                                                    type="button"
-                                                    @click="photoMenuOpen = !photoMenuOpen"
-                                                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium border rounded-xl border-slate-300 bg-slate-50 text-slate-700 hover:bg-slate-100"
-                                                >
-                                                    <svg class="w-4 h-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/></svg>
-                                                    <span>Upload / Take Photo</span>
-                                                    <svg class="w-4 h-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.23 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
-                                                </button>
-
-                                                <div
-                                                    x-show="photoMenuOpen"
-                                                    x-transition
-                                                    class="absolute left-0 z-20 mt-2 overflow-hidden bg-white border shadow-lg w-52 rounded-xl border-slate-200"
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        @click="$refs.uploadInput.click(); photoMenuOpen = false"
-                                                        class="w-full px-4 py-2.5 text-sm text-left text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                                                    >
-                                                        <svg class="w-4 h-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
-                                                        Upload from device
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        @click="startCamera()"
-                                                        class="w-full px-4 py-2.5 text-sm text-left text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                                                    >
-                                                        <svg class="w-4 h-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
-                                                        Take photo
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <input
-                                                x-ref="uploadInput"
-                                                type="file"
-                                                name="id_photo"
-                                                accept="image/*"
-                                                required
-                                                class="sr-only"
-                                                @change="const f = $event.target.files[0]; if(f){ idPhotoPreview = URL.createObjectURL(f); idPhotoName = f.name; }"
-                                            >
-
-                                            <div x-show="idPhotoPreview" class="flex flex-col gap-1">
-                                                <img :src="idPhotoPreview" class="object-cover w-24 h-16 border rounded-lg border-slate-200" alt="ID preview">
-                                            </div>
-                                        </div>
-
-                                        <p class="mt-1.5 text-xs text-slate-500" x-text="idPhotoName || 'No file chosen'"></p>
-
-                                        {{-- Inline camera viewer --}}
-                                        <div x-show="cameraOpen" x-cloak class="mt-3 overflow-hidden border rounded-2xl border-slate-200">
-                                            <video x-ref="cameraVideo" autoplay playsinline muted class="w-full max-h-64 bg-black object-cover"></video>
-                                            <canvas x-ref="cameraCanvas" class="hidden"></canvas>
-                                            <div class="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50">
-                                                <button
-                                                    type="button"
-                                                    @click="stopCamera()"
-                                                    class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-100"
-                                                >Cancel</button>
-                                                <button
-                                                    type="button"
-                                                    @click="capturePhoto()"
-                                                    class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700"
-                                                >
-                                                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
-                                                    Capture
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-5 bg-white border rounded-2xl border-slate-200" x-show="visitType === 'resident'" x-cloak>
-                            <div class="mb-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Details</h4>
-                                <p class="mt-1 text-sm text-slate-500">Who they are visiting and the reason for entry.</p>
-                            </div>
-
-                            <div class="grid gap-4 md:grid-cols-2">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">House / Unit</label>
-                                    <select name="house_address_or_unit" x-model="selectedHouse" x-on:change="onHouseChange()" :required="visitType === 'resident'" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                                        <option value="">Select house / unit</option>
-                                        <template x-for="house in availableHouses" :key="house">
-                                            <option :value="house" x-text="house"></option>
-                                        </template>
-                                    </select>
-                                </div>
-                                <div x-data class="relative">
-                                    <label class="block text-sm font-medium text-slate-700">Resident</label>
-                                    <input type="hidden" name="host_employee" :value="hostEmployee">
-                                    <input
-                                        type="text"
-                                        x-model="hostSearch"
-                                        x-on:input="hostOpen = true; hostEmployee = hostSearch"
-                                        x-on:focus="hostOpen = availableResidents.length > 0"
-                                        x-on:click.away="hostOpen = false"
-                                        :placeholder="selectedHouse ? 'Type to search residents...' : 'Select a house first'"
-                                        :disabled="!selectedHouse"
-                                        :required="visitType === 'resident'"
-                                        autocomplete="off"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
-                                    >
-                                    <ul
-                                        x-cloak
-                                        x-show="hostOpen && availableResidents.length > 0"
-                                        class="absolute z-20 w-full mt-1 overflow-hidden text-sm bg-white border shadow-lg rounded-xl border-slate-200"
-                                    >
-                                        <template x-for="resident in availableResidents" :key="resident.id">
-                                            <li
-                                                x-text="resident.name"
-                                                x-on:mousedown.prevent="selectResident(resident)"
-                                                class="cursor-pointer px-4 py-2.5 hover:bg-sky-50 hover:text-sky-700"
-                                            ></li>
-                                        </template>
-                                    </ul>
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-slate-700">Purpose</label>
@@ -362,14 +209,61 @@
                             </div>
                         </div>
 
-                        <div class="p-5 bg-white border rounded-2xl border-slate-200" x-show="visitType === 'general'" x-cloak>
+                        <div class="p-5 bg-white border rounded-2xl border-slate-200">
                             <div class="mb-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Details</h4>
-                                <p class="mt-1 text-sm text-slate-500">Describe the reason for entry (e.g. delivery, repair, amenity use).</p>
+                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Resident Visit Details</h4>
+                                <p class="mt-1 text-sm text-slate-500">Select the house and resident being visited for approval tracking.</p>
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700">Purpose</label>
-                                <textarea name="purpose" rows="3" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">{{ old('purpose') }}</textarea>
+
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">House / Unit</label>
+                                    <select name="house_address_or_unit" x-model="selectedHouse" x-on:change="onHouseChange()" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                        <option value="">Select house / unit</option>
+                                        <template x-for="house in availableHouses" :key="house">
+                                            <option :value="house" x-text="house"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                                <div x-data class="relative">
+                                    <label class="block text-sm font-medium text-slate-700">Resident</label>
+                                    <input type="hidden" name="resident_id" :value="selectedResidentId">
+                                    <input type="hidden" name="host_employee" :value="hostEmployee">
+                                    <input
+                                        type="text"
+                                        x-model="hostSearch"
+                                        x-on:input="hostOpen = true; selectedResidentId = ''; hostEmployee = hostSearch; selectedResidentPhone = ''"
+                                        x-on:focus="hostOpen = availableResidents.length > 0"
+                                        x-on:click.away="hostOpen = false"
+                                        :placeholder="selectedHouse ? 'Type to search residents...' : 'Select a house first'"
+                                        :disabled="!selectedHouse"
+                                        required
+                                        autocomplete="off"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                    <p class="mt-2 text-xs text-slate-500">Select a resident from the suggestion list so the request reaches the correct registered phone number.</p>
+                                    <p
+                                        x-cloak
+                                        x-show="selectedResidentPhone"
+                                        class="mt-1 text-xs font-semibold text-sky-700"
+                                        x-text="'Resident contact: ' + selectedResidentPhone"
+                                    ></p>
+                                    <ul
+                                        x-cloak
+                                        x-show="hostOpen && availableResidents.length > 0"
+                                        class="absolute z-20 w-full mt-1 overflow-hidden text-sm bg-white border shadow-lg rounded-xl border-slate-200"
+                                    >
+                                        <template x-for="resident in availableResidents" :key="resident.id">
+                                            <li
+                                                x-on:mousedown.prevent="selectResident(resident)"
+                                                class="cursor-pointer px-4 py-2.5 hover:bg-sky-50"
+                                            >
+                                                <p class="font-medium text-slate-800" x-text="resident.name"></p>
+                                                <p class="text-xs text-slate-500" x-text="resident.phone || 'No phone on file'"></p>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
 
@@ -381,7 +275,7 @@
                             >
                                 Cancel
                             </button>
-                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Check In Visitor</button>
+                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Submit Request</button>
                         </div>
                     </form>
                     </div>
@@ -422,31 +316,8 @@
                             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                                 <div>
                                     <h3 class="text-lg font-semibold text-slate-900">Visitor Check-out</h3>
-                                    <p class="mt-1 text-sm text-slate-500">Visitors who are still inside and ready to be checked out.</p>
+                                    <p class="mt-1 text-sm text-slate-500">Visitors already approved and currently inside can be checked out here.</p>
                                 </div>
-                                <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
-                                    @if ($filterQ !== '')
-                                        <input type="hidden" name="q" value="{{ $filterQ }}">
-                                    @endif
-                                    @if ($filterSubdivision)
-                                        <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
-                                    @endif
-                                    <input type="hidden" name="tab" value="check-out">
-                                    <input type="hidden" name="view" value="{{ $historyView }}">
-                                    <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
-                                    <div>
-                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
-                                        <div class="mt-1 flex flex-wrap items-center gap-2">
-                                            <select name="check_out_per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                                                @foreach ([10, 25, 50, 100] as $size)
-                                                    <option value="{{ $size }}" @selected($checkOutPerPage === $size)>{{ $size }}</option>
-                                                @endforeach
-                                            </select>
-                                            <input type="number" name="check_out_per_page_custom" min="1" max="100" value="" placeholder="{{ $checkOutPerPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom check-out rows per page">
-                                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
-                                        </div>
-                                    </div>
-                                </form>
                             </div>
                         </div>
                         <div class="overflow-x-auto">
@@ -454,7 +325,6 @@
                                 <thead class="bg-slate-50">
                                     <tr>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Name</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Plate Number</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Resident / Host</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Checked In</th>
@@ -471,11 +341,6 @@
                                                     <div class="font-medium text-slate-900">{{ $visitor->full_name }}</div>
                                                     <div class="mt-1 text-xs text-slate-500">{{ $visitor->phone ?: 'No phone provided' }}</div>
                                                 </div>
-                                            </td>
-                                            <td class="px-6 py-4 text-slate-600">
-                                                <span class="inline-flex min-w-[7rem] whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                                    {{ $visitor->plate_number ?: 'No vehicle' }}
-                                                </span>
                                             </td>
                                             <td class="px-6 py-4 text-slate-600">
                                                 <div class="max-w-[14rem] truncate" title="{{ $visitor->host_employee ?: '-' }}">
@@ -503,7 +368,6 @@
                                                         @csrf
                                                         <input type="hidden" name="tab" value="check-out">
                                                         <input type="hidden" name="q" value="{{ $filterQ }}">
-                                                        <input type="hidden" name="view" value="{{ $historyView }}">
                                                         <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                                                         <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                                                         <button class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700">Check Out</button>
@@ -513,35 +377,68 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ auth()->user()->hasRole('security') ? 6 : 5 }}" class="px-6 py-10 text-center text-slate-500">No visitors are currently inside.</td>
+                                            <td colspan="{{ auth()->user()->hasRole('security') ? 5 : 4 }}" class="px-6 py-10 text-center text-slate-500">No visitors are currently inside.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
                             </table>
                         </div>
-                    </div>
-                    <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
-                        <p class="text-sm text-slate-500">
-                            @if ($insideVisitors->total() > 0)
-                                Showing {{ $insideVisitors->firstItem() }}-{{ $insideVisitors->lastItem() }} of {{ $insideVisitors->total() }} visitors
-                            @else
-                                No visitor records to paginate
-                            @endif
-                        </p>
-                        <div class="flex items-center gap-2">
-                            @if ($insideVisitors->onFirstPage())
-                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
-                            @else
-                                <a href="{{ $insideVisitors->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
-                            @endif
-                            <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
-                                Page {{ $insideVisitors->currentPage() }} of {{ max($insideVisitors->lastPage(), 1) }}
-                            </span>
-                            @if ($insideVisitors->hasMorePages())
-                                <a href="{{ $insideVisitors->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
-                            @else
-                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
-                            @endif
+                        <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
+                            <p class="text-sm text-slate-500">
+                                @if ($insideVisitors->total() > 0)
+                                    Showing {{ $insideVisitors->firstItem() }}-{{ $insideVisitors->lastItem() }} of {{ $insideVisitors->total() }} visitors
+                                @else
+                                    No visitor records to paginate
+                                @endif
+                            </p>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <form method="GET" action="{{ route('visitors.index') }}" class="flex items-center gap-2">
+                                    @if ($filterQ !== '')
+                                        <input type="hidden" name="q" value="{{ $filterQ }}">
+                                    @endif
+                                    @if ($filterSubdivision)
+                                        <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                                    @endif
+                                    <input type="hidden" name="tab" value="check-out">
+                                    <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                                    <label for="check-out-rows-per-page" class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                                    <input
+                                        id="check-out-rows-per-page"
+                                        type="text"
+                                        name="check_out_per_page"
+                                        list="check-out-row-size-options"
+                                        value=""
+                                        placeholder="{{ $checkOutPerPage }}"
+                                        class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                        aria-label="Rows per page"
+                                        inputmode="numeric"
+                                        autocomplete="off"
+                                        pattern="[0-9]{1,3}"
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)"
+                                        onchange="if (this.value.trim() !== '') { this.form.requestSubmit(); }"
+                                        onkeydown="if (event.key === 'Enter') { event.preventDefault(); if (this.value.trim() !== '') { this.form.requestSubmit(); } }"
+                                    >
+                                    <datalist id="check-out-row-size-options">
+                                        <option value="10"></option>
+                                        <option value="25"></option>
+                                        <option value="50"></option>
+                                        <option value="100"></option>
+                                    </datalist>
+                                </form>
+                                @if ($insideVisitors->onFirstPage())
+                                    <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></span>
+                                @else
+                                    <a href="{{ $insideVisitors->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></a>
+                                @endif
+                                <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
+                                    Page {{ $insideVisitors->currentPage() }} of {{ max($insideVisitors->lastPage(), 1) }}
+                                </span>
+                                @if ($insideVisitors->hasMorePages())
+                                    <a href="{{ $insideVisitors->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></a>
+                                @else
+                                    <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -557,61 +454,21 @@
                     <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900">Visitor History</h3>
-                            <p class="mt-1 text-sm text-slate-500">Browse previous visitor records, statuses, and timestamps.</p>
+                            <p class="mt-1 text-sm text-slate-500">Browse visitor check-in/check-out records with host, purpose, and status history.</p>
                         </div>
 
-                        <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
-                            @if ($filterQ !== '')
-                                <input type="hidden" name="q" value="{{ $filterQ }}">
-                            @endif
-                            @if ($filterSubdivision)
-                                <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
-                            @endif
-                            <input type="hidden" name="tab" value="history">
-                            <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">View</label>
-                                <select
-                                    name="view"
-                                    class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
-                                >
-                                    <option value="active" @selected($historyView === 'active')>Active</option>
-                                    <option value="deleted" @selected($historyView === 'deleted')>Deleted</option>
-                                    <option value="all" @selected($historyView === 'all')>All</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
-                                <div class="mt-1 flex flex-wrap items-center gap-2">
-                                    <select name="history_per_page" class="text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                                        @foreach ([10, 25, 50, 100] as $size)
-                                            <option value="{{ $size }}" @selected($historyPerPage === $size)>{{ $size }}</option>
-                                        @endforeach
-                                    </select>
-                                    <input type="number" name="history_per_page_custom" min="1" max="100" value="" placeholder="{{ $historyPerPage }}" class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" aria-label="Custom history rows per page">
-                                </div>
-                            </div>
-
-                            <button
-                                type="submit"
-                                class="px-4 py-2 text-sm font-semibold text-white transition rounded-xl bg-sky-600 hover:bg-sky-700"
-                            >
-                                Apply
-                            </button>
-
+                        @if ($filterQ !== '' || $filterSubdivision)
                             <a
                                 href="{{ route('visitors.index', array_filter([
                                     'tab' => 'history',
-                                    'q' => $filterQ,
-                                    'subdivision_id' => $filterSubdivision,
                                     'history_per_page' => $historyPerPage,
                                     'check_out_per_page' => $checkOutPerPage,
-                                ], fn ($value) => filled($value))) }}"
+                                ])) }}"
                                 class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                             >
-                                Clear
+                                Clear Filters
                             </a>
-                        </form>
+                        @endif
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm divide-y divide-slate-200">
@@ -619,19 +476,12 @@
                                 <tr>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Name</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Phone</th>
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Plate Number</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Purpose</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Resident / Host</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check In</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check Out</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
-                                    @if ($historyView !== 'active')
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Archived At</th>
-                                    @endif
-                                    @if (auth()->user()->hasRole('security'))
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
-                                    @endif
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-slate-100">
@@ -645,11 +495,6 @@
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
                                             <div class="whitespace-nowrap">{{ $visitor->phone ?: '-' }}</div>
-                                        </td>
-                                        <td class="px-6 py-4 text-slate-600">
-                                            <span class="inline-flex min-w-[7rem] whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
-                                                {{ $visitor->plate_number ?: 'No vehicle' }}
-                                            </span>
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
                                             <div class="max-w-[16rem] break-words" title="{{ $visitor->purpose ?: '-' }}">
@@ -691,56 +536,10 @@
                                                 {{ $visitor->status }}
                                             </span>
                                         </td>
-                                        @if ($historyView !== 'active')
-                                            <td class="px-6 py-4 text-slate-600">
-                                                @if ($visitor->deleted_at)
-                                                    <div class="min-w-[9rem]">
-                                                        <div class="whitespace-nowrap font-medium text-slate-700">{{ $visitor->deleted_at->format('M j, Y') }}</div>
-                                                        <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $visitor->deleted_at->format('h:i A') }}</div>
-                                                    </div>
-                                                @else
-                                                    -
-                                                @endif
-                                            </td>
-                                        @endif
-                                        @if (auth()->user()->hasRole('security'))
-                                            <td class="px-6 py-4">
-                                                @if ($visitor->trashed())
-                                                    <div class="flex flex-wrap gap-2">
-                                                        <form method="POST" action="{{ route('visitors.restore', $visitor->visitor_id) }}">
-                                                            @csrf
-                                                            <input type="hidden" name="q" value="{{ $filterQ }}">
-                                                            <input type="hidden" name="tab" value="history">
-                                                            <input type="hidden" name="view" value="{{ $historyView }}">
-                                                            <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
-                                                            <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
-                                                            <button class="px-3 py-2 text-xs font-semibold border rounded-lg border-emerald-200 text-emerald-700 hover:bg-emerald-50">Restore</button>
-                                                        </form>
-                                                        <button
-                                                            type="button"
-                                                            x-data
-                                                            x-on:click="$dispatch('open-modal', 'force-delete-visitor-{{ $visitor->visitor_id }}')"
-                                                            class="px-3 py-2 text-xs font-semibold border rounded-lg border-rose-200 text-rose-700 hover:bg-rose-50"
-                                                        >
-                                                            Force Delete
-                                                        </button>
-                                                    </div>
-                                                @else
-                                                    <button
-                                                        type="button"
-                                                        x-data
-                                                        x-on:click="$dispatch('open-modal', 'archive-visitor-{{ $visitor->visitor_id }}')"
-                                                        class="px-3 py-2 text-xs font-semibold border rounded-lg border-rose-200 text-rose-700 hover:bg-rose-50"
-                                                    >
-                                                        Archive
-                                                    </button>
-                                                @endif
-                                            </td>
-                                        @endif
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ auth()->user()->hasRole('security') ? ($historyView !== 'active' ? 11 : 10) : ($historyView !== 'active' ? 10 : 9) }}" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
+                                        <td colspan="8" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -754,19 +553,52 @@
                                 No visitor records to paginate
                             @endif
                         </p>
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <form method="GET" action="{{ route('visitors.index') }}" class="flex items-center gap-2">
+                                @if ($filterQ !== '')
+                                    <input type="hidden" name="q" value="{{ $filterQ }}">
+                                @endif
+                                @if ($filterSubdivision)
+                                    <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                                @endif
+                                <input type="hidden" name="tab" value="history">
+                                <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
+                                <label for="history-rows-per-page" class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
+                                <input
+                                    id="history-rows-per-page"
+                                    type="text"
+                                    name="history_per_page"
+                                    list="history-row-size-options"
+                                    value=""
+                                    placeholder="{{ $historyPerPage }}"
+                                    class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                    aria-label="Rows per page"
+                                    inputmode="numeric"
+                                    autocomplete="off"
+                                    pattern="[0-9]{1,3}"
+                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)"
+                                    onchange="if (this.value.trim() !== '') { this.form.requestSubmit(); }"
+                                    onkeydown="if (event.key === 'Enter') { event.preventDefault(); if (this.value.trim() !== '') { this.form.requestSubmit(); } }"
+                                >
+                                <datalist id="history-row-size-options">
+                                    <option value="10"></option>
+                                    <option value="25"></option>
+                                    <option value="50"></option>
+                                    <option value="100"></option>
+                                </datalist>
+                            </form>
                             @if ($visitors->onFirstPage())
-                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Previous</span>
+                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></span>
                             @else
-                                <a href="{{ $visitors->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Previous</a>
+                                <a href="{{ $visitors->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></a>
                             @endif
                             <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
                                 Page {{ $visitors->currentPage() }} of {{ max($visitors->lastPage(), 1) }}
                             </span>
                             @if ($visitors->hasMorePages())
-                                <a href="{{ $visitors->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Next</a>
+                                <a href="{{ $visitors->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></a>
                             @else
-                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400">Next</span>
+                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></span>
                             @endif
                         </div>
                     </div>
@@ -775,89 +607,7 @@
             </div>
 
 
-            @foreach ($visitors as $visitor)
-                @if (auth()->user()->hasRole('security') && !$visitor->trashed())
-                    <x-modal name="archive-visitor-{{ $visitor->visitor_id }}" maxWidth="md" focusable>
-                        <div class="p-6 bg-white sm:p-8">
-                            <div class="flex items-start gap-4">
-                                <div class="flex items-center justify-center w-12 h-12 shrink-0 rounded-2xl bg-rose-100 text-rose-600">
-                                    <svg class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l5.58 9.92c.75 1.334-.213 2.981-1.742 2.981H4.42c-1.53 0-2.492-1.647-1.743-2.98l5.58-9.92zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-6a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5A.75.75 0 0010 7z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-semibold text-slate-900">Archive Visitor?</h3>
-                                    <p class="mt-2 text-sm text-slate-600">
-                                        {{ $visitor->full_name }} will be removed from active history, but the record will stay available in the deleted view so it can still be restored later.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <form method="POST" action="{{ route('visitors.destroy', $visitor) }}" class="flex flex-wrap justify-end gap-3 mt-6">
-                                @csrf
-                                @method('DELETE')
-                                <input type="hidden" name="q" value="{{ $filterQ }}">
-                                <input type="hidden" name="tab" value="history">
-                                <input type="hidden" name="view" value="{{ $historyView }}">
-                                <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
-                                <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
-
-                                <button
-                                    type="button"
-                                    x-on:click="$dispatch('close')"
-                                    class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-rose-600 hover:bg-rose-700">
-                                    Archive Visitor
-                                </button>
-                            </form>
-                        </div>
-                    </x-modal>
-                @endif
-
-                @if (auth()->user()->hasRole('security') && $visitor->trashed())
-                    <x-modal name="force-delete-visitor-{{ $visitor->visitor_id }}" maxWidth="md" focusable>
-                        <div class="p-6 bg-white sm:p-8">
-                            <div class="flex items-start gap-4">
-                                <div class="flex items-center justify-center w-12 h-12 shrink-0 rounded-2xl bg-rose-100 text-rose-700">
-                                    <svg class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l5.58 9.92c.75 1.334-.213 2.981-1.742 2.981H4.42c-1.53 0-2.492-1.647-1.743-2.98l5.58-9.92zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-6a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5A.75.75 0 0010 7z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-semibold text-slate-900">Permanently Delete Visitor?</h3>
-                                    <p class="mt-2 text-sm text-slate-600">
-                                        This will permanently remove {{ $visitor->full_name }} from the database. This action cannot be undone.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <form method="POST" action="{{ route('visitors.force-delete', $visitor->visitor_id) }}" class="flex flex-wrap justify-end gap-3 mt-6">
-                                @csrf
-                                @method('DELETE')
-                                <input type="hidden" name="q" value="{{ $filterQ }}">
-                                <input type="hidden" name="tab" value="history">
-                                <input type="hidden" name="view" value="{{ $historyView }}">
-                                <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
-                                <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
-
-                                <button
-                                    type="button"
-                                    x-on:click="$dispatch('close')"
-                                    class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-rose-700 hover:bg-rose-800">
-                                    Force Delete
-                                </button>
-                            </form>
-                        </div>
-                    </x-modal>
-                @endif
-            @endforeach
         </div>
     </div>
 </x-app-layout>
+

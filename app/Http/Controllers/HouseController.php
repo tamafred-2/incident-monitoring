@@ -46,11 +46,34 @@ class HouseController extends Controller
 
     public function show(Request $request, House $house): View
     {
-        $house->load(['subdivision', 'residents']);
+        $user = $request->user();
+
+        if (!$user->isAdmin() && !$user->canAccessSubdivision($house->subdivision_id)) {
+            abort(403);
+        }
+
+        $house->load([
+            'subdivision',
+            'residents' => fn ($query) => $query->orderBy('full_name'),
+        ]);
+
+        $showSubdivisionBackLink = $request->boolean('from_subdivision') || !$user->isAdmin();
+        $subdivisionContext = array_filter([
+            'subdivision' => $house->subdivision_id,
+            'q' => $request->query('q'),
+            'per_page' => $request->query('per_page'),
+            'page' => $request->query('page'),
+        ], static fn ($value) => $value !== null && $value !== '');
 
         return view('houses.show', [
             'house' => $house,
             'indexContext' => $this->indexContext($request),
+            'backUrl' => $showSubdivisionBackLink
+                ? route('subdivisions.show', $subdivisionContext)
+                : route('houses.index', $this->indexContext($request)),
+            'backLabel' => $showSubdivisionBackLink
+                ? ($user->role === 'security' ? 'Back to Contacts' : 'Back to House Management')
+                : 'Back to Houses',
         ]);
     }
 
@@ -90,6 +113,11 @@ class HouseController extends Controller
 
     private function validateHouse(Request $request, ?House $house = null): array
     {
+        $request->merge([
+            'block' => House::normalizeBlock((string) $request->input('block')),
+            'lot' => House::normalizeLot((string) $request->input('lot')),
+        ]);
+
         $data = $request->validate([
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
             'street' => ['required', 'string', 'max:120'],
@@ -100,7 +128,7 @@ class HouseController extends Controller
                 Rule::unique('houses', 'block')
                     ->where(function ($query) use ($request) {
                         $query->where('subdivision_id', $request->integer('subdivision_id'))
-                            ->where('lot', $this->normalizeAddressPart((string) $request->input('lot')));
+                            ->where('lot', House::normalizeLot((string) $request->input('lot')));
                     })
                     ->ignore($house?->house_id, 'house_id'),
             ],
@@ -110,14 +138,9 @@ class HouseController extends Controller
         return [
             'subdivision_id' => (int) $data['subdivision_id'],
             'street' => $this->normalizeStreet((string) $data['street']),
-            'block' => $this->normalizeAddressPart($data['block']),
-            'lot' => $this->normalizeAddressPart($data['lot']),
+            'block' => House::normalizeBlock($data['block']),
+            'lot' => House::normalizeLot($data['lot']),
         ];
-    }
-
-    private function normalizeAddressPart(string $value): string
-    {
-        return strtoupper(trim($value));
     }
 
     private function normalizeStreet(string $value): string
