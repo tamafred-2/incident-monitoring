@@ -7,6 +7,7 @@ SQLite is the default local database for this project.
 ```bash
 php artisan migrate:fresh --seed
 php artisan serve
+npm run dev
 ```
 
 ## Seeded demo data
