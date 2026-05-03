@@ -65,19 +65,26 @@ class VisitorController extends Controller
             ? Subdivision::where('status', 'Active')->orderBy('subdivision_name')->get()
             : collect();
         $housesBySubdivision = House::query()
-            ->select('subdivision_id', 'block', 'lot')
+            ->select('house_id', 'subdivision_id', 'street', 'block', 'lot')
+            ->orderBy('street')
             ->orderBy('block')
             ->orderBy('lot')
             ->get()
             ->groupBy('subdivision_id')
-            ->map(fn ($houses) => $houses->map(fn (House $house) => $house->display_address)->values()->all());
+            ->map(fn ($houses) => $houses->map(fn (House $house) => [
+                'house_id' => (int) $house->house_id,
+                'street' => trim((string) $house->street),
+                'block' => trim((string) $house->block),
+                'lot' => trim((string) $house->lot),
+                'display_address' => $house->display_address,
+            ])->values()->all());
 
         $residentsByHouse = House::query()
             ->with(['residents' => fn ($q) => $q->where('status', 'Active')
                 ->select('house_id', 'resident_id', 'full_name', 'phone')])
             ->get()
             ->mapWithKeys(fn (House $house) => [
-                $house->display_address => $house->residents->map(fn (Resident $r) => [
+                (string) $house->house_id => $house->residents->map(fn (Resident $r) => [
                     'id'    => $r->resident_id,
                     'name'  => $r->full_name,
                     'phone' => $r->phone,
@@ -133,9 +140,30 @@ class VisitorController extends Controller
     public function show(Request $request, Visitor $visitor): View
     {
         $visitor->load('subdivision');
+        $displayHouseAddress = $visitor->house_address_or_unit;
+
+        if (filled($displayHouseAddress)) {
+            $normalizedAddress = strtoupper(trim((string) $displayHouseAddress));
+
+            $matchedHouse = House::query()
+                ->where('subdivision_id', $visitor->subdivision_id)
+                ->get()
+                ->first(function (House $house) use ($normalizedAddress) {
+                    $displayAddress = strtoupper($house->display_address);
+                    $legacyAddress = strtoupper(House::formatAddress($house->block, $house->lot));
+
+                    return $displayAddress === $normalizedAddress
+                        || $legacyAddress === $normalizedAddress;
+                });
+
+            if ($matchedHouse) {
+                $displayHouseAddress = $matchedHouse->display_address;
+            }
+        }
 
         return view('visitors.show', [
             'visitor' => $visitor,
+            'displayHouseAddress' => $displayHouseAddress,
             'dashboardQuery' => $request->only(['inside_per_page', 'page']),
         ]);
     }
@@ -169,6 +197,7 @@ class VisitorController extends Controller
             'id_photo'              => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'host_employee'         => ['nullable', 'string', 'max:150'],
             'house_address_or_unit' => ['nullable', 'string', 'max:120', 'required_if:visit_type,resident', 'required_if:visit_type,walk_in'],
+            'resident_house_id'     => ['nullable', 'integer'],
             'resident_id'           => ['nullable', 'integer', 'required_if:visit_type,resident'],
         ]);
 
@@ -210,12 +239,29 @@ class VisitorController extends Controller
                 ->with('success', 'Walk-in visitor checked in successfully.');
         }
 
-        $normalizedAddress = strtoupper(trim($data['house_address_or_unit']));
+        $house = null;
+        $residentHouseId = (int) ($data['resident_house_id'] ?? 0);
+        if ($residentHouseId > 0) {
+            $house = House::query()
+                ->where('subdivision_id', $subdivisionId)
+                ->where('house_id', $residentHouseId)
+                ->first();
+        }
 
-        $house = House::query()
-            ->where('subdivision_id', $subdivisionId)
-            ->get()
-            ->first(fn (House $house) => strtoupper($house->display_address) === $normalizedAddress);
+        if (!$house) {
+            $normalizedAddress = strtoupper(trim((string) ($data['house_address_or_unit'] ?? '')));
+
+            $house = House::query()
+                ->where('subdivision_id', $subdivisionId)
+                ->get()
+                ->first(function (House $candidate) use ($normalizedAddress) {
+                    $displayAddress = strtoupper($candidate->display_address);
+                    $legacyAddress = strtoupper(House::formatAddress($candidate->block, $candidate->lot));
+
+                    return $displayAddress === $normalizedAddress
+                        || $legacyAddress === $normalizedAddress;
+                });
+        }
 
         if (!$house) {
             return back()->withErrors([
@@ -244,8 +290,26 @@ class VisitorController extends Controller
             ? (int) ($data['passenger_count'] ?? 0)
             : null;
 
+        $visitor = Visitor::create([
+            'subdivision_id'        => $subdivisionId,
+            'surname'               => $data['surname'],
+            'first_name'            => $data['first_name'],
+            'middle_initials'       => $data['middle_initials'] ?? null,
+            'extension'             => $data['extension'] ?? null,
+            'phone'                 => $data['phone'],
+            'plate_number'          => $plateNumber,
+            'passenger_count'       => $passengerCount,
+            'id_photo_path'         => $idPhotoPath,
+            'purpose'               => $data['purpose'] ?? null,
+            'host_employee'         => $resident->full_name,
+            'house_address_or_unit' => $house->display_address,
+            'check_in'              => now(),
+            'check_out'             => null,
+            'status'                => 'Inside',
+        ]);
+
         VisitorRequest::create([
-            'visitor_id'            => null,
+            'visitor_id'            => $visitor->visitor_id,
             'resident_id'           => $resident->resident_id,
             'subdivision_id'        => $subdivisionId,
             'visitor_name'          => Visitor::formatFullName(
@@ -264,13 +328,13 @@ class VisitorController extends Controller
             'id_photo_path'         => $idPhotoPath,
             'purpose'               => $data['purpose'] ?? null,
             'house_address_or_unit' => $house->display_address,
-            'status'                => 'Pending',
+            'status'                => 'Approved',
             'requested_at'          => now(),
-            'responded_at'          => null,
+            'responded_at'          => now(),
         ]);
 
         return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
-            ->with('success', 'Visitor request submitted. Contact the resident using the registered phone number in the system or wait for automated response before allowing entry.');
+            ->with('success', 'Resident visit checked in successfully.');
     }
 
     public function checkout(Request $request, Visitor $visitor): RedirectResponse

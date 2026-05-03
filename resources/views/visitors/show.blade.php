@@ -23,7 +23,21 @@
     </x-slot>
 
     <div class="py-10">
-        <div class="mx-auto flex max-w-5xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
+        <div
+            x-data="{
+                previewImage: null,
+                previewLabel: '',
+                openPreview(url, label) {
+                    this.previewImage = url;
+                    this.previewLabel = label || 'Visitor ID photo preview';
+                },
+                closePreview() {
+                    this.previewImage = null;
+                    this.previewLabel = '';
+                }
+            }"
+            class="mx-auto flex max-w-5xl flex-col gap-6 px-4 sm:px-6 lg:px-8"
+        >
             @include('partials.alerts')
 
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -96,20 +110,22 @@
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">House / Unit</dt>
-                                <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $visitor->house_address_or_unit ?: '-' }}</dd>
+                                <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $displayHouseAddress ?: '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">ID Photo</dt>
                                 <dd class="text-right font-medium text-slate-900">
                                     @if ($visitor->id_photo_path)
-                                        <a
-                                            href="{{ route('visitors.photo', ['visitor' => $visitor->visitor_id]) }}"
-                                            target="_blank"
-                                            rel="noopener"
-                                            class="text-sky-700 hover:text-sky-800 hover:underline"
+                                        <img
+                                            src="{{ route('visitors.photo', ['visitor' => $visitor->visitor_id]) }}"
+                                            alt="Visitor ID photo for {{ $visitor->full_name }}"
+                                            class="ml-auto h-20 w-20 cursor-zoom-in rounded-xl border border-slate-200 object-cover shadow-sm transition hover:opacity-90"
+                                            @click="openPreview($el.src, @js('Visitor ID photo for ' . $visitor->full_name))"
+                                            @keydown.enter.prevent="openPreview($el.src, @js('Visitor ID photo for ' . $visitor->full_name))"
+                                            @keydown.space.prevent="openPreview($el.src, @js('Visitor ID photo for ' . $visitor->full_name))"
+                                            role="button"
+                                            tabindex="0"
                                         >
-                                            View uploaded photo
-                                        </a>
                                     @else
                                         Not uploaded
                                     @endif
@@ -147,19 +163,6 @@
                         <p class="mt-3 text-sm leading-7 text-slate-700 break-words">{{ $visitor->purpose ?: 'No purpose provided.' }}</p>
                     </div>
 
-                    @if ($visitor->id_photo_path)
-                        <div class="rounded-2xl border border-slate-200 bg-white p-5">
-                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">ID Photo Preview</h4>
-                            <a href="{{ route('visitors.photo', ['visitor' => $visitor->visitor_id]) }}" target="_blank" rel="noopener" class="mt-3 block">
-                                <img
-                                    src="{{ route('visitors.photo', ['visitor' => $visitor->visitor_id]) }}"
-                                    alt="Visitor ID photo"
-                                    class="max-h-64 w-full rounded-xl border border-slate-200 object-contain"
-                                >
-                            </a>
-                        </div>
-                    @endif
-
                     <div class="rounded-2xl border border-slate-200 bg-white p-5">
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visit Summary</h4>
                         <dl class="mt-4 space-y-3 text-sm">
@@ -184,6 +187,31 @@
                                 <dd class="text-right font-medium text-slate-900">{{ $visitor->host_employee ? 'Resident Visit' : 'General Visit' }}</dd>
                             </div>
                         </dl>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                x-cloak
+                x-show="previewImage"
+                x-on:keydown.escape.window="closePreview()"
+                class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-slate-950/80"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closePreview()"></div>
+                <div class="relative w-full max-w-4xl overflow-hidden bg-white shadow-2xl rounded-3xl">
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+                        <h3 class="text-base font-semibold text-slate-900" x-text="previewLabel || 'Visitor ID photo preview'"></h3>
+                        <button
+                            type="button"
+                            @click="closePreview()"
+                            class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
+                        >
+                            Close
+                        </button>
+                    </div>
+                    <div class="p-4 bg-slate-100">
+                        <img :src="previewImage" :alt="previewLabel || 'Visitor ID photo preview'" class="max-h-[75vh] w-full rounded-2xl object-contain">
                     </div>
                 </div>
             </div>

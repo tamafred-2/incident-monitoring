@@ -445,7 +445,7 @@ class IncidentController extends Controller
             'subdivision_id' => ['nullable', 'integer'],
             'house_id' => ['required', 'integer', 'exists:houses,house_id'],
             'description' => ['required', 'string'],
-            'category' => ['nullable', 'string', 'max:100', Rule::in($this->incidentCategories())],
+            'category' => ['required', 'string', 'max:100', Rule::in($this->incidentCategories())],
             'category_other' => ['nullable', 'string', 'max:100', 'required_if:category,Other'],
             'location' => ['required', 'string', 'max:150'],
             'location_other' => ['nullable', 'string', 'max:150', 'required_if:location,__other__'],
