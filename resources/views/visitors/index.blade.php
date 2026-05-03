@@ -57,24 +57,129 @@
                 residentsByHouse: {{ \Illuminate\Support\Js::from($residentsByHouse) }},
                 selectedSubdivision: '{{ $effectiveSubdivision }}',
                 visitType: @js(old('visit_type', 'resident')),
-                selectedHouse: @js(old('visit_type', 'resident') === 'resident' ? old('house_address_or_unit', '') : ''),
+                selectedHouseId: @js(old('visit_type', 'resident') === 'resident' ? (string) old('resident_house_id', '') : ''),
+                selectedHouseAddress: @js(old('visit_type', 'resident') === 'resident' ? old('house_address_or_unit', '') : ''),
+                selectedStreet: '',
+                selectedBlock: '',
+                selectedLot: '',
                 walkInLocation: @js(old('visit_type') === 'walk_in' ? old('house_address_or_unit', '') : ''),
                 isVehicle: @js(old('on_vehicle') == '1' || old('plate_number') || old('passenger_count')),
                 selectedResidentId: @js(old('resident_id', '')),
                 hostSearch: @js(old('host_employee', '')),
                 selectedResidentPhone: '',
                 hostOpen: false,
+                init() {
+                    this.initializeResidentLocationSelection();
+                },
                 get availableHouses() {
                     return this.housesBySubdivision[this.selectedSubdivision] || [];
                 },
+                get streetOptions() {
+                    const streets = this.availableHouses
+                        .map(h => (h.street || '').trim())
+                        .filter(Boolean);
+                    return [...new Set(streets)];
+                },
+                get blockOptions() {
+                    if (!this.selectedStreet) return [];
+                    const blocks = this.availableHouses
+                        .filter(h => (h.street || '').trim() === this.selectedStreet)
+                        .map(h => (h.block || '').trim())
+                        .filter(Boolean);
+                    return [...new Set(blocks)];
+                },
+                get lotOptions() {
+                    if (!this.selectedStreet || !this.selectedBlock) return [];
+                    const lots = this.availableHouses
+                        .filter(h =>
+                            (h.street || '').trim() === this.selectedStreet &&
+                            (h.block || '').trim() === this.selectedBlock
+                        )
+                        .map(h => (h.lot || '').trim())
+                        .filter(Boolean);
+                    return [...new Set(lots)];
+                },
                 get availableResidents() {
-                    const residents = this.residentsByHouse[this.selectedHouse] || [];
+                    const residents = this.residentsByHouse[String(this.selectedHouseId)] || [];
                     if (!this.hostSearch.trim()) return residents;
                     const query = this.hostSearch.toLowerCase();
                     return residents.filter(r =>
                         r.name.toLowerCase().includes(query) ||
                         (r.phone || '').toLowerCase().includes(query)
                     );
+                },
+                initializeResidentLocationSelection() {
+                    if (this.visitType !== 'resident') {
+                        this.clearResidentLocation();
+                        return;
+                    }
+
+                    let matchedHouse = null;
+
+                    if (this.selectedHouseId) {
+                        matchedHouse = this.availableHouses.find(
+                            h => String(h.house_id) === String(this.selectedHouseId)
+                        );
+                    }
+
+                    if (!matchedHouse && this.selectedHouseAddress) {
+                        matchedHouse = this.availableHouses.find(
+                            h => h.display_address === this.selectedHouseAddress
+                        );
+                    }
+
+                    if (!matchedHouse) {
+                        this.clearResidentLocation();
+                        return;
+                    }
+
+                    this.selectedStreet = (matchedHouse.street || '').trim();
+                    this.selectedBlock = (matchedHouse.block || '').trim();
+                    this.selectedLot = (matchedHouse.lot || '').trim();
+                    this.selectedHouseId = String(matchedHouse.house_id);
+                    this.selectedHouseAddress = matchedHouse.display_address || '';
+                },
+                clearResidentLocation() {
+                    this.selectedStreet = '';
+                    this.selectedBlock = '';
+                    this.selectedLot = '';
+                    this.selectedHouseId = '';
+                    this.selectedHouseAddress = '';
+                },
+                syncSelectedHouseFromLocation() {
+                    const selectedStreet = this.selectedStreet.trim();
+                    const selectedBlock = this.selectedBlock.trim();
+                    const selectedLot = this.selectedLot.trim();
+
+                    if (!selectedStreet || !selectedBlock || !selectedLot) {
+                        this.selectedHouseId = '';
+                        this.selectedHouseAddress = '';
+                        return;
+                    }
+
+                    const matchedHouse = this.availableHouses.find(h =>
+                        (h.street || '').trim() === selectedStreet &&
+                        (h.block || '').trim() === selectedBlock &&
+                        (h.lot || '').trim() === selectedLot
+                    );
+
+                    this.selectedHouseId = matchedHouse ? String(matchedHouse.house_id) : '';
+                    this.selectedHouseAddress = matchedHouse ? (matchedHouse.display_address || '') : '';
+                },
+                onStreetChange() {
+                    this.selectedBlock = '';
+                    this.selectedLot = '';
+                    this.syncSelectedHouseFromLocation();
+                    this.onHouseChange();
+                },
+                onBlockChange() {
+                    this.selectedLot = '';
+                    this.syncSelectedHouseFromLocation();
+                    this.onHouseChange();
+                },
+                onLotChange() {
+                    this.syncSelectedHouseFromLocation();
+                    this.onHouseChange();
                 },
                 selectResident(resident) {
                     this.selectedResidentId = resident.id;
@@ -90,6 +195,13 @@
                 setVisitType(type) {
                     this.visitType = type;
                     this.hostOpen = false;
+                    if (type === 'walk_in') {
+                        this.clearResidentLocation();
+                        this.onHouseChange();
+                        return;
+                    }
+
+                    this.initializeResidentLocationSelection();
                 }
             }"
             class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
@@ -187,7 +299,7 @@
                         <div x-show="visitType === 'resident'" x-cloak class="p-5 border rounded-2xl border-sky-200 bg-sky-50/60">
                             <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-800">Approval Step</h4>
                             <p class="mt-2 text-sm leading-6 text-sky-700">
-                                After submission, the resident response must be recorded first. Only approved requests should proceed to visitor entry.
+                                Use this after confirming resident approval through registered contact. Submission will check the visitor in immediately.
                             </p>
                         </div>
 
@@ -309,19 +421,61 @@
                         <div x-show="visitType === 'resident'" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
                             <div class="mb-4">
                                 <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Resident Visit Details</h4>
-                                <p class="mt-1 text-sm text-slate-500">Select the house and resident being visited for approval tracking.</p>
+                                <p class="mt-1 text-sm text-slate-500">Select street, block, lot, and resident being visited for approval tracking.</p>
                             </div>
 
                             <div class="grid gap-4 md:grid-cols-2">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">House / Unit</label>
-                                    <select name="house_address_or_unit" x-model="selectedHouse" x-on:change="onHouseChange()" :required="visitType === 'resident'" :disabled="visitType !== 'resident'" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400">
-                                        <option value="">Select house / unit</option>
-                                        <template x-for="house in availableHouses" :key="house">
-                                            <option :value="house" x-text="house"></option>
-                                        </template>
-                                    </select>
+                                <input type="hidden" name="house_address_or_unit" :value="visitType === 'resident' ? selectedHouseAddress : ''">
+                                <input type="hidden" name="resident_house_id" :value="visitType === 'resident' ? selectedHouseId : ''">
+
+                                <div class="md:col-span-2 grid gap-4 md:grid-cols-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Street <span class="text-rose-500">*</span></label>
+                                        <select
+                                            x-model="selectedStreet"
+                                            x-on:change="onStreetChange()"
+                                            :required="visitType === 'resident'"
+                                            :disabled="visitType !== 'resident'"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        >
+                                            <option value="">Select street</option>
+                                            <template x-for="street in streetOptions" :key="street">
+                                                <option :value="street" x-text="street"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Block <span class="text-rose-500">*</span></label>
+                                        <select
+                                            x-model="selectedBlock"
+                                            x-on:change="onBlockChange()"
+                                            :required="visitType === 'resident'"
+                                            :disabled="visitType !== 'resident' || !selectedStreet"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        >
+                                            <option value="">Select block</option>
+                                            <template x-for="block in blockOptions" :key="block">
+                                                <option :value="block" x-text="block"></option>
+                                            </template>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Lot <span class="text-rose-500">*</span></label>
+                                        <select
+                                            x-model="selectedLot"
+                                            x-on:change="onLotChange()"
+                                            :required="visitType === 'resident'"
+                                            :disabled="visitType !== 'resident' || !selectedBlock"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        >
+                                            <option value="">Select lot</option>
+                                            <template x-for="lot in lotOptions" :key="lot">
+                                                <option :value="lot" x-text="lot"></option>
+                                            </template>
+                                        </select>
+                                    </div>
                                 </div>
+
                                 <div x-data class="relative">
                                     <label class="block text-sm font-medium text-slate-700">Resident</label>
                                     <input type="hidden" name="resident_id" :value="visitType === 'resident' ? selectedResidentId : ''">
@@ -331,8 +485,8 @@
                                         x-on:input="hostOpen = true; selectedResidentId = ''; selectedResidentPhone = ''"
                                         x-on:focus="hostOpen = availableResidents.length > 0"
                                         x-on:click.away="hostOpen = false"
-                                        :placeholder="selectedHouse ? 'Type to search residents...' : 'Select a house first'"
-                                        :disabled="visitType !== 'resident' || !selectedHouse"
+                                        :placeholder="selectedHouseId ? 'Type to search residents...' : 'Select a street, block, and lot first'"
+                                        :disabled="visitType !== 'resident' || !selectedHouseId"
                                         :required="visitType === 'resident'"
                                         autocomplete="off"
                                         class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
@@ -393,7 +547,7 @@
                                 Cancel
                             </button>
                             <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">
-                                <span x-show="visitType === 'resident'" x-cloak>Submit Request</span>
+                                <span x-show="visitType === 'resident'" x-cloak>Check In Visitor</span>
                                 <span x-show="visitType === 'walk_in'" x-cloak>Check In Visitor</span>
                             </button>
                         </div>

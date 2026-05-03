@@ -21,40 +21,45 @@
             @php
                 $residentUser = auth()->user()?->isResident();
                 $autoSubdivisionId = (int) old('subdivision_id', $effectiveSubdivision);
-                $selectedLocation = old('location');
-                $houseLocations = $houses->pluck('display_address')->filter()->values();
-                $isOtherLocation = filled($selectedLocation) && !$houseLocations->contains($selectedLocation);
-                $locationSelectValue = $isOtherLocation ? '__other__' : ($selectedLocation ?? '');
+                $selectedHouseId = (int) old('house_id', 0);
+                $selectedHouse = $selectedHouseId > 0
+                    ? $houses->firstWhere('house_id', $selectedHouseId)
+                    : null;
+                $selectedLocation = old('location', '');
+                $locationStreet = old('location_street', $selectedHouse?->street ?? '');
+                $locationBlock = old('location_block', $selectedHouse?->block ?? '');
+                $locationLot = old('location_lot', $selectedHouse?->lot ?? '');
+                $houseOptions = $houses
+                    ->map(function ($house) {
+                        $street = trim((string) $house->street);
+                        $block = trim((string) $house->block);
+                        $lot = trim((string) $house->lot);
+
+                        return [
+                            'house_id' => (int) $house->house_id,
+                            'street' => $street,
+                            'block' => $block,
+                            'lot' => $lot,
+                            'location' => "Street: {$street} | Block: {$block} | Lot: {$lot}",
+                        ];
+                    })
+                    ->values();
             @endphp
 
             <input type="hidden" name="subdivision_id" id="report_subdivision_id" value="{{ $autoSubdivisionId }}">
             <input type="hidden" name="status" value="Open">
 
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700">House</label>
-                <select name="house_id" id="report_house_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" required>
-                    <option value="">Select house</option>
-                    @foreach ($houses as $house)
-                        <option value="{{ $house->house_id }}" @selected((int) old('house_id') === $house->house_id)>{{ $house->display_address }}</option>
-                    @endforeach
-                </select>
-            </div>
-
             @if ($residentUser)
                 <input type="hidden" name="reported_at" value="{{ now()->format('Y-m-d\TH:i') }}">
             @endif
 
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700">Description <span class="text-rose-500">*</span></label>
-                <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description') }}</textarea>
-            </div>
             @php
                 $selectedCategory = old('category');
                 $customCategory = old('category_other');
             @endphp
-            <div data-category-root>
-                <label class="block text-sm font-medium text-slate-700">Category</label>
-                <select name="category" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-category-select>
+            <div class="md:col-span-2" data-category-root>
+                <label class="block text-sm font-medium text-slate-700">Category <span class="text-rose-500">*</span></label>
+                <select name="category" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-category-select>
                     <option value="">Select category</option>
                     @foreach ($incidentCategories as $category)
                         <option value="{{ $category }}" @selected($selectedCategory === $category)>{{ $category }}</option>
@@ -71,24 +76,57 @@
                     >
                 </div>
             </div>
-            <div data-location-root>
-                <label class="block text-sm font-medium text-slate-700">House <span class="text-rose-500">*</span></label>
-                <select name="location" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-location-select>
-                    <option value="">Select house</option>
-                    @foreach ($houses as $house)
-                        <option value="{{ $house->display_address }}" @selected($locationSelectValue === $house->display_address)>{{ $house->display_address }}</option>
-                    @endforeach
-                    <option value="__other__" @selected($locationSelectValue === '__other__')>Others</option>
-                </select>
-                <div class="@if ($locationSelectValue !== '__other__') hidden @endif mt-3" data-location-other-wrapper>
-                    <input
-                        type="text"
-                        name="location_other"
-                        value="{{ $isOtherLocation ? $selectedLocation : old('location_other') }}"
-                        placeholder="Enter other location"
-                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
-                        data-location-other
-                    >
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-slate-700">Description <span class="text-rose-500">*</span></label>
+                <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description') }}</textarea>
+            </div>
+            <div
+                class="md:col-span-2"
+                data-location-root
+                data-houses='@json($houseOptions)'
+                data-selected-street="{{ $locationStreet }}"
+                data-selected-block="{{ $locationBlock }}"
+                data-selected-lot="{{ $locationLot }}"
+            >
+                <label class="block text-sm font-medium text-slate-700">Incident Location <span class="text-rose-500">*</span></label>
+                <input type="hidden" name="house_id" value="{{ $selectedHouseId > 0 ? $selectedHouseId : '' }}" id="report_house_id" data-location-house-id>
+                <input type="hidden" name="location" value="{{ $selectedLocation }}" data-location-value>
+                <div class="mt-1 grid gap-4 md:grid-cols-3">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Street</label>
+                        <select
+                            name="location_street"
+                            required
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                            data-location-street
+                        >
+                            <option value="">Select street</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Block</label>
+                        <select
+                            name="location_block"
+                            required
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                            data-location-block
+                            disabled
+                        >
+                            <option value="">Select block</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Lot</label>
+                        <select
+                            name="location_lot"
+                            required
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                            data-location-lot
+                            disabled
+                        >
+                            <option value="">Select lot</option>
+                        </select>
+                    </div>
                 </div>
             </div>
             <div>
@@ -244,29 +282,161 @@
 
                     root.dataset.locationInitialized = 'true';
 
-                    var select = root.querySelector('[data-location-select]');
-                    var otherWrapper = root.querySelector('[data-location-other-wrapper]');
-                    var otherInput = root.querySelector('[data-location-other]');
+                    var streetInput = root.querySelector('[data-location-street]');
+                    var blockInput = root.querySelector('[data-location-block]');
+                    var lotInput = root.querySelector('[data-location-lot]');
+                    var houseIdInput = root.querySelector('[data-location-house-id]');
+                    var locationValueInput = root.querySelector('[data-location-value]');
+                    var initialStreet = (root.dataset.selectedStreet || '').trim();
+                    var initialBlock = (root.dataset.selectedBlock || '').trim();
+                    var initialLot = (root.dataset.selectedLot || '').trim();
+                    var houses = [];
 
-                    if (!select || !otherWrapper || !otherInput) {
+                    try {
+                        houses = JSON.parse(root.dataset.houses || '[]');
+                    } catch (error) {
+                        houses = [];
+                    }
+
+                    if (!streetInput || !blockInput || !lotInput || !houseIdInput || !locationValueInput) {
                         return;
                     }
 
-                    function syncLocationField() {
-                        var isOther = select.value === '__other__';
-                        otherWrapper.classList.toggle('hidden', !isOther);
+                    houses = houses
+                        .map(function (house) {
+                            return {
+                                house_id: String(house.house_id || '').trim(),
+                                street: String(house.street || '').trim(),
+                                block: String(house.block || '').trim(),
+                                lot: String(house.lot || '').trim(),
+                                location: String(house.location || '').trim()
+                            };
+                        })
+                        .filter(function (house) {
+                            return house.house_id !== ''
+                                && house.street !== ''
+                                && house.block !== ''
+                                && house.lot !== '';
+                        });
 
-                        if (isOther) {
-                            otherInput.setAttribute('required', 'required');
+                    function uniqueValues(items, key) {
+                        var seen = {};
+                        var values = [];
+
+                        items.forEach(function (item) {
+                            var value = String(item[key] || '').trim();
+                            if (value === '' || seen[value]) {
+                                return;
+                            }
+
+                            seen[value] = true;
+                            values.push(value);
+                        });
+
+                        return values;
+                    }
+
+                    function setSelectOptions(select, values, placeholder, selectedValue) {
+                        select.innerHTML = '';
+
+                        var placeholderOption = document.createElement('option');
+                        placeholderOption.value = '';
+                        placeholderOption.textContent = placeholder;
+                        select.appendChild(placeholderOption);
+
+                        values.forEach(function (value) {
+                            var option = document.createElement('option');
+                            option.value = value;
+                            option.textContent = value;
+                            select.appendChild(option);
+                        });
+
+                        if (selectedValue && values.indexOf(selectedValue) !== -1) {
+                            select.value = selectedValue;
                             return;
                         }
 
-                        otherInput.removeAttribute('required');
-                        otherInput.value = '';
+                        select.value = '';
                     }
 
-                    select.addEventListener('change', syncLocationField);
-                    syncLocationField();
+                    function setSelectDisabled(select, isDisabled) {
+                        if (isDisabled) {
+                            select.setAttribute('disabled', 'disabled');
+                            select.value = '';
+                            return;
+                        }
+
+                        select.removeAttribute('disabled');
+                    }
+
+                    function syncSelectedHouse() {
+                        var selectedStreet = String(streetInput.value || '').trim();
+                        var selectedBlock = String(blockInput.value || '').trim();
+                        var selectedLot = String(lotInput.value || '').trim();
+                        var selectedHouse = houses.find(function (house) {
+                            return house.street === selectedStreet
+                                && house.block === selectedBlock
+                                && house.lot === selectedLot;
+                        });
+
+                        houseIdInput.value = selectedHouse ? selectedHouse.house_id : '';
+                        locationValueInput.value = selectedHouse ? selectedHouse.location : '';
+                    }
+
+                    function syncLotOptions(selectedLot) {
+                        var selectedStreet = String(streetInput.value || '').trim();
+                        var selectedBlock = String(blockInput.value || '').trim();
+
+                        if (!selectedStreet || !selectedBlock) {
+                            setSelectOptions(lotInput, [], 'Select lot', '');
+                            setSelectDisabled(lotInput, true);
+                            syncSelectedHouse();
+                            return;
+                        }
+
+                        var filteredHouses = houses.filter(function (house) {
+                            return house.street === selectedStreet && house.block === selectedBlock;
+                        });
+                        var lotValues = uniqueValues(filteredHouses, 'lot');
+
+                        setSelectOptions(lotInput, lotValues, 'Select lot', selectedLot);
+                        setSelectDisabled(lotInput, lotValues.length === 0);
+                        syncSelectedHouse();
+                    }
+
+                    function syncBlockOptions(selectedBlock, selectedLot) {
+                        var selectedStreet = String(streetInput.value || '').trim();
+
+                        if (!selectedStreet) {
+                            setSelectOptions(blockInput, [], 'Select block', '');
+                            setSelectDisabled(blockInput, true);
+                            setSelectOptions(lotInput, [], 'Select lot', '');
+                            setSelectDisabled(lotInput, true);
+                            syncSelectedHouse();
+                            return;
+                        }
+
+                        var filteredHouses = houses.filter(function (house) {
+                            return house.street === selectedStreet;
+                        });
+                        var blockValues = uniqueValues(filteredHouses, 'block');
+
+                        setSelectOptions(blockInput, blockValues, 'Select block', selectedBlock);
+                        setSelectDisabled(blockInput, blockValues.length === 0);
+                        syncLotOptions(selectedLot);
+                    }
+
+                    var streets = uniqueValues(houses, 'street');
+                    setSelectOptions(streetInput, streets, 'Select street', initialStreet);
+                    syncBlockOptions(initialBlock, initialLot);
+
+                    streetInput.addEventListener('change', function () {
+                        syncBlockOptions('', '');
+                    });
+                    blockInput.addEventListener('change', function () {
+                        syncLotOptions('');
+                    });
+                    lotInput.addEventListener('change', syncSelectedHouse);
                 });
             }
 

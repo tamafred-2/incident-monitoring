@@ -14,7 +14,7 @@ class VisitorCheckInFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_security_can_submit_resident_visit_request(): void
+    public function test_security_can_check_in_resident_visit_immediately(): void
     {
         $subdivision = Subdivision::create([
             'subdivision_name' => 'Northview',
@@ -57,7 +57,18 @@ class VisitorCheckInFlowTest extends TestCase
                 'resident_id' => $resident->resident_id,
             ]);
 
-        $response->assertSessionHas('success');
+        $response->assertSessionHas('success', 'Resident visit checked in successfully.');
+
+        $this->assertDatabaseHas('visitors', [
+            'subdivision_id' => $subdivision->subdivision_id,
+            'surname' => 'Cruz',
+            'first_name' => 'Ana',
+            'host_employee' => 'Juan Dela Cruz',
+            'house_address_or_unit' => 'Block 3 Lot 12',
+            'plate_number' => 'ABC 1234',
+            'passenger_count' => 3,
+            'status' => 'Inside',
+        ]);
 
         $this->assertDatabaseHas('visitor_requests', [
             'subdivision_id' => $subdivision->subdivision_id,
@@ -67,12 +78,7 @@ class VisitorCheckInFlowTest extends TestCase
             'house_address_or_unit' => 'Block 3 Lot 12',
             'plate_number' => 'ABC 1234',
             'passenger_count' => 3,
-            'status' => 'Pending',
-        ]);
-
-        $this->assertDatabaseMissing('visitors', [
-            'surname' => 'Cruz',
-            'first_name' => 'Ana',
+            'status' => 'Approved',
         ]);
     }
 

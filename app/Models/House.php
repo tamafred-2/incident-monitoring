@@ -36,7 +36,7 @@ class House extends Model
 
     public function getDisplayAddressAttribute(): string
     {
-        return self::formatAddress($this->block, $this->lot);
+        return self::formatDisplayAddress($this->street, $this->block, $this->lot);
     }
 
     public function setBlockAttribute(?string $value): void
@@ -65,6 +65,14 @@ class House extends Model
         $lot = self::normalizeLot($lot);
 
         return "Block {$block} Lot {$lot}";
+    }
+
+    public static function formatDisplayAddress(?string $street, ?string $block, ?string $lot): string
+    {
+        $baseAddress = self::formatAddress($block, $lot);
+        $street = trim((string) $street);
+
+        return $street !== '' ? "{$street}, {$baseAddress}" : $baseAddress;
     }
 
     private static function normalizeAddressComponent(?string $value, string $prefixPattern): string
