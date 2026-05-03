@@ -345,7 +345,17 @@
                             <div class="grid gap-4 md:grid-cols-2">
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700">Phone</label>
-                                    <input type="text" name="phone" value="{{ old('phone') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        value="{{ old('phone') }}"
+                                        required
+                                        inputmode="numeric"
+                                        pattern="[0-9]*"
+                                        maxlength="40"
+                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                    >
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-slate-700">Purpose</label>

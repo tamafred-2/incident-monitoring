@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Resident extends Model
@@ -51,11 +50,6 @@ class Resident extends Model
     public function house(): BelongsTo
     {
         return $this->belongsTo(House::class, 'house_id', 'house_id');
-    }
-
-    public function incidents(): HasMany
-    {
-        return $this->hasMany(Incident::class, 'verified_resident_id', 'resident_id');
     }
 
     public function user(): HasOne

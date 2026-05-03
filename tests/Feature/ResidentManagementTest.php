@@ -59,6 +59,41 @@ class ResidentManagementTest extends TestCase
         ]);
     }
 
+    public function test_admin_cannot_create_resident_with_non_numeric_phone(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'subdivision_id' => null,
+        ]);
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Palm Grove',
+            'status' => 'Active',
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->post(route('residents.store'), [
+                'surname' => 'Ramos',
+                'first_name' => 'Lea',
+                'middle_name' => '',
+                'extension' => '',
+                'phone' => '0917ABC456',
+                'email' => 'lea-invalid@example.com',
+                'subdivision_id' => $subdivision->subdivision_id,
+                'house_id' => null,
+                'address_or_unit' => '',
+                'resident_code' => 'RES-7001B',
+                'status' => 'Active',
+            ]);
+
+        $response->assertSessionHasErrors(['phone']);
+
+        $this->assertDatabaseMissing('residents', [
+            'email' => 'lea-invalid@example.com',
+        ]);
+    }
+
     public function test_authorized_user_can_view_resident_details(): void
     {
         $subdivision = Subdivision::create([
@@ -117,8 +152,8 @@ class ResidentManagementTest extends TestCase
                 'first_name' => 'Paolo',
                 'middle_name' => '',
                 'extension' => '',
-                'phone' => '',
-                'email' => '',
+                'phone' => '09171234567',
+                'email' => 'paolo.reyes@example.com',
                 'subdivision_id' => $subdivision->subdivision_id,
                 'house_id' => $house->house_id,
                 'address_or_unit' => '',
@@ -137,7 +172,7 @@ class ResidentManagementTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_delete_resident_without_linked_account_or_incidents(): void
+    public function test_admin_can_delete_resident_without_linked_account(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
@@ -161,15 +196,15 @@ class ResidentManagementTest extends TestCase
             ->delete(route('residents.destroy', $resident));
 
         $response
-            ->assertRedirect(route('residents.index'))
-            ->assertSessionHas('success', 'Resident deleted successfully.');
+            ->assertRedirect(route('residents.index', ['per_page' => 10]))
+            ->assertSessionHas('success', 'Resident deleted successfully. Linked resident account(s) were archived.');
 
         $this->assertDatabaseMissing('residents', [
             'resident_id' => $resident->resident_id,
         ]);
     }
 
-    public function test_admin_cannot_delete_resident_with_linked_incident_history(): void
+    public function test_admin_can_delete_resident_even_with_linked_incident_history(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
@@ -202,9 +237,6 @@ class ResidentManagementTest extends TestCase
             'reported_at' => now(),
             'status' => 'Open',
             'reported_by' => $admin->user_id,
-            'verified_resident_id' => $resident->resident_id,
-            'verification_method' => 'manual',
-            'verified_at' => now(),
         ]);
 
         $response = $this
@@ -212,10 +244,10 @@ class ResidentManagementTest extends TestCase
             ->delete(route('residents.destroy', $resident));
 
         $response
-            ->assertRedirect(route('residents.index'))
-            ->assertSessionHas('error', 'Residents with verified incident records cannot be deleted.');
+            ->assertRedirect(route('residents.index', ['per_page' => 10]))
+            ->assertSessionHas('success', 'Resident deleted successfully. Linked resident account(s) were archived.');
 
-        $this->assertDatabaseHas('residents', [
+        $this->assertDatabaseMissing('residents', [
             'resident_id' => $resident->resident_id,
         ]);
     }

@@ -80,7 +80,7 @@ class ResidentController extends Controller
             abort(403);
         }
 
-        $resident->load(['subdivision', 'house', 'user', 'incidents.reporter']);
+        $resident->load(['subdivision', 'house']);
 
         return view('residents.show', [
             'resident' => $resident,
@@ -176,11 +176,6 @@ class ResidentController extends Controller
 
     public function destroy(Request $request, Resident $resident): RedirectResponse
     {
-        if ($resident->incidents()->exists()) {
-            return redirect()->route('residents.index', $this->indexContext($request))
-                ->with('error', 'Residents with verified incident records cannot be deleted.');
-        }
-
         DB::transaction(function () use ($resident): void {
             User::withTrashed()
                 ->where('resident_id', $resident->resident_id)
@@ -220,7 +215,7 @@ class ResidentController extends Controller
             'middle_name' => ['nullable', 'string', 'max:50'],
             'extension' => ['nullable', 'string', 'max:20'],
             'full_name' => ['nullable', 'string', 'max:100'],
-            'phone' => ['required', 'string', 'max:20'],
+            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
             'email' => ['required', 'email', 'max:100'],
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
             'house_id' => ['nullable', 'integer', 'exists:houses,house_id'],

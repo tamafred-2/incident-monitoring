@@ -104,10 +104,14 @@
             <div>
                 <label class="block text-sm font-medium text-slate-700">Phone</label>
                 <input
-                    type="text"
+                    type="tel"
                     name="phone"
                     required
                     value="{{ old('phone', $resident?->phone ?? '') }}"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    maxlength="20"
+                    oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                     class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
                 >
             </div>
