@@ -1,13 +1,20 @@
 <x-app-layout>
+    @php
+        $isResidentViewer = auth()->user()->isResident();
+    @endphp
+
     <x-slot name="header">
         <div>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">Incidents</h2>
-            <p class="mt-1 text-sm text-slate-500">Incident reporting supports manual or system submission, then tracks each case from pending handling to resolved status.</p>
+            <h2 class="text-xl font-semibold leading-tight text-gray-800">{{ $isResidentViewer ? 'My Incidents' : 'Incidents' }}</h2>
+            <p class="mt-1 text-sm text-slate-500">{{ $isResidentViewer ? 'Track your submitted incident reports and their current status.' : 'Incident reporting supports manual or system submission, then tracks each case from pending handling to resolved status.' }}</p>
         </div>
     </x-slot>
 
     @php
         $activeIncidentTab = $historyView === 'history' ? 'history' : 'incident';
+        $emptyStateColspan = ($subdivisions->isNotEmpty() ? 1 : 0)
+            + ($isResidentViewer ? 0 : 1)
+            + ($activeIncidentTab === 'history' ? 7 : 6);
     @endphp
 
     <div class="py-10">
@@ -138,7 +145,9 @@
                                 @endif
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Category</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Incident Status</th>
-                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Reporter</th>
+                                @unless ($isResidentViewer)
+                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Reporter</th>
+                                @endunless
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Proof</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Date Reported</th>
                                 @if ($activeIncidentTab === 'history')
@@ -193,11 +202,13 @@
                                             {{ $incident->trashed() ? 'Archived' : $statusLabel }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 text-slate-600">
-                                        <div class="max-w-[13rem] truncate" title="{{ $incident->reporter?->full_name ?? '-' }}">
-                                            {{ $incident->reporter?->full_name ?? '-' }}
-                                        </div>
-                                    </td>
+                                    @unless ($isResidentViewer)
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <div class="max-w-[13rem] truncate" title="{{ $incident->reporter?->full_name ?? '-' }}">
+                                                {{ $incident->reporter?->full_name ?? '-' }}
+                                            </div>
+                                        </td>
+                                    @endunless
                                     <td class="px-6 py-4 text-slate-600">
                                         @if ($incident->proofPhotos->isNotEmpty())
                                             @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proofPhotos->first()->photo_path]))
@@ -273,28 +284,26 @@
                                                 View
                                             </a>
 
-                                            @if (auth()->user()->isAdmin() || auth()->user()->hasRole(['staff']))
-                                                @if (!$incident->trashed())
-                                                    <a
-                                                        href="{{ route('incidents.edit', array_filter([
-                                                            'incidentId' => $incident->incident_id,
-                                                            'q' => $filterQ ?: null,
-                                                            'subdivision_id' => $filterSubdivision ?: null,
-                                                            'view' => $historyView !== 'active' ? $historyView : null,
-                                                            'per_page' => $perPage,
-                                                        ])) }}"
-                                                        class="px-3 py-2 text-xs font-semibold border rounded-lg border-sky-200 text-sky-700 hover:bg-sky-50"
-                                                    >
-                                                        Edit
-                                                    </a>
-                                                @endif
+                                            @if ((auth()->user()->isAdmin() || (auth()->user()->hasRole(['staff']) && !$incident->isResolvedOrDone())) && !$incident->trashed())
+                                                <a
+                                                    href="{{ route('incidents.edit', array_filter([
+                                                        'incidentId' => $incident->incident_id,
+                                                        'q' => $filterQ ?: null,
+                                                        'subdivision_id' => $filterSubdivision ?: null,
+                                                        'view' => $historyView !== 'active' ? $historyView : null,
+                                                        'per_page' => $perPage,
+                                                    ])) }}"
+                                                    class="px-3 py-2 text-xs font-semibold border rounded-lg border-sky-200 text-sky-700 hover:bg-sky-50"
+                                                >
+                                                    Edit
+                                                </a>
                                             @endif
                                         </div>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="{{ ($subdivisions->isNotEmpty() ? 1 : 0) + ($activeIncidentTab === 'history' ? 8 : 7) }}" class="px-6 py-10 text-center text-slate-500">No incidents found.</td>
+                                    <td colspan="{{ $emptyStateColspan }}" class="px-6 py-10 text-center text-slate-500">No incidents found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

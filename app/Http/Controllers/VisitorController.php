@@ -189,7 +189,7 @@ class VisitorController extends Controller
             'first_name'            => ['required', 'string', 'max:100'],
             'middle_initials'       => ['nullable', 'string', 'max:20'],
             'extension'             => ['nullable', 'string', 'max:20'],
-            'phone'                 => ['required', 'string', 'max:40'],
+            'phone'                 => ['required', 'string', 'max:40', 'regex:/^[0-9]+$/'],
             'purpose'               => ['nullable', 'string'],
             'on_vehicle'            => ['nullable', 'boolean'],
             'plate_number'          => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],

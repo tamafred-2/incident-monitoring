@@ -34,7 +34,7 @@
 
                 <div class="p-6 mt-8 bg-white border shadow-sm rounded-2xl border-slate-200">
                     <h3 class="text-lg font-semibold text-slate-900">Resident Overview</h3>
-                    <p class="mt-2 text-sm text-slate-500">Use the Incidents page to report incidents and track pending or resolved reports tied to your account.</p>
+                    <p class="mt-2 text-sm text-slate-500">Use the Incidents page to track pending or resolved reports tied to your account.</p>
                     <div class="grid gap-4 mt-6 md:grid-cols-2">
                         <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                             <p class="text-sm text-slate-500">Linked Resident Record</p>

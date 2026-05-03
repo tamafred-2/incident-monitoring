@@ -29,9 +29,6 @@ class Incident extends Model
         'proof_photo_path',
         'reported_by',
         'assigned_to',
-        'verified_resident_id',
-        'verification_method',
-        'verified_at',
         'verified_by_staff_id',
         'verified_on_site_at',
     ];
@@ -56,7 +53,6 @@ class Incident extends Model
             'incident_date' => 'datetime',
             'reported_at' => 'datetime',
             'resolved_at' => 'datetime',
-            'verified_at' => 'datetime',
             'verified_on_site_at' => 'datetime',
             'created_at' => 'datetime',
         ];
@@ -87,15 +83,15 @@ class Incident extends Model
         return $this->belongsTo(User::class, 'verified_by_staff_id', 'user_id')->withTrashed();
     }
 
-    public function verifiedResident(): BelongsTo
-    {
-        return $this->belongsTo(Resident::class, 'verified_resident_id', 'resident_id');
-    }
-
     public function proofPhotos(): HasMany
     {
         return $this->hasMany(IncidentPhoto::class, 'incident_id', 'incident_id')
             ->orderBy('sort_order')
             ->orderBy('incident_photo_id');
+    }
+
+    public function isResolvedOrDone(): bool
+    {
+        return in_array($this->status, ['Resolved', 'Closed', 'Done'], true);
     }
 }

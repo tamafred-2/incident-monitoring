@@ -42,7 +42,7 @@
                                                         <img src="{{ route('resident.visitors.photo', $req->request_id) }}" alt="ID" class="object-cover w-10 h-10 rounded-lg border border-slate-200 hover:opacity-80">
                                                 </button>
                                             @else
-                                                <span class="text-xs text-slate-400">—</span>
+                                                <span class="text-xs text-slate-400">-</span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 font-medium text-slate-900">{{ $req->visitor_name }}</td>
@@ -94,7 +94,7 @@
         @if ($req->id_photo_path)
             <x-modal name="id-photo-{{ $req->request_id }}" maxWidth="md" focusable>
                 <div class="p-6 bg-white text-center">
-                    <h3 class="mb-4 text-lg font-semibold text-slate-900">{{ $req->visitor_name }} — ID Photo</h3>
+                    <h3 class="mb-4 text-lg font-semibold text-slate-900">{{ $req->visitor_name }} - ID Photo</h3>
                     <img src="{{ route('resident.visitors.photo', $req->request_id) }}" alt="ID Photo" class="max-w-full mx-auto rounded-xl border border-slate-200">
                 </div>
             </x-modal>
@@ -173,3 +173,4 @@
         @endif
     @endforeach
 </x-app-layout>
+

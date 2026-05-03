@@ -128,4 +128,39 @@ class VisitorCheckInFlowTest extends TestCase
             'first_name' => 'Leo',
         ]);
     }
+
+    public function test_security_cannot_check_in_visitor_with_non_numeric_phone(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Northview',
+            'status' => 'Active',
+        ]);
+
+        $security = User::factory()->create([
+            'role' => 'security',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $response = $this
+            ->actingAs($security)
+            ->post(route('visitors.store'), [
+                'visit_type' => 'walk_in',
+                'subdivision_id' => $subdivision->subdivision_id,
+                'surname' => 'Santos',
+                'first_name' => 'Leo',
+                'phone' => '09AB123456',
+                'purpose' => 'Basketball game',
+                'on_vehicle' => 0,
+                'id_photo' => UploadedFile::fake()->create('walk-in-id.jpg', 120, 'image/jpeg'),
+                'house_address_or_unit' => 'Clubhouse Court',
+            ]);
+
+        $response->assertSessionHasErrors(['phone']);
+
+        $this->assertDatabaseMissing('visitors', [
+            'surname' => 'Santos',
+            'first_name' => 'Leo',
+            'phone' => '09AB123456',
+        ]);
+    }
 }

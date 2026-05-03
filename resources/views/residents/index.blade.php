@@ -284,7 +284,7 @@
                                 <div>
                                     <h3 class="text-lg font-semibold text-slate-900">Delete Resident?</h3>
                                     <p class="mt-2 text-sm text-slate-600">
-                                        {{ $resident->full_name }} will be removed from resident monitoring. Any linked resident user account will be archived automatically. Residents with linked incident records still cannot be deleted.
+                                        {{ $resident->full_name }} will be removed from resident monitoring. Any linked resident user account will be archived automatically.
                                     </p>
                                 </div>
                             </div>

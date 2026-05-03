@@ -282,7 +282,6 @@ class IncidentManagementTest extends TestCase
             'description' => 'The pipe under the sink is leaking.',
             'house_id' => $house->house_id,
             'reported_by' => $residentUser->user_id,
-            'verified_resident_id' => $residentRecord->resident_id,
             'status' => 'Open',
         ]);
 
@@ -633,6 +632,215 @@ class IncidentManagementTest extends TestCase
             ->assertOk()
             ->assertSee($incident->report_id)
             ->assertSee('Perimeter light is flickering.');
+    }
+
+    public function test_resident_only_sees_own_incidents_in_index(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Acacia Grove',
+            'status' => 'Active',
+        ]);
+
+        $residentUser = User::factory()->create([
+            'role' => 'resident',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $otherReporter = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '2',
+            'lot' => '3',
+        ]);
+
+        $ownIncident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Resident-owned incident record.',
+            'category' => 'Safety',
+            'location' => 'Near gate',
+            'incident_date' => now()->subHours(2),
+            'reported_at' => now()->subHours(2),
+            'status' => 'Open',
+            'reported_by' => $residentUser->user_id,
+        ]);
+
+        $otherIncident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Another user incident record.',
+            'category' => 'Security',
+            'location' => 'Clubhouse',
+            'incident_date' => now()->subHour(),
+            'reported_at' => now()->subHour(),
+            'status' => 'Open',
+            'reported_by' => $otherReporter->user_id,
+        ]);
+
+        $this->actingAs($residentUser)
+            ->get(route('incidents.index'))
+            ->assertOk()
+            ->assertSee($ownIncident->report_id)
+            ->assertDontSee($otherIncident->report_id)
+            ->assertDontSee('Another user incident record.');
+    }
+
+    public function test_resident_cannot_view_other_users_incident_details(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Pine Hollow',
+            'status' => 'Active',
+        ]);
+
+        $residentUser = User::factory()->create([
+            'role' => 'resident',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $otherReporter = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '6',
+            'lot' => '9',
+        ]);
+
+        $otherIncident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Staff-owned incident record.',
+            'category' => 'Property Damage',
+            'location' => 'Pool area',
+            'incident_date' => now()->subHours(5),
+            'reported_at' => now()->subHours(5),
+            'status' => 'Open',
+            'reported_by' => $otherReporter->user_id,
+        ]);
+
+        $this->actingAs($residentUser)
+            ->get(route('incidents.show', ['incidentId' => $otherIncident->incident_id]))
+            ->assertForbidden();
+
+        $this->actingAs($residentUser)
+            ->get(route('incidents.show-by-report', $otherIncident->report_id))
+            ->assertForbidden();
+    }
+
+    public function test_staff_cannot_edit_resolved_incident(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Oak Valley',
+            'status' => 'Active',
+        ]);
+
+        $staff = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $reporter = User::factory()->create([
+            'role' => 'security',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '9',
+            'lot' => '5',
+        ]);
+
+        $incident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Road barrier was repaired and reopened.',
+            'category' => 'Safety',
+            'location' => 'Main gate lane',
+            'incident_date' => now()->subHours(4),
+            'reported_at' => now()->subHours(4),
+            'resolved_at' => now()->subHours(2),
+            'status' => 'Resolved',
+            'reported_by' => $reporter->user_id,
+        ]);
+
+        $this->actingAs($staff)
+            ->get(route('incidents.edit', ['incidentId' => $incident->incident_id]))
+            ->assertForbidden();
+
+        $this->actingAs($staff)
+            ->put(route('incidents.update', ['incidentId' => $incident->incident_id]), [
+                'status' => 'Closed',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_admin_can_edit_resolved_incident(): void
+    {
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Pine Trails',
+            'status' => 'Active',
+        ]);
+
+        $admin = User::factory()->create([
+            'role' => 'admin',
+        ]);
+
+        $reporter = User::factory()->create([
+            'role' => 'staff',
+            'subdivision_id' => $subdivision->subdivision_id,
+        ]);
+
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '10',
+            'lot' => '2',
+        ]);
+
+        $incident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'description' => 'Issue marked complete after maintenance team visit.',
+            'category' => 'Property Damage',
+            'location' => 'Clubhouse corridor',
+            'incident_date' => now()->subDay(),
+            'reported_at' => now()->subDay(),
+            'resolved_at' => now()->subHours(20),
+            'status' => 'Resolved',
+            'reported_by' => $reporter->user_id,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('incidents.edit', ['incidentId' => $incident->incident_id]))
+            ->assertOk();
+
+        $response = $this
+            ->actingAs($admin)
+            ->put(route('incidents.update', ['incidentId' => $incident->incident_id]), [
+                'subdivision_id' => $subdivision->subdivision_id,
+                'house_id' => $house->house_id,
+                'description' => 'Admin adjusted final closure details.',
+                'category' => 'Property Damage',
+                'location' => 'Clubhouse corridor',
+                'incident_date' => now()->subDay()->format('Y-m-d H:i:s'),
+                'reported_at' => now()->subDay()->format('Y-m-d H:i:s'),
+                'resolved_at' => now()->subHours(18)->format('Y-m-d H:i:s'),
+                'status' => 'Closed',
+            ]);
+
+        $response
+            ->assertStatus(302)
+            ->assertSessionHas('success', 'Incident updated successfully.');
+
+        $this->assertDatabaseHas('incidents', [
+            'incident_id' => $incident->incident_id,
+            'description' => 'Admin adjusted final closure details.',
+        ]);
     }
 
     public function test_security_cannot_access_incident_edit_routes(): void

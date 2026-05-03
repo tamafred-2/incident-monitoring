@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\House;
 use App\Models\Incident;
 use App\Models\IncidentPhoto;
-use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Notifications\IncidentUpdatedNotification;
@@ -41,7 +40,7 @@ class IncidentController extends Controller
         );
 
         $query = Incident::query()
-            ->with(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter'])
+            ->with(['subdivision', 'house', 'proofPhotos', 'reporter'])
             ->orderByDesc('incident_date');
 
         if ($filterQ !== '') {
@@ -51,10 +50,6 @@ class IncidentController extends Controller
                     ->orWhere('category', 'like', "%{$filterQ}%")
                     ->orWhere('location', 'like', "%{$filterQ}%")
                     ->orWhere('status', 'like', "%{$filterQ}%")
-                    ->orWhereHas('verifiedResident', function (Builder $residentQuery) use ($filterQ) {
-                        $residentQuery->where('full_name', 'like', "%{$filterQ}%")
-                            ->orWhere('resident_code', 'like', "%{$filterQ}%");
-                    })
                     ->orWhereHas('reporter', function (Builder $reporterQuery) use ($filterQ) {
                         $reporterQuery->where('full_name', 'like', "%{$filterQ}%")
                             ->orWhere('email', 'like', "%{$filterQ}%");
@@ -64,7 +59,9 @@ class IncidentController extends Controller
 
         $this->applyHistoryViewScope($query, $historyView);
 
-        if (!$user->isAdmin()) {
+        if ($user->isResident()) {
+            $query->where('reported_by', $user->user_id);
+        } elseif (!$user->isAdmin()) {
             $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
             $query->where('subdivision_id', $filterSubdivision);
@@ -104,19 +101,20 @@ class IncidentController extends Controller
     public function show(Request $request, int $incidentId): View
     {
         $incident = $this->findIncidentOrFail($request, $incidentId);
-        $incident->load(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter']);
+        $incident->load(['subdivision', 'house', 'proofPhotos', 'reporter']);
 
         return view('incidents.show', [
             'incident' => $incident,
             'indexContext' => $this->indexContext($request),
             'proofPhotos' => $this->proofPhotosFor($incident),
+            'canEditIncident' => $this->canUserEditIncident($request->user(), $incident),
         ]);
     }
 
     public function showByReportId(Request $request, string $reportId): View
     {
         $incident = Incident::query()
-            ->with(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter'])
+            ->with(['subdivision', 'house', 'proofPhotos', 'reporter'])
             ->where('report_id', strtoupper(trim($reportId)))
             ->firstOrFail();
 
@@ -126,6 +124,7 @@ class IncidentController extends Controller
             'incident' => $incident,
             'indexContext' => [],
             'proofPhotos' => $this->proofPhotosFor($incident),
+            'canEditIncident' => $this->canUserEditIncident($request->user(), $incident),
         ]);
     }
 
@@ -163,7 +162,6 @@ class IncidentController extends Controller
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
 
-        [$verifiedResidentId, $verificationMethod, $verifiedAt] = $this->resolveVerificationData($data, $subdivisionId);
         $proofPhotoPaths = $this->storeProofPhotos($request);
 
         $houseId = $this->resolveHouseId($data, $subdivisionId);
@@ -188,9 +186,6 @@ class IncidentController extends Controller
             'proof_photo_path' => $proofPhotoPaths[0] ?? null,
             'reported_by' => $request->user()->user_id,
             'assigned_to' => null,
-            'verified_resident_id' => $verifiedResidentId,
-            'verification_method' => $verificationMethod,
-            'verified_at' => $verifiedAt,
         ]);
 
         $this->syncIncidentPhotoRecords($incident, $proofPhotoPaths, false);
@@ -203,7 +198,7 @@ class IncidentController extends Controller
     public function edit(Request $request, int $incidentId): View
     {
         $incident = $this->findIncidentOrFail($request, $incidentId);
-        $incident->load(['subdivision', 'house', 'verifiedResident', 'proofPhotos', 'reporter']);
+        $incident->load(['subdivision', 'house', 'proofPhotos', 'reporter']);
         $this->authorizeIncidentEdit($request, $incident);
 
         return view('incidents.edit', [
@@ -386,49 +381,6 @@ class IncidentController extends Controller
         ]));
     }
 
-    public function verifyResident(Request $request): JsonResponse
-    {
-        $data = $request->validate([
-            'code' => ['required', 'string', 'max:100'],
-            'subdivision_id' => ['required', 'integer'],
-        ]);
-
-        $user = $request->user();
-        if (!$user->canAccessSubdivision($data['subdivision_id'])) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Access denied to this subdivision.',
-            ]);
-        }
-
-        $resident = Resident::query()
-            ->with('house')
-            ->where('resident_code', Resident::normalizeResidentCode($data['code']))
-            ->where('subdivision_id', (int) $data['subdivision_id'])
-            ->first();
-
-        if (!$resident) {
-            return response()->json([
-                'success' => false,
-                'error' => 'Resident not found for this subdivision.',
-            ]);
-        }
-
-        if ($resident->status !== 'Active') {
-            return response()->json([
-                'success' => false,
-                'error' => 'Resident is not active.',
-            ]);
-        }
-
-        return response()->json([
-            'success' => true,
-            'resident_id' => (int) $resident->resident_id,
-            'full_name' => $resident->full_name,
-            'address_or_unit' => $resident->display_address ?? '',
-        ]);
-    }
-
     public function photo(Request $request, string $path): BinaryFileResponse
     {
         abort_unless(str_starts_with($path, 'uploads/incidents/'), 404);
@@ -439,7 +391,7 @@ class IncidentController extends Controller
         return response()->file($absolutePath);
     }
 
-    private function incidentValidationRules(bool $forResident = false, bool $includeVerification = true): array
+    private function incidentValidationRules(bool $forResident = false, bool $requireProofPhotos = true): array
     {
         $rules = [
             'subdivision_id' => ['nullable', 'integer'],
@@ -464,13 +416,8 @@ class IncidentController extends Controller
         $rules['resolved_at'] = ['nullable', 'date', 'after_or_equal:reported_at'];
         $rules['status'] = ['required', Rule::in($this->allowedIncidentStatusesForInput())];
 
-        if ($includeVerification) {
-            $rules['verified_resident_id'] = ['nullable', 'integer'];
-            $rules['verification_method'] = ['nullable', 'in:qr_scan,manual_code'];
-        }
-
         // proof_photos not required on edit (may keep existing)
-        if (!$forResident && !$includeVerification) {
+        if (!$forResident && !$requireProofPhotos) {
             $rules['proof_photos'] = ['nullable', 'array', 'max:10'];
         }
 
@@ -520,29 +467,6 @@ class IncidentController extends Controller
             ->orderBy('block')
             ->orderBy('lot')
             ->get();
-    }
-
-    private function resolveVerificationData(array $data, int $subdivisionId): array
-    {
-        $verifiedResidentId = null;
-        $verificationMethod = null;
-        $verifiedAt = null;
-
-        if (!empty($data['verified_resident_id']) && !empty($data['verification_method'])) {
-            $resident = Resident::query()
-                ->whereKey((int) $data['verified_resident_id'])
-                ->where('subdivision_id', $subdivisionId)
-                ->where('status', 'Active')
-                ->first();
-
-            if ($resident) {
-                $verifiedResidentId = $resident->resident_id;
-                $verificationMethod = $data['verification_method'];
-                $verifiedAt = now();
-            }
-        }
-
-        return [$verifiedResidentId, $verificationMethod, $verifiedAt];
     }
 
     private function resolveEffectiveSubdivisionId(Request $request): ?int
@@ -716,26 +640,48 @@ class IncidentController extends Controller
 
     private function authorizeIncidentAccess(Request $request, Incident $incident): void
     {
-        if ($request->user()->isAdmin()) {
-            return;
-        }
-
-        abort_unless($request->user()->canAccessSubdivision($incident->subdivision_id), 403);
-    }
-
-    private function authorizeIncidentEdit(Request $request, Incident $incident): void
-    {
         $user = $request->user();
 
         if ($user->isAdmin()) {
             return;
         }
 
-        abort_unless(
-            $user->canAccessSubdivision($incident->subdivision_id)
-            && $user->hasRole(['staff']),
-            403
-        );
+        if ($user->isResident()) {
+            abort_unless((int) $incident->reported_by === (int) $user->user_id, 403);
+
+            return;
+        }
+
+        abort_unless($user->canAccessSubdivision($incident->subdivision_id), 403);
+    }
+
+    private function authorizeIncidentEdit(Request $request, Incident $incident): void
+    {
+        $user = $request->user();
+
+        abort_unless($this->canUserEditIncident($user, $incident), 403);
+    }
+
+    private function canUserEditIncident(User $user, Incident $incident): bool
+    {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        if (!$user->hasRole(['staff']) || !$user->canAccessSubdivision($incident->subdivision_id)) {
+            return false;
+        }
+
+        return !$this->isIncidentLockedForStaffEdit($incident);
+    }
+
+    private function isIncidentLockedForStaffEdit(Incident $incident): bool
+    {
+        if ($incident->isResolvedOrDone()) {
+            return true;
+        }
+
+        return in_array($incident->status, $this->resolvedStatuses(), true);
     }
 
     private function proofPhotosFor(Incident $incident): Collection
