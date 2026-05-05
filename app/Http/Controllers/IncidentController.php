@@ -33,6 +33,10 @@ class IncidentController extends Controller
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
         $historyView = $this->resolveHistoryView($request->query('view'));
+        $reportedSort = strtolower((string) $request->query('reported_sort', 'desc'));
+        if (!in_array($reportedSort, ['asc', 'desc'], true)) {
+            $reportedSort = 'desc';
+        }
         $perPage = $this->resolvePerPageChoice(
             $request->query('per_page_custom'),
             $request->query('per_page'),
@@ -41,7 +45,7 @@ class IncidentController extends Controller
 
         $query = Incident::query()
             ->with(['subdivision', 'house', 'proofPhotos', 'reporter'])
-            ->orderByDesc('incident_date');
+            ->orderByRaw('COALESCE(reported_at, incident_date, created_at) ' . strtoupper($reportedSort));
 
         if ($filterQ !== '') {
             $query->where(function (Builder $builder) use ($filterQ) {
@@ -91,6 +95,7 @@ class IncidentController extends Controller
             'effectiveSubdivision',
             'openReportModal',
             'historyView',
+            'reportedSort',
             'incidentCategories',
             'residentReporter',
             'houses',
@@ -510,6 +515,10 @@ class IncidentController extends Controller
         }
 
         $context = $subdivisionId ? ['subdivision_id' => (int) $subdivisionId] : [];
+        $reportedSort = strtolower((string) $request->input('reported_sort', $request->query('reported_sort', 'desc')));
+        if (in_array($reportedSort, ['asc', 'desc'], true)) {
+            $context['reported_sort'] = $reportedSort;
+        }
         $context['per_page'] = $this->resolvePerPageChoice(
             $request->input('per_page_custom', $request->query('per_page_custom')),
             $request->input('per_page', $request->query('per_page')),
@@ -537,6 +546,11 @@ class IncidentController extends Controller
             $view = $this->resolveHistoryView($request->input('view', $request->query('view')));
             if ($view !== 'active') {
                 $context['view'] = $view;
+            }
+
+            $reportedSort = strtolower((string) $request->input('reported_sort', $request->query('reported_sort', 'desc')));
+            if ($reportedSort === 'asc') {
+                $context['reported_sort'] = 'asc';
             }
         }
 

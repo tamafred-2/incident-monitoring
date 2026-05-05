@@ -149,7 +149,22 @@
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Reporter</th>
                                 @endunless
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Proof</th>
-                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Date Reported</th>
+                                <th class="px-6 py-3 font-semibold text-left text-slate-600">
+                                    <a
+                                        href="{{ route('incidents.index', array_filter([
+                                            'q' => $filterQ ?: null,
+                                            'subdivision_id' => $filterSubdivision ?: null,
+                                            'view' => $historyView !== 'active' ? $historyView : null,
+                                            'reported_sort' => $reportedSort === 'desc' ? 'asc' : 'desc',
+                                            'per_page' => $perPage,
+                                        ])) }}"
+                                        class="inline-flex items-center gap-1 hover:text-sky-700"
+                                        title="{{ $reportedSort === 'desc' ? 'Sort oldest first' : 'Sort newest first' }}"
+                                    >
+                                        <span>Date Reported</span>
+                                        <span class="text-xs">{{ $reportedSort === 'desc' ? '↓' : '↑' }}</span>
+                                    </a>
+                                </th>
                                 @if ($activeIncidentTab === 'history')
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Date Resolved</th>
                                 @endif
