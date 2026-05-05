@@ -69,75 +69,64 @@
                 selectedResidentPhone: '',
                 hostOpen: false,
                 init() {
-                    this.initializeResidentLocationSelection();
+                    this.initializeResidentSelection();
                 },
                 get availableHouses() {
                     return this.housesBySubdivision[this.selectedSubdivision] || [];
                 },
-                get streetOptions() {
-                    const streets = this.availableHouses
-                        .map(h => (h.street || '').trim())
-                        .filter(Boolean);
-                    return [...new Set(streets)];
-                },
-                get blockOptions() {
-                    if (!this.selectedStreet) return [];
-                    const blocks = this.availableHouses
-                        .filter(h => (h.street || '').trim() === this.selectedStreet)
-                        .map(h => (h.block || '').trim())
-                        .filter(Boolean);
-                    return [...new Set(blocks)];
-                },
-                get lotOptions() {
-                    if (!this.selectedStreet || !this.selectedBlock) return [];
-                    const lots = this.availableHouses
-                        .filter(h =>
-                            (h.street || '').trim() === this.selectedStreet &&
-                            (h.block || '').trim() === this.selectedBlock
-                        )
-                        .map(h => (h.lot || '').trim())
-                        .filter(Boolean);
-                    return [...new Set(lots)];
+                get subdivisionResidents() {
+                    return this.availableHouses.flatMap(house => {
+                        const residents = this.residentsByHouse[String(house.house_id)] || [];
+                        return residents.map(resident => ({
+                            ...resident,
+                            house_id: String(house.house_id),
+                            street: (house.street || '').trim(),
+                            block: (house.block || '').trim(),
+                            lot: (house.lot || '').trim(),
+                            display_address: house.display_address || '',
+                        }));
+                    });
                 },
                 get availableResidents() {
-                    const residents = this.residentsByHouse[String(this.selectedHouseId)] || [];
-                    if (!this.hostSearch.trim()) return residents;
+                    const residents = this.subdivisionResidents;
+                    if (!this.hostSearch.trim()) return residents.slice(0, 20);
                     const query = this.hostSearch.toLowerCase();
                     return residents.filter(r =>
                         r.name.toLowerCase().includes(query) ||
-                        (r.phone || '').toLowerCase().includes(query)
-                    );
+                        (r.phone || '').toLowerCase().includes(query) ||
+                        (r.display_address || '').toLowerCase().includes(query)
+                    ).slice(0, 20);
                 },
-                initializeResidentLocationSelection() {
+                initializeResidentSelection() {
                     if (this.visitType !== 'resident') {
-                        this.clearResidentLocation();
+                        this.clearResidentSelection({ clearSearch: true });
                         return;
                     }
 
-                    let matchedHouse = null;
+                    if (this.selectedResidentId) {
+                        const matchedResident = this.subdivisionResidents.find(
+                            resident => String(resident.id) === String(this.selectedResidentId)
+                        );
+
+                        if (matchedResident) {
+                            this.applyResidentSelection(matchedResident);
+                            return;
+                        }
+                    }
 
                     if (this.selectedHouseId) {
-                        matchedHouse = this.availableHouses.find(
+                        const matchedHouse = this.availableHouses.find(
                             h => String(h.house_id) === String(this.selectedHouseId)
                         );
-                    }
 
-                    if (!matchedHouse && this.selectedHouseAddress) {
-                        matchedHouse = this.availableHouses.find(
-                            h => h.display_address === this.selectedHouseAddress
-                        );
+                        if (matchedHouse) {
+                            this.selectedStreet = (matchedHouse.street || '').trim();
+                            this.selectedBlock = (matchedHouse.block || '').trim();
+                            this.selectedLot = (matchedHouse.lot || '').trim();
+                            this.selectedHouseId = String(matchedHouse.house_id);
+                            this.selectedHouseAddress = matchedHouse.display_address || '';
+                        }
                     }
-
-                    if (!matchedHouse) {
-                        this.clearResidentLocation();
-                        return;
-                    }
-
-                    this.selectedStreet = (matchedHouse.street || '').trim();
-                    this.selectedBlock = (matchedHouse.block || '').trim();
-                    this.selectedLot = (matchedHouse.lot || '').trim();
-                    this.selectedHouseId = String(matchedHouse.house_id);
-                    this.selectedHouseAddress = matchedHouse.display_address || '';
                 },
                 clearResidentLocation() {
                     this.selectedStreet = '';
@@ -146,62 +135,41 @@
                     this.selectedHouseId = '';
                     this.selectedHouseAddress = '';
                 },
-                syncSelectedHouseFromLocation() {
-                    const selectedStreet = this.selectedStreet.trim();
-                    const selectedBlock = this.selectedBlock.trim();
-                    const selectedLot = this.selectedLot.trim();
-
-                    if (!selectedStreet || !selectedBlock || !selectedLot) {
-                        this.selectedHouseId = '';
-                        this.selectedHouseAddress = '';
-                        return;
+                clearResidentSelection({ clearSearch = false } = {}) {
+                    this.selectedResidentId = '';
+                    this.selectedResidentPhone = '';
+                    if (clearSearch) {
+                        this.hostSearch = '';
                     }
-
-                    const matchedHouse = this.availableHouses.find(h =>
-                        (h.street || '').trim() === selectedStreet &&
-                        (h.block || '').trim() === selectedBlock &&
-                        (h.lot || '').trim() === selectedLot
-                    );
-
-                    this.selectedHouseId = matchedHouse ? String(matchedHouse.house_id) : '';
-                    this.selectedHouseAddress = matchedHouse ? (matchedHouse.display_address || '') : '';
+                    this.clearResidentLocation();
                 },
-                onStreetChange() {
-                    this.selectedBlock = '';
-                    this.selectedLot = '';
-                    this.syncSelectedHouseFromLocation();
-                    this.onHouseChange();
-                },
-                onBlockChange() {
-                    this.selectedLot = '';
-                    this.syncSelectedHouseFromLocation();
-                    this.onHouseChange();
-                },
-                onLotChange() {
-                    this.syncSelectedHouseFromLocation();
-                    this.onHouseChange();
-                },
-                selectResident(resident) {
-                    this.selectedResidentId = resident.id;
+                applyResidentSelection(resident) {
+                    this.selectedResidentId = String(resident.id);
                     this.hostSearch = resident.name;
                     this.selectedResidentPhone = resident.phone || '';
-                    this.hostOpen = false;
+                    this.selectedHouseId = resident.house_id || '';
+                    this.selectedStreet = resident.street || '';
+                    this.selectedBlock = resident.block || '';
+                    this.selectedLot = resident.lot || '';
+                    this.selectedHouseAddress = resident.display_address || '';
                 },
-                onHouseChange() {
-                    this.selectedResidentId = '';
-                    this.hostSearch = '';
-                    this.selectedResidentPhone = '';
+                onResidentSearchInput() {
+                    this.hostOpen = true;
+                    this.clearResidentSelection();
+                },
+                selectResident(resident) {
+                    this.applyResidentSelection(resident);
+                    this.hostOpen = false;
                 },
                 setVisitType(type) {
                     this.visitType = type;
                     this.hostOpen = false;
                     if (type === 'walk_in') {
-                        this.clearResidentLocation();
-                        this.onHouseChange();
+                        this.clearResidentSelection({ clearSearch: true });
                         return;
                     }
 
-                    this.initializeResidentLocationSelection();
+                    this.initializeResidentSelection();
                 }
             }"
             class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
@@ -431,98 +399,92 @@
                         <div x-show="visitType === 'resident'" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
                             <div class="mb-4">
                                 <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Resident Visit Details</h4>
-                                <p class="mt-1 text-sm text-slate-500">Select street, block, lot, and resident being visited for approval tracking.</p>
+                                <p class="mt-1 text-sm text-slate-500">Select the resident first, then street, block, and lot will auto-fill for approval tracking.</p>
                             </div>
 
                             <div class="grid gap-4 md:grid-cols-2">
                                 <input type="hidden" name="house_address_or_unit" :value="visitType === 'resident' ? selectedHouseAddress : ''">
                                 <input type="hidden" name="resident_house_id" :value="visitType === 'resident' ? selectedHouseId : ''">
+                                <input type="hidden" name="resident_id" :value="visitType === 'resident' ? selectedResidentId : ''">
 
-                                <div class="md:col-span-2 grid gap-4 md:grid-cols-3">
-                                    <div>
-                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Street <span class="text-rose-500">*</span></label>
-                                        <select
-                                            x-model="selectedStreet"
-                                            x-on:change="onStreetChange()"
-                                            :required="visitType === 'resident'"
-                                            :disabled="visitType !== 'resident'"
-                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
-                                        >
-                                            <option value="">Select street</option>
-                                            <template x-for="street in streetOptions" :key="street">
-                                                <option :value="street" x-text="street"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Block <span class="text-rose-500">*</span></label>
-                                        <select
-                                            x-model="selectedBlock"
-                                            x-on:change="onBlockChange()"
-                                            :required="visitType === 'resident'"
-                                            :disabled="visitType !== 'resident' || !selectedStreet"
-                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
-                                        >
-                                            <option value="">Select block</option>
-                                            <template x-for="block in blockOptions" :key="block">
-                                                <option :value="block" x-text="block"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Lot <span class="text-rose-500">*</span></label>
-                                        <select
-                                            x-model="selectedLot"
-                                            x-on:change="onLotChange()"
-                                            :required="visitType === 'resident'"
-                                            :disabled="visitType !== 'resident' || !selectedBlock"
-                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
-                                        >
-                                            <option value="">Select lot</option>
-                                            <template x-for="lot in lotOptions" :key="lot">
-                                                <option :value="lot" x-text="lot"></option>
-                                            </template>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div x-data class="relative">
+                                <div class="md:col-span-2 relative">
                                     <label class="block text-sm font-medium text-slate-700">Resident</label>
-                                    <input type="hidden" name="resident_id" :value="visitType === 'resident' ? selectedResidentId : ''">
                                     <input
                                         type="text"
                                         x-model="hostSearch"
-                                        x-on:input="hostOpen = true; selectedResidentId = ''; selectedResidentPhone = ''"
-                                        x-on:focus="hostOpen = availableResidents.length > 0"
+                                        x-on:input="onResidentSearchInput()"
+                                        x-on:focus="hostOpen = subdivisionResidents.length > 0"
                                         x-on:click.away="hostOpen = false"
-                                        :placeholder="selectedHouseId ? 'Type to search residents...' : 'Select a street, block, and lot first'"
-                                        :disabled="visitType !== 'resident' || !selectedHouseId"
+                                        :placeholder="'Select and search resident name...'"
+                                        :disabled="visitType !== 'resident'"
                                         :required="visitType === 'resident'"
                                         autocomplete="off"
                                         class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                     <p class="mt-2 text-xs text-slate-500">Select a resident from the suggestion list so the request reaches the correct registered phone number.</p>
-                                    <p
-                                        x-cloak
-                                        x-show="selectedResidentPhone"
-                                        class="mt-1 text-xs font-semibold text-sky-700"
-                                        x-text="'Resident contact: ' + selectedResidentPhone"
-                                    ></p>
                                     <ul
                                         x-cloak
                                         x-show="hostOpen && availableResidents.length > 0"
                                         class="absolute z-20 w-full mt-1 max-h-64 overflow-y-auto text-sm bg-white border shadow-lg rounded-xl border-slate-200"
                                     >
-                                        <template x-for="resident in availableResidents" :key="resident.id">
+                                        <template x-for="resident in availableResidents" :key="resident.id + '-' + resident.house_id">
                                             <li
                                                 x-on:mousedown.prevent="selectResident(resident)"
                                                 class="cursor-pointer px-4 py-2.5 hover:bg-sky-50"
                                             >
                                                 <p class="font-medium text-slate-800" x-text="resident.name"></p>
+                                                <p class="text-xs text-slate-500" x-text="resident.display_address"></p>
                                                 <p class="text-xs text-slate-500" x-text="resident.phone || 'No phone on file'"></p>
                                             </li>
                                         </template>
                                     </ul>
+                                </div>
+
+                                <div x-cloak x-show="selectedResidentId" class="md:col-span-2 grid gap-4 md:grid-cols-4">
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Street</label>
+                                        <input
+                                            type="text"
+                                            :value="selectedStreet"
+                                            readonly
+                                            :required="visitType === 'resident'"
+                                            placeholder="Auto-filled from resident"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-sky-500 focus:ring-sky-500"
+                                        >
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Block</label>
+                                        <input
+                                            type="text"
+                                            :value="selectedBlock"
+                                            readonly
+                                            :required="visitType === 'resident'"
+                                            placeholder="Auto-filled from resident"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-sky-500 focus:ring-sky-500"
+                                        >
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Lot</label>
+                                        <input
+                                            type="text"
+                                            :value="selectedLot"
+                                            readonly
+                                            :required="visitType === 'resident'"
+                                            placeholder="Auto-filled from resident"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-sky-500 focus:ring-sky-500"
+                                        >
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Number</label>
+                                        <input
+                                            type="text"
+                                            :value="selectedResidentPhone"
+                                            readonly
+                                            :required="visitType === 'resident'"
+                                            placeholder="Auto-filled from resident"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-sky-500 focus:ring-sky-500"
+                                        >
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -771,6 +733,7 @@
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check In</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check Out</th>
+                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Duration</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                                 </tr>
@@ -823,22 +786,35 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
+                                            <span class="whitespace-nowrap">{{ $visitor->visit_duration_label }}</span>
+                                        </td>
+                                        <td class="px-6 py-4 text-slate-600">
                                             <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold {{ $visitor->status === 'Inside' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
                                                 {{ $visitor->status }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
-                                            <a
-                                                href="{{ route('visitors.show', ['visitor' => $visitor->visitor_id]) }}"
-                                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
-                                            >
-                                                View
-                                            </a>
+                                            <div class="flex items-center gap-2">
+                                                <a
+                                                    href="{{ route('visitors.show', ['visitor' => $visitor->visitor_id]) }}"
+                                                    class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    View
+                                                </a>
+                                                @if (auth()->user()->isAdmin())
+                                                    <a
+                                                        href="{{ route('visitors.edit', array_merge(['visitor' => $visitor->visitor_id], request()->only(['tab', 'q', 'subdivision_id', 'history_per_page', 'check_out_per_page']))) }}"
+                                                        class="px-3 py-2 text-xs font-semibold border rounded-lg border-sky-300 text-sky-700 hover:bg-sky-50"
+                                                    >
+                                                        Edit
+                                                    </a>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
+                                        <td colspan="10" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

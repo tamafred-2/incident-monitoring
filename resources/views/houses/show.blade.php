@@ -63,6 +63,7 @@
                                 <thead class="bg-slate-50">
                                     <tr>
                                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Resident</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-slate-600">Relation</th>
                                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Contact</th>
                                         <th class="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
                                     </tr>
@@ -71,6 +72,7 @@
                                     @foreach ($house->residents as $resident)
                                         <tr>
                                             <td class="px-4 py-3 font-medium text-slate-900">{{ $resident->full_name }}</td>
+                                            <td class="px-4 py-3 text-slate-600">{{ $resident->relation_to_owner ?: '-' }}</td>
                                             <td class="px-4 py-3 text-slate-600">{{ $resident->phone ?: '-' }}</td>
                                             <td class="px-4 py-3 text-slate-600">{{ $resident->status }}</td>
                                         </tr>

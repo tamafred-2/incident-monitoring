@@ -36,6 +36,7 @@ class VisitorController extends Controller
 
         $query = Visitor::query()
             ->with('subdivision')
+            ->where('status', 'Checked Out')
             ->orderByDesc('check_in');
 
         if ($filterQ !== '') {
@@ -166,6 +167,60 @@ class VisitorController extends Controller
             'displayHouseAddress' => $displayHouseAddress,
             'dashboardQuery' => $request->only(['inside_per_page', 'page']),
         ]);
+    }
+
+    public function edit(Request $request, Visitor $visitor): View
+    {
+        if (!$request->user()->isAdmin()) {
+            abort(403);
+        }
+
+        return view('visitors.edit', [
+            'visitor' => $visitor->load('subdivision'),
+            'indexContext' => $this->visitorRouteContext($request, $visitor->subdivision_id),
+        ]);
+    }
+
+    public function update(Request $request, Visitor $visitor): RedirectResponse
+    {
+        if (!$request->user()->isAdmin()) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'surname' => ['required', 'string', 'max:100'],
+            'first_name' => ['required', 'string', 'max:100'],
+            'middle_initials' => ['nullable', 'string', 'max:20'],
+            'extension' => ['nullable', 'string', 'max:20'],
+            'phone' => ['required', 'string', 'max:40', 'regex:/^[0-9]+$/'],
+            'purpose' => ['nullable', 'string'],
+            'host_employee' => ['nullable', 'string', 'max:150'],
+            'house_address_or_unit' => ['nullable', 'string', 'max:120'],
+            'check_in' => ['required', 'date'],
+            'check_out' => ['nullable', 'date', 'after_or_equal:check_in'],
+            'status' => ['required', Rule::in(['Inside', 'Checked Out'])],
+        ]);
+
+        if ($data['status'] === 'Inside') {
+            $data['check_out'] = null;
+        }
+
+        $visitor->update([
+            'surname' => $data['surname'],
+            'first_name' => $data['first_name'],
+            'middle_initials' => $data['middle_initials'] ?? null,
+            'extension' => $data['extension'] ?? null,
+            'phone' => $data['phone'],
+            'purpose' => $data['purpose'] ?? null,
+            'host_employee' => filled($data['host_employee'] ?? null) ? trim((string) $data['host_employee']) : null,
+            'house_address_or_unit' => filled($data['house_address_or_unit'] ?? null) ? trim((string) $data['house_address_or_unit']) : null,
+            'check_in' => $data['check_in'],
+            'check_out' => $data['check_out'] ?? null,
+            'status' => $data['status'],
+        ]);
+
+        return redirect()->route('visitors.index', $this->visitorRouteContext($request, $visitor->subdivision_id))
+            ->with('success', 'Visitor history record updated successfully.');
     }
 
     public function idPhoto(Request $request, Visitor $visitor): BinaryFileResponse

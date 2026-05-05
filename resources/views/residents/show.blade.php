@@ -43,6 +43,10 @@
                                 <dd class="max-w-[16rem] font-medium text-right text-slate-900 break-all">{{ $resident->email ?: '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Household Role</dt>
+                                <dd class="max-w-[16rem] font-medium text-right text-slate-900 break-words">{{ $resident->relation_to_owner ?: '-' }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Created</dt>
                                 <dd class="font-medium text-right text-slate-900">
                                     @if ($resident->created_at)

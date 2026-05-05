@@ -170,6 +170,46 @@
                 class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-100"
             >
         </div>
+
+        <div class="mt-4">
+            <label class="block text-sm font-medium text-slate-700">Relation to Head/Owner</label>
+            @php
+                $relationOptions = ['Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
+                $savedRelation = old('relation_to_owner', $resident?->relation_to_owner ?? '');
+                $isCustomRelation = $savedRelation !== '' && !in_array($savedRelation, $relationOptions, true);
+                $selectedRelation = $isCustomRelation ? 'Other' : $savedRelation;
+                $customRelation = old('relation_to_owner_other', $isCustomRelation ? $savedRelation : '');
+            @endphp
+            <div x-data="{ relation: @js($selectedRelation) }" class="space-y-3">
+                <select
+                    name="relation_to_owner"
+                    x-model="relation"
+                    class="mt-1 w-full rounded-xl text-sm shadow-sm focus:ring-sky-500 @error('relation_to_owner') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-sky-500 @enderror"
+                >
+                    <option value="">Select relation</option>
+                    @foreach ($relationOptions as $option)
+                        <option value="{{ $option }}" @selected($selectedRelation === $option)>{{ $option }}</option>
+                    @endforeach
+                    <option value="Other" @selected($selectedRelation === 'Other')>Other</option>
+                </select>
+                <input
+                    type="text"
+                    name="relation_to_owner_other"
+                    x-cloak
+                    x-show="relation === 'Other'"
+                    value="{{ $customRelation }}"
+                    placeholder="Specify relation"
+                    class="w-full rounded-xl text-sm shadow-sm focus:ring-sky-500 @error('relation_to_owner_other') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-sky-500 @enderror"
+                >
+            </div>
+            @error('relation_to_owner')
+                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+            @enderror
+            @error('relation_to_owner_other')
+                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+            @enderror
+            <p class="mt-1 text-xs text-slate-500">Define how this resident is related to the lot/house head or owner.</p>
+        </div>
     </section>
 
     @if ($withAccount)

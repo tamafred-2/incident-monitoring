@@ -130,21 +130,22 @@ class SqliteDemoSeeder extends Seeder
             ]);
 
             $residentData = [
-                ['full_name' => 'Rina M. Dela Cruz', 'phone' => '09179998877', 'email' => 'resident1@example.com', 'house' => $house1],
-                ['full_name' => 'Marco Reyes', 'phone' => '09181112222', 'email' => 'resident2@example.com', 'house' => $house1],
-                ['full_name' => 'Liza B. Santos', 'phone' => '09192223333', 'email' => 'resident3@example.com', 'house' => $house2],
-                ['full_name' => 'Carlos Bautista', 'phone' => '09203334444', 'email' => 'resident4@example.com', 'house' => $house2],
-                ['full_name' => 'Ana R. Villanueva', 'phone' => '09214445555', 'email' => 'resident5@example.com', 'house' => $house2],
-                ['full_name' => 'Roberto Pascual', 'phone' => '09221116666', 'email' => 'roberto.pascual@email.com', 'house' => $house1],
-                ['full_name' => 'Grace Domingo', 'phone' => '09232227777', 'email' => 'grace.domingo@email.com', 'house' => $house1],
-                ['full_name' => 'Felix Soriano', 'phone' => '09243338888', 'email' => 'felix.soriano@email.com', 'house' => $house2],
-                ['full_name' => 'Marites Ocampo', 'phone' => '09254449999', 'email' => 'marites.o@email.com', 'house' => $house2],
+                ['full_name' => 'Rina M. Dela Cruz', 'phone' => '09179998877', 'email' => 'resident1@example.com', 'house' => $house1, 'relation_to_owner' => 'Owner'],
+                ['full_name' => 'Marco Reyes', 'phone' => '09181112222', 'email' => 'resident2@example.com', 'house' => $house1, 'relation_to_owner' => 'Husband'],
+                ['full_name' => 'Liza B. Santos', 'phone' => '09192223333', 'email' => 'resident3@example.com', 'house' => $house2, 'relation_to_owner' => 'Owner'],
+                ['full_name' => 'Carlos Bautista', 'phone' => '09203334444', 'email' => 'resident4@example.com', 'house' => $house2, 'relation_to_owner' => 'Husband'],
+                ['full_name' => 'Ana R. Villanueva', 'phone' => '09214445555', 'email' => 'resident5@example.com', 'house' => $house2, 'relation_to_owner' => 'Child'],
+                ['full_name' => 'Roberto Pascual', 'phone' => '09221116666', 'email' => 'roberto.pascual@email.com', 'house' => $house1, 'relation_to_owner' => 'Child'],
+                ['full_name' => 'Grace Domingo', 'phone' => '09232227777', 'email' => 'grace.domingo@email.com', 'house' => $house1, 'relation_to_owner' => 'Relative'],
+                ['full_name' => 'Felix Soriano', 'phone' => '09243338888', 'email' => 'felix.soriano@email.com', 'house' => $house2, 'relation_to_owner' => 'Helper'],
+                ['full_name' => 'Marites Ocampo', 'phone' => '09254449999', 'email' => 'marites.o@email.com', 'house' => $house2, 'relation_to_owner' => 'Friend'],
             ];
 
             $residents = [];
+            $hasRelationToOwnerColumn = Schema::hasColumn('residents', 'relation_to_owner');
 
             foreach ($residentData as $data) {
-                $resident = Resident::create([
+                $residentPayload = [
                     'subdivision_id' => $subdivision->subdivision_id,
                     'house_id' => $data['house']->house_id,
                     'full_name' => $data['full_name'],
@@ -152,7 +153,13 @@ class SqliteDemoSeeder extends Seeder
                     'email' => $data['email'],
                     'address_or_unit' => House::formatDisplayAddress($data['house']->street, $data['house']->block, $data['house']->lot),
                     'status' => 'Active',
-                ]);
+                ];
+
+                if ($hasRelationToOwnerColumn) {
+                    $residentPayload['relation_to_owner'] = $data['relation_to_owner'] ?? null;
+                }
+
+                $resident = Resident::create($residentPayload);
 
                 $residents[] = $resident;
             }

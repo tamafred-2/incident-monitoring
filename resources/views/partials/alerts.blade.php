@@ -9,21 +9,3 @@
         {{ session('error') }}
     </div>
 @endif
-
-@php
-    $summaryErrors = collect($errors->getMessages())
-        ->except(['account_email'])
-        ->flatten()
-        ->values();
-@endphp
-
-@if ($summaryErrors->isNotEmpty())
-    <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <p class="font-semibold">Please fix the following:</p>
-        <ul class="mt-2 list-disc space-y-1 pl-5">
-            @foreach ($summaryErrors as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    </div>
-@endif

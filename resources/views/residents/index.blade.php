@@ -56,6 +56,7 @@
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Name</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">House</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Street</th>
+                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Relation</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                             </tr>
@@ -77,6 +78,11 @@
                                     <td class="px-6 py-4 text-slate-600">
                                         <div class="max-w-[14rem] truncate" title="{{ $resident->house?->street ?: ($resident->address_or_unit ?: '-') }}">
                                             {{ $resident->house?->street ?: ($resident->address_or_unit ?: '-') }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <div class="max-w-[10rem] truncate" title="{{ $resident->relation_to_owner ?: '-' }}">
+                                            {{ $resident->relation_to_owner ?: '-' }}
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-slate-600">
@@ -117,7 +123,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-6 py-10 text-center text-slate-500">No residents found.</td>
+                                    <td colspan="7" class="px-6 py-10 text-center text-slate-500">No residents found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

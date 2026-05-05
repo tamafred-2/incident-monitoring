@@ -52,16 +52,27 @@
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Block</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Lot</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Street</th>
+                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Owner</th>
+                                <th class="px-6 py-3 text-left font-semibold text-slate-600">Residents</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white">
                             @forelse ($houses as $house)
+                                @php
+                                    $ownerResident = $house->residents->firstWhere('relation_to_owner', 'Owner');
+                                @endphp
                                 <tr>
                                     <td class="px-6 py-4 font-medium text-slate-900">{{ $house->subdivision?->subdivision_name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $house->block }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $house->lot }}</td>
                                     <td class="px-6 py-4 text-slate-600">{{ $house->street ?: '-' }}</td>
+                                    <td class="px-6 py-4 text-slate-600">
+                                        <div class="max-w-[14rem] truncate" title="{{ $ownerResident?->full_name ?: '-' }}">
+                                            {{ $ownerResident?->full_name ?: '-' }}
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-600">{{ $house->residents->count() }}</td>
                                     <td class="px-6 py-4">
                                         <div class="flex flex-nowrap items-center gap-3">
                                             <a
@@ -91,7 +102,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-6 py-10 text-center text-slate-500">No house records found.</td>
+                                    <td colspan="7" class="px-6 py-10 text-center text-slate-500">No house records found.</td>
                                 </tr>
                             @endforelse
                         </tbody>

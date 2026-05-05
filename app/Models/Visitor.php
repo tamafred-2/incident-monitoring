@@ -93,4 +93,35 @@ class Visitor extends Model
 
         return $value === '' ? null : $value;
     }
+
+    public function getVisitDurationLabelAttribute(): string
+    {
+        if (!$this->check_in || !$this->check_out) {
+            return '-';
+        }
+
+        $totalSeconds = (int) $this->check_in->diffInSeconds($this->check_out, false);
+        if ($totalSeconds < 0) {
+            return '-';
+        }
+
+        if ($totalSeconds < 3600) {
+            $minutes = intdiv($totalSeconds, 60);
+            $seconds = $totalSeconds % 60;
+
+            return sprintf('%02dm %02ds', $minutes, $seconds);
+        }
+
+        if ($totalSeconds < 86400) {
+            $hours = intdiv($totalSeconds, 3600);
+            $minutes = intdiv($totalSeconds % 3600, 60);
+
+            return sprintf('%02dh %02dm', $hours, $minutes);
+        }
+
+        $days = intdiv($totalSeconds, 86400);
+        $hours = intdiv($totalSeconds % 86400, 3600);
+
+        return sprintf('%02dd %02dh', $days, $hours);
+    }
 }

@@ -21,6 +21,7 @@ class Resident extends Model
         'phone',
         'email',
         'address_or_unit',
+        'relation_to_owner',
         'status',
     ];
 

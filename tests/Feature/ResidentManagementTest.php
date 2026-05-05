@@ -251,4 +251,55 @@ class ResidentManagementTest extends TestCase
             'resident_id' => $resident->resident_id,
         ]);
     }
+
+    public function test_only_one_owner_is_allowed_per_house(): void
+    {
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'subdivision_id' => null,
+        ]);
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'Owner Rule Subdivision',
+            'status' => 'Active',
+        ]);
+
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '10',
+            'lot' => '5',
+        ]);
+
+        Resident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'full_name' => 'First Owner',
+            'phone' => '09170000001',
+            'email' => 'owner1@example.com',
+            'relation_to_owner' => 'Owner',
+            'status' => 'Active',
+        ]);
+
+        $response = $this
+            ->actingAs($admin)
+            ->post(route('residents.store'), [
+                'surname' => 'Owner',
+                'first_name' => 'Second',
+                'middle_name' => '',
+                'extension' => '',
+                'phone' => '09170000002',
+                'email' => 'owner2@example.com',
+                'subdivision_id' => $subdivision->subdivision_id,
+                'house_id' => $house->house_id,
+                'address_or_unit' => '',
+                'relation_to_owner' => 'Owner',
+                'status' => 'Active',
+            ]);
+
+        $response->assertSessionHasErrors(['relation_to_owner']);
+
+        $this->assertDatabaseMissing('residents', [
+            'email' => 'owner2@example.com',
+        ]);
+    }
 }

@@ -17,7 +17,10 @@ class HouseController extends Controller
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
 
         $query = House::query()
-            ->with('subdivision')
+            ->with([
+                'subdivision',
+                'residents' => fn ($residentQuery) => $residentQuery->select('resident_id', 'house_id', 'full_name', 'relation_to_owner', 'status')->orderBy('full_name'),
+            ])
             ->orderBy('subdivision_id')
             ->orderBy('block')
             ->orderBy('lot');

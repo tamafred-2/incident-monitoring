@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -220,8 +221,30 @@ class ResidentController extends Controller
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
             'house_id' => ['nullable', 'integer', 'exists:houses,house_id'],
             'address_or_unit' => ['nullable', 'string', 'max:150'],
+            'relation_to_owner' => ['nullable', 'string', 'max:50'],
+            'relation_to_owner_other' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', Rule::in(['Active', 'Inactive'])],
         ]);
+
+        $relation = trim((string) ($data['relation_to_owner'] ?? ''));
+        $relationOther = trim((string) ($data['relation_to_owner_other'] ?? ''));
+
+        if ($relation === 'Other') {
+            if ($relationOther === '') {
+                throw ValidationException::withMessages([
+                    'relation_to_owner_other' => 'Please specify the relation.',
+                ]);
+            }
+
+            $relation = $relationOther;
+        }
+
+        if ($relation !== '') {
+            $allowedRelations = ['Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
+            if (!in_array($relation, $allowedRelations, true)) {
+                $relation = Str::title($relation);
+            }
+        }
 
         $house = null;
 
@@ -235,6 +258,20 @@ class ResidentController extends Controller
             }
         }
 
+        if ($relation === 'Owner' && $house) {
+            $ownerExists = Resident::query()
+                ->where('house_id', $house->house_id)
+                ->where('relation_to_owner', 'Owner')
+                ->when($resident, fn ($query) => $query->where('resident_id', '!=', $resident->resident_id))
+                ->exists();
+
+            if ($ownerExists) {
+                throw ValidationException::withMessages([
+                    'relation_to_owner' => 'This block/lot already has an owner. Only one owner is allowed per house.',
+                ]);
+            }
+        }
+
         return [
             'subdivision_id' => (int) $data['subdivision_id'],
             'house_id' => $house?->house_id,
@@ -242,6 +279,7 @@ class ResidentController extends Controller
             'phone' => $data['phone'],
             'email' => $data['email'],
             'address_or_unit' => $house?->display_address ?? ($data['address_or_unit'] ?: null),
+            'relation_to_owner' => $relation !== '' ? $relation : null,
             'status' => $data['status'] ?? $resident?->status ?? 'Active',
         ];
     }
