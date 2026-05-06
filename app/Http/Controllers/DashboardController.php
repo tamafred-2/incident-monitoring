@@ -180,15 +180,13 @@ class DashboardController extends Controller
     private function pendingIncidentStatuses(): array
     {
         return $this->usesLegacyIncidentStatusSchema()
-            ? ['Reported', 'Investigating', 'Ongoing']
+            ? ['Reported', 'Investigating']
             : ['Open', 'Under Investigation'];
     }
 
     private function resolvedIncidentStatuses(): array
     {
-        return $this->usesLegacyIncidentStatusSchema()
-            ? ['Resolved', 'Closed', 'Completed']
-            : ['Resolved', 'Closed', 'Completed'];
+        return ['Resolved', 'Closed', 'Completed'];
     }
 
     private function usesLegacyIncidentStatusSchema(): bool

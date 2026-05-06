@@ -8,9 +8,11 @@ use App\Models\IncidentPhoto;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Notifications\IncidentUpdatedNotification;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -32,6 +34,12 @@ class IncidentController extends Controller
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
+        $filterPeriod = $this->resolvePeriodFilter((string) $request->query('period', ''));
+        $filterType = trim((string) $request->query('type', ''));
+        $filterDateFrom = $this->normalizeDateInput($request->query('date_from'));
+        $filterDateTo = $this->normalizeDateInput($request->query('date_to'));
+        $filterTimeFrom = $this->normalizeTimeInput($request->query('time_from'));
+        $filterTimeTo = $this->normalizeTimeInput($request->query('time_to'));
         $historyView = $this->resolveHistoryView($request->query('view'));
         $reportedSort = strtolower((string) $request->query('reported_sort', 'desc'));
         if (!in_array($reportedSort, ['asc', 'desc'], true)) {
@@ -60,6 +68,17 @@ class IncidentController extends Controller
                     });
             });
         }
+
+        $this->applyIncidentTypeFilter($query, $filterType);
+        $this->applyDateTimeFilters(
+            $query,
+            'COALESCE(reported_at, incident_date, created_at)',
+            $filterPeriod,
+            $filterDateFrom,
+            $filterDateTo,
+            $filterTimeFrom,
+            $filterTimeTo
+        );
 
         $this->applyHistoryViewScope($query, $historyView);
 
@@ -100,6 +119,12 @@ class IncidentController extends Controller
             'residentReporter',
             'houses',
             'perPage',
+            'filterPeriod',
+            'filterType',
+            'filterDateFrom',
+            'filterDateTo',
+            'filterTimeFrom',
+            'filterTimeTo',
         ));
     }
 
@@ -114,6 +139,70 @@ class IncidentController extends Controller
             'proofPhotos' => $this->proofPhotosFor($incident),
             'canEditIncident' => $this->canUserEditIncident($request->user(), $incident),
         ]);
+    }
+
+    public function export(Request $request): Response|StreamedResponse|RedirectResponse
+    {
+        $format = strtolower((string) $request->query('format', 'excel'));
+        if (!in_array($format, ['excel', 'pdf'], true)) {
+            return back()->with('error', 'Unsupported export format.');
+        }
+
+        if ($format === 'pdf') {
+            $data = $this->reportViewData($request, false, true, true, true);
+
+            try {
+                $pdf = Pdf::loadView('incidents.report-print', $data)->setPaper('a4', 'landscape');
+
+                return $pdf->download('incident-report-' . now()->format('Ymd_His') . '.pdf');
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                $message = extension_loaded('gd')
+                    ? 'PDF export failed on this server. Please try again. If it continues, check server logs.'
+                    : 'PDF export failed on this server. Enable PHP GD extension for image-capable PDF export.';
+
+                return back()->with(
+                    'error',
+                    $message
+                );
+            }
+        }
+
+        $incidents = $this->buildIncidentReportQuery($request, true)->get();
+        $reportRows = $this->buildIncidentReportRows($incidents, false);
+        $filename = 'incident-report-' . now()->format('Ymd_His') . '.csv';
+
+        return response()->streamDownload(function () use ($reportRows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Report ID', 'Category', 'Location', 'Status', 'Reporter', 'Date Reported', 'Date Resolved', 'Proof Image URL']);
+
+            foreach ($reportRows as $row) {
+                fputcsv($handle, [
+                    $row['report_id'],
+                    $row['category'],
+                    $row['location'],
+                    $row['status'],
+                    $row['reporter'],
+                    $row['reported_at'],
+                    $row['resolved_at'],
+                    $row['proof_url'] ?: '-',
+                ]);
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function print(Request $request): View
+    {
+        return view('incidents.report-print', $this->reportViewData(
+            $request,
+            $request->boolean('autoprint'),
+            true
+        ));
     }
 
     public function showByReportId(Request $request, string $reportId): View
@@ -157,8 +246,7 @@ class IncidentController extends Controller
     {
         $data = $request->validate(
             $this->incidentValidationRules(
-                false,
-                true
+                false
             )
         );
 
@@ -166,8 +254,6 @@ class IncidentController extends Controller
         if (!$subdivisionId) {
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
-
-        $proofPhotoPaths = $this->storeProofPhotos($request);
 
         $houseId = $this->resolveHouseId($data, $subdivisionId);
         if (!$houseId) {
@@ -177,6 +263,13 @@ class IncidentController extends Controller
         }
 
         $status = $this->mapIncidentStatusForStorage((string) $data['status']);
+        $proofPhotoUploadCount = count((array) $request->file('proof_photos', []));
+        if ($this->requiresProofPhotoForStatus($status) && $proofPhotoUploadCount < 1) {
+            return back()->withErrors([
+                'proof_photos' => 'At least one proof image is required when incident status is Resolved (Close).',
+            ])->withInput();
+        }
+        $proofPhotoPaths = $this->storeProofPhotos($request);
 
         $incident = Incident::create([
             'subdivision_id' => $subdivisionId,
@@ -223,9 +316,25 @@ class IncidentController extends Controller
         $isFullEditor = $request->user()->isAdmin() || $request->user()->hasRole(['staff']);
         $previousStatus = $incident->status;
         $data = $request->validate($isFullEditor
-            ? $this->incidentValidationRules(false, false)
+            ? $this->incidentValidationRules(false)
             : $this->incidentStatusValidationRules()
         );
+        $status = $this->mapIncidentStatusForStorage((string) $data['status']);
+        $existingProofPhotoPaths = $this->proofPhotosFor($incident->load('proofPhotos'))
+            ->pluck('path')
+            ->all();
+        $proofPhotosToRemove = $this->resolveRemovableProofPhotoPaths(
+            $existingProofPhotoPaths,
+            $data['remove_proof_photos'] ?? []
+        );
+        $newProofPhotoUploadCount = count((array) $request->file('proof_photos', []));
+        $remainingProofPhotoCount = count(array_diff($existingProofPhotoPaths, $proofPhotosToRemove));
+
+        if ($this->requiresProofPhotoForStatus($status) && ($remainingProofPhotoCount + $newProofPhotoUploadCount) < 1) {
+            return back()->withErrors([
+                'proof_photos' => 'At least one proof image is required when incident status is Resolved (Close).',
+            ])->withInput();
+        }
 
         if ($isFullEditor) {
             $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
@@ -239,8 +348,6 @@ class IncidentController extends Controller
                     'house_id' => 'Please select a valid house for the selected subdivision.',
                 ])->withInput();
             }
-            $status = $this->mapIncidentStatusForStorage((string) $data['status']);
-
             $incident->update([
                 'subdivision_id' => $subdivisionId,
                 'house_id' => $houseId,
@@ -256,7 +363,6 @@ class IncidentController extends Controller
 
             $this->notifyIncidentStatusIfNeeded($incident, $previousStatus);
         } else {
-            $status = $this->mapIncidentStatusForStorage((string) $data['status']);
             $incident->update([
                 'resolved_at' => $this->resolveResolvedAt([
                     'status' => $status,
@@ -269,14 +375,6 @@ class IncidentController extends Controller
 
             $this->notifyIncidentStatusIfNeeded($incident, $previousStatus);
         }
-
-        $existingProofPhotoPaths = $this->proofPhotosFor($incident->fresh('proofPhotos'))
-            ->pluck('path')
-            ->all();
-        $proofPhotosToRemove = $this->resolveRemovableProofPhotoPaths(
-            $existingProofPhotoPaths,
-            $data['remove_proof_photos'] ?? []
-        );
 
         foreach ($proofPhotosToRemove as $photoPath) {
             $this->deleteProofPhoto($photoPath);
@@ -390,13 +488,23 @@ class IncidentController extends Controller
     {
         abort_unless(str_starts_with($path, 'uploads/incidents/'), 404);
 
+        $incident = Incident::query()
+            ->whereHas('proofPhotos', function (Builder $builder) use ($path) {
+                $builder->where('photo_path', $path);
+            })
+            ->orWhere('proof_photo_path', $path)
+            ->first();
+
+        abort_unless($incident !== null, 404);
+        $this->authorizeIncidentAccess($request, $incident);
+
         $absolutePath = $this->proofPhotoAbsolutePath($path);
         abort_unless($absolutePath !== null, 404);
 
         return response()->file($absolutePath);
     }
 
-    private function incidentValidationRules(bool $forResident = false, bool $requireProofPhotos = true): array
+    private function incidentValidationRules(bool $forResident = false): array
     {
         $rules = [
             'subdivision_id' => ['nullable', 'integer'],
@@ -407,7 +515,7 @@ class IncidentController extends Controller
             'location' => ['required', 'string', 'max:150'],
             'location_other' => ['nullable', 'string', 'max:150', 'required_if:location,__other__'],
             'incident_date' => ['required', 'date'],
-            'proof_photos' => ['required', 'array', 'min:1', 'max:10'],
+            'proof_photos' => ['nullable', 'array', 'max:10'],
             'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'remove_proof_photos' => ['nullable', 'array'],
             'remove_proof_photos.*' => ['string'],
@@ -420,11 +528,6 @@ class IncidentController extends Controller
         $rules['reported_at'] = ['required', 'date'];
         $rules['resolved_at'] = ['nullable', 'date', 'after_or_equal:reported_at'];
         $rules['status'] = ['required', Rule::in($this->allowedIncidentStatusesForInput())];
-
-        // proof_photos not required on edit (may keep existing)
-        if (!$forResident && !$requireProofPhotos) {
-            $rules['proof_photos'] = ['nullable', 'array', 'max:10'];
-        }
 
         return $rules;
     }
@@ -524,6 +627,7 @@ class IncidentController extends Controller
             $request->input('per_page', $request->query('per_page')),
             10
         );
+        $this->appendSharedFilterContext($context, $request);
 
         return $context;
     }
@@ -555,8 +659,113 @@ class IncidentController extends Controller
         }
 
         $context['per_page'] = $this->resolvePerPage($request->input('per_page', $request->query('per_page')), 10);
+        $this->appendSharedFilterContext($context, $request);
 
         return $context;
+    }
+
+    private function appendSharedFilterContext(array &$context, Request $request): void
+    {
+        $period = $this->resolvePeriodFilter((string) $request->input('period', $request->query('period', '')));
+        if ($period !== '') {
+            $context['period'] = $period;
+        }
+
+        $type = trim((string) $request->input('type', $request->query('type', '')));
+        if ($type !== '') {
+            $context['type'] = $type;
+        }
+
+        $dateFrom = $this->normalizeDateInput($request->input('date_from', $request->query('date_from')));
+        $dateTo = $this->normalizeDateInput($request->input('date_to', $request->query('date_to')));
+        $timeFrom = $this->normalizeTimeInput($request->input('time_from', $request->query('time_from')));
+        $timeTo = $this->normalizeTimeInput($request->input('time_to', $request->query('time_to')));
+
+        if ($dateFrom !== null) {
+            $context['date_from'] = $dateFrom;
+        }
+        if ($dateTo !== null) {
+            $context['date_to'] = $dateTo;
+        }
+        if ($timeFrom !== null) {
+            $context['time_from'] = $timeFrom;
+        }
+        if ($timeTo !== null) {
+            $context['time_to'] = $timeTo;
+        }
+    }
+
+    private function applyIncidentTypeFilter(Builder $query, string $type): void
+    {
+        if ($type === '') {
+            return;
+        }
+
+        $query->where('category', $type);
+    }
+
+    private function resolvePeriodFilter(string $period): string
+    {
+        $period = strtolower(trim($period));
+
+        return in_array($period, ['daily', 'weekly', 'monthly'], true) ? $period : '';
+    }
+
+    private function normalizeDateInput(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private function normalizeTimeInput(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '' || !preg_match('/^\d{2}:\d{2}$/', $value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private function applyDateTimeFilters(
+        Builder $query,
+        string $dateTimeExpression,
+        string $period,
+        ?string $dateFrom,
+        ?string $dateTo,
+        ?string $timeFrom,
+        ?string $timeTo
+    ): void {
+        if ($period !== '') {
+            $today = now();
+            if ($period === 'daily') {
+                $dateFrom = $today->toDateString();
+                $dateTo = $today->toDateString();
+            } elseif ($period === 'weekly') {
+                $dateFrom = $today->copy()->startOfWeek()->toDateString();
+                $dateTo = $today->copy()->endOfWeek()->toDateString();
+            } elseif ($period === 'monthly') {
+                $dateFrom = $today->copy()->startOfMonth()->toDateString();
+                $dateTo = $today->copy()->endOfMonth()->toDateString();
+            }
+        }
+
+        if ($dateFrom !== null) {
+            $query->whereRaw("date({$dateTimeExpression}) >= ?", [$dateFrom]);
+        }
+        if ($dateTo !== null) {
+            $query->whereRaw("date({$dateTimeExpression}) <= ?", [$dateTo]);
+        }
+        if ($timeFrom !== null) {
+            $query->whereRaw("time({$dateTimeExpression}) >= ?", [$timeFrom . ':00']);
+        }
+        if ($timeTo !== null) {
+            $query->whereRaw("time({$dateTimeExpression}) <= ?", [$timeTo . ':59']);
+        }
     }
 
     private function storeProofPhotos(Request $request): array
@@ -848,10 +1057,6 @@ class IncidentController extends Controller
             'Open',
             'Under Investigation',
             'Resolved',
-            'Closed',
-            'Reported',
-            'Investigating',
-            'Ongoing',
         ];
     }
 
@@ -861,7 +1066,6 @@ class IncidentController extends Controller
             return match ($status) {
                 'Open' => 'Reported',
                 'Under Investigation' => 'Investigating',
-                'Closed' => 'Resolved',
                 default => $status,
             };
         }
@@ -869,6 +1073,7 @@ class IncidentController extends Controller
         return match ($status) {
             'Reported' => 'Open',
             'Investigating', 'Ongoing' => 'Under Investigation',
+            'Closed' => 'Resolved',
             default => $status,
         };
     }
@@ -910,9 +1115,12 @@ class IncidentController extends Controller
 
     private function resolvedStatuses(): array
     {
-        return $this->usesLegacyIncidentStatusSchema()
-            ? ['Resolved']
-            : ['Resolved', 'Closed'];
+        return ['Resolved', 'Closed'];
+    }
+
+    private function requiresProofPhotoForStatus(?string $status): bool
+    {
+        return in_array($status, $this->resolvedStatuses(), true);
     }
 
     private function resolvePerPage(mixed $value, int $default = 10): int
@@ -934,5 +1142,130 @@ class IncidentController extends Controller
         }
 
         return $this->resolvePerPage($selectedValue, $default);
+    }
+
+    private function buildIncidentReportQuery(Request $request, bool $historyOnly = false): Builder
+    {
+        $user = $request->user();
+        $filterQ = trim((string) $request->query('q', ''));
+        $filterSubdivision = (int) $request->query('subdivision_id', 0);
+        $filterPeriod = $this->resolvePeriodFilter((string) $request->query('period', ''));
+        $filterType = trim((string) $request->query('type', ''));
+        $filterDateFrom = $this->normalizeDateInput($request->query('date_from'));
+        $filterDateTo = $this->normalizeDateInput($request->query('date_to'));
+        $filterTimeFrom = $this->normalizeTimeInput($request->query('time_from'));
+        $filterTimeTo = $this->normalizeTimeInput($request->query('time_to'));
+        $historyView = $historyOnly ? 'history' : $this->resolveHistoryView($request->query('view'));
+        $reportedSort = strtolower((string) $request->query('reported_sort', 'desc'));
+        if (!in_array($reportedSort, ['asc', 'desc'], true)) {
+            $reportedSort = 'desc';
+        }
+
+        $query = Incident::query()
+            ->with(['subdivision', 'house', 'reporter', 'proofPhotos'])
+            ->orderByRaw('COALESCE(reported_at, incident_date, created_at) ' . strtoupper($reportedSort));
+
+        if ($filterQ !== '') {
+            $query->where(function (Builder $builder) use ($filterQ) {
+                $builder->where('report_id', 'like', "%{$filterQ}%")
+                    ->orWhere('description', 'like', "%{$filterQ}%")
+                    ->orWhere('category', 'like', "%{$filterQ}%")
+                    ->orWhere('location', 'like', "%{$filterQ}%")
+                    ->orWhere('status', 'like', "%{$filterQ}%")
+                    ->orWhereHas('reporter', function (Builder $reporterQuery) use ($filterQ) {
+                        $reporterQuery->where('full_name', 'like', "%{$filterQ}%")
+                            ->orWhere('email', 'like', "%{$filterQ}%");
+                    });
+            });
+        }
+
+        $this->applyIncidentTypeFilter($query, $filterType);
+        $this->applyDateTimeFilters(
+            $query,
+            'COALESCE(reported_at, incident_date, created_at)',
+            $filterPeriod,
+            $filterDateFrom,
+            $filterDateTo,
+            $filterTimeFrom,
+            $filterTimeTo
+        );
+        $this->applyHistoryViewScope($query, $historyView);
+
+        if ($user->isResident()) {
+            $query->where('reported_by', $user->user_id);
+        } elseif (!$user->isAdmin()) {
+            $query->where('subdivision_id', $user->allowedSubdivisionId());
+        } elseif ($filterSubdivision) {
+            $query->where('subdivision_id', $filterSubdivision);
+        }
+
+        return $query;
+    }
+
+    private function reportViewData(
+        Request $request,
+        bool $autoPrint,
+        bool $historyOnly = false,
+        bool $includeProofImages = true,
+        bool $renderingPdf = false
+    ): array
+    {
+        $incidents = $this->buildIncidentReportQuery($request, $historyOnly)->get();
+        $reportRows = $this->buildIncidentReportRows($incidents, $includeProofImages);
+        $reportQuery = array_filter([
+            'q' => trim((string) $request->query('q', '')) ?: null,
+            'subdivision_id' => (int) $request->query('subdivision_id', 0) ?: null,
+            'view' => 'history',
+            'reported_sort' => in_array(strtolower((string) $request->query('reported_sort', 'desc')), ['asc', 'desc'], true)
+                ? strtolower((string) $request->query('reported_sort', 'desc'))
+                : null,
+            'period' => $this->resolvePeriodFilter((string) $request->query('period', '')) ?: null,
+            'type' => trim((string) $request->query('type', '')) ?: null,
+            'date_from' => $this->normalizeDateInput($request->query('date_from')),
+            'date_to' => $this->normalizeDateInput($request->query('date_to')),
+            'time_from' => $this->normalizeTimeInput($request->query('time_from')),
+            'time_to' => $this->normalizeTimeInput($request->query('time_to')),
+        ]);
+
+        return [
+            'incidents' => $incidents,
+            'reportRows' => $reportRows,
+            'generatedAt' => now(),
+            'autoPrint' => $autoPrint,
+            'title' => 'Incident Report',
+            'previewMode' => $request->boolean('preview'),
+            'reportQuery' => $reportQuery,
+            'includeProofImages' => $includeProofImages,
+            'renderingPdf' => $renderingPdf,
+        ];
+    }
+
+    private function buildIncidentReportRows(Collection $incidents, bool $includeProofImages): array
+    {
+        return $incidents->map(function (Incident $incident) use ($includeProofImages) {
+            $proofPath = $incident->proofPhotos->first()->photo_path ?? $incident->proof_photo_path;
+            $proofUrl = $proofPath ? route('incidents.photos.show', ['path' => $proofPath]) : null;
+            $proofDataUri = null;
+
+            if ($includeProofImages && $proofPath) {
+                $absolutePath = $this->proofPhotoAbsolutePath($proofPath);
+                if ($absolutePath && File::exists($absolutePath)) {
+                    $mime = File::mimeType($absolutePath) ?: 'image/jpeg';
+                    $proofDataUri = 'data:' . $mime . ';base64,' . base64_encode((string) File::get($absolutePath));
+                }
+            }
+
+            return [
+                'report_id' => $incident->report_id,
+                'category' => $incident->category ?: '-',
+                'location' => $incident->location ?: '-',
+                'status' => $incident->status,
+                'reporter' => $incident->reporter?->full_name ?: '-',
+                'reported_at' => $incident->reported_at?->format('Y-m-d H:i:s') ?: '-',
+                'resolved_at' => $incident->resolved_at?->format('Y-m-d H:i:s') ?: '-',
+                'proof_url' => $proofUrl,
+                'proof_data_uri' => $proofDataUri,
+            ];
+        })->values()->all();
     }
 }

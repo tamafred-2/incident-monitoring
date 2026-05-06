@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\House;
 use App\Models\Incident;
+use App\Models\IncidentPhoto;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Models\Visitor;
 use App\Models\VisitorRequest;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
 class SqliteDemoSeeder extends Seeder
@@ -350,7 +352,7 @@ class SqliteDemoSeeder extends Seeder
                 'reported_by' => $staffUser->user_id,
             ]);
 
-            Incident::create([
+            $resolvedIncidentOne = Incident::create([
                 'subdivision_id' => $subdivision->subdivision_id,
                 'house_id' => $house1->house_id,
                 'description' => 'Broken gate latch on the main entrance repaired.',
@@ -363,7 +365,7 @@ class SqliteDemoSeeder extends Seeder
                 'reported_by' => $adminUser->user_id,
             ]);
 
-            Incident::create([
+            $resolvedIncidentTwo = Incident::create([
                 'subdivision_id' => $subdivision->subdivision_id,
                 'house_id' => $house2->house_id,
                 'description' => 'Noise complaint from Block 2 Lot 3 during late hours. Resolved after warning.',
@@ -375,6 +377,8 @@ class SqliteDemoSeeder extends Seeder
                 'status' => $incidentStatuses['resolved_secondary'],
                 'reported_by' => $securityUser2->user_id,
             ]);
+
+            $this->seedResolvedIncidentProofPhotos($resolvedIncidentOne, $resolvedIncidentTwo);
 
             DB::commit();
         } catch (\Throwable $exception) {
@@ -393,7 +397,7 @@ class SqliteDemoSeeder extends Seeder
                 'pending_primary' => 'Open',
                 'pending_secondary' => 'Under Investigation',
                 'resolved_primary' => 'Resolved',
-                'resolved_secondary' => 'Closed',
+                'resolved_secondary' => 'Resolved',
             ];
         }
 
@@ -418,7 +422,47 @@ class SqliteDemoSeeder extends Seeder
             'pending_primary' => 'Open',
             'pending_secondary' => 'Under Investigation',
             'resolved_primary' => 'Resolved',
-            'resolved_secondary' => 'Closed',
+            'resolved_secondary' => 'Resolved',
         ];
+    }
+
+    private function seedResolvedIncidentProofPhotos(Incident ...$resolvedIncidents): void
+    {
+        $exampleImageAbsolutePath = public_path('uploads/incidents/incident-image-example.png');
+
+        if (!File::exists($exampleImageAbsolutePath)) {
+            return;
+        }
+
+        $seedStorageDirectory = storage_path('app/public/uploads/incidents');
+        if (!File::isDirectory($seedStorageDirectory)) {
+            File::makeDirectory($seedStorageDirectory, 0755, true);
+        }
+
+        $seedFileOne = $seedStorageDirectory . DIRECTORY_SEPARATOR . 'seed_incident_example_1.png';
+        $seedFileTwo = $seedStorageDirectory . DIRECTORY_SEPARATOR . 'seed_incident_example_2.png';
+        File::copy($exampleImageAbsolutePath, $seedFileOne);
+        File::copy($exampleImageAbsolutePath, $seedFileTwo);
+
+        $relativePaths = [
+            'uploads/incidents/seed_incident_example_1.png',
+            'uploads/incidents/seed_incident_example_2.png',
+        ];
+
+        foreach ($resolvedIncidents as $incident) {
+            IncidentPhoto::query()->where('incident_id', $incident->incident_id)->delete();
+
+            foreach ($relativePaths as $order => $relativePath) {
+                IncidentPhoto::create([
+                    'incident_id' => $incident->incident_id,
+                    'photo_path' => $relativePath,
+                    'sort_order' => $order,
+                ]);
+            }
+
+            $incident->forceFill([
+                'proof_photo_path' => $relativePaths[0],
+            ])->save();
+        }
     }
 }

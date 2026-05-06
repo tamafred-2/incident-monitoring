@@ -12,9 +12,29 @@
 
     @php
         $activeIncidentTab = $historyView === 'history' ? 'history' : 'incident';
-        $emptyStateColspan = ($subdivisions->isNotEmpty() ? 1 : 0)
-            + ($isResidentViewer ? 0 : 1)
-            + ($activeIncidentTab === 'history' ? 7 : 6);
+        $sharedFilters = array_filter([
+            'period' => $filterPeriod ?: null,
+            'type' => $filterType ?: null,
+            'date_from' => $filterDateFrom ?: null,
+            'date_to' => $filterDateTo ?: null,
+            'time_from' => $filterTimeFrom ?: null,
+            'time_to' => $filterTimeTo ?: null,
+        ]);
+        $reportQuery = array_filter([
+            'q' => $filterQ ?: null,
+            'subdivision_id' => $filterSubdivision ?: null,
+            'view' => $historyView !== 'active' ? $historyView : null,
+            'reported_sort' => $reportedSort !== 'desc' ? $reportedSort : null,
+            'period' => $filterPeriod ?: null,
+            'type' => $filterType ?: null,
+            'date_from' => $filterDateFrom ?: null,
+            'date_to' => $filterDateTo ?: null,
+            'time_from' => $filterTimeFrom ?: null,
+            'time_to' => $filterTimeTo ?: null,
+        ]);
+        $exportPreviewUrl = route('incidents.print', $reportQuery + ['view' => 'history', 'preview' => 1, 'embed' => 1]);
+        $emptyStateColspan = ($isResidentViewer ? 0 : 1)
+            + ($activeIncidentTab === 'history' ? 7 : 5);
     @endphp
 
     <div class="py-10">
@@ -23,6 +43,10 @@
                 previewImage: null,
                 previewLabel: '',
                 activeIncidentTab: @js($activeIncidentTab),
+                exportPreviewOpen: false,
+                exportPreviewUrl: @js($exportPreviewUrl),
+                pdfConfirmOpen: false,
+                pdfExportUrl: '',
                 openPreview(url, label) {
                     this.previewImage = url;
                     this.previewLabel = label || 'Proof image preview';
@@ -30,6 +54,26 @@
                 closePreview() {
                     this.previewImage = null;
                     this.previewLabel = '';
+                },
+                openExportPreview() {
+                    this.exportPreviewOpen = true;
+                },
+                closeExportPreview() {
+                    this.exportPreviewOpen = false;
+                },
+                openPdfConfirm(url) {
+                    this.pdfExportUrl = url;
+                    this.pdfConfirmOpen = true;
+                },
+                closePdfConfirm() {
+                    this.pdfConfirmOpen = false;
+                    this.pdfExportUrl = '';
+                },
+                proceedPdfExport() {
+                    if (this.pdfExportUrl) {
+                        window.open(this.pdfExportUrl, '_blank');
+                    }
+                    this.closePdfConfirm();
                 }
             }"
             class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
@@ -38,8 +82,8 @@
 
             @if (auth()->user()->hasRole(['security', 'staff']) || auth()->user()->isAdmin())
                 <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <form method="GET" action="{{ route('incidents.index') }}" class="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-                        <div>
+                    <form method="GET" action="{{ route('incidents.index') }}" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        <div class="xl:col-span-2">
                             <label class="block text-sm font-medium text-slate-700">Search</label>
                             <input
                                 type="search"
@@ -49,7 +93,41 @@
                                 class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                             >
                         </div>
-                        <div class="flex flex-wrap items-end gap-3 md:justify-end">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Period</label>
+                            <select name="period" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                <option value="">All time</option>
+                                <option value="daily" @selected($filterPeriod === 'daily')>Daily</option>
+                                <option value="weekly" @selected($filterPeriod === 'weekly')>Weekly</option>
+                                <option value="monthly" @selected($filterPeriod === 'monthly')>Monthly</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Type (Category)</label>
+                            <select name="type" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                <option value="">All categories</option>
+                                @foreach ($incidentCategories as $categoryOption)
+                                    <option value="{{ $categoryOption }}" @selected($filterType === $categoryOption)>{{ $categoryOption }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Date From</label>
+                            <input type="date" name="date_from" value="{{ $filterDateFrom }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Date To</label>
+                            <input type="date" name="date_to" value="{{ $filterDateTo }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Time From</label>
+                            <input type="time" name="time_from" value="{{ $filterTimeFrom }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Time To</label>
+                            <input type="time" name="time_to" value="{{ $filterTimeTo }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                        </div>
+                        <div class="flex flex-wrap items-end gap-3 xl:col-span-4 md:justify-end">
                             <input type="hidden" name="view" :value="activeIncidentTab === 'history' ? 'history' : 'active'">
                             <input type="hidden" name="per_page" value="{{ $perPage }}">
                             <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
@@ -78,31 +156,44 @@
             @endif
 
             <div class="p-4 bg-white border shadow-sm rounded-2xl border-slate-200">
-                <nav class="flex flex-wrap gap-6 px-2 pb-1 border-b border-slate-200" aria-label="Incident monitoring sections">
-                    <a
-                        href="{{ route('incidents.index', array_filter([
-                            'q' => $filterQ ?: null,
-                            'subdivision_id' => $filterSubdivision ?: null,
-                            'per_page' => $perPage,
-                        ])) }}"
-                        :class="activeIncidentTab === 'incident' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
-                        class="px-1 pb-3 text-sm font-semibold transition border-b-2"
-                    >
-                        Incident
-                    </a>
-                    <a
-                        href="{{ route('incidents.index', array_filter([
-                            'q' => $filterQ ?: null,
-                            'subdivision_id' => $filterSubdivision ?: null,
-                            'view' => 'history',
-                            'per_page' => $perPage,
-                        ])) }}"
-                        :class="activeIncidentTab === 'history' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
-                        class="px-1 pb-3 text-sm font-semibold transition border-b-2"
-                    >
-                        Incident History
-                    </a>
-                </nav>
+                <div class="flex flex-wrap items-center justify-between gap-3 px-2 pb-1 border-b border-slate-200">
+                    <nav class="flex flex-wrap gap-6" aria-label="Incident monitoring sections">
+                        <a
+                            href="{{ route('incidents.index', array_filter([
+                                'q' => $filterQ ?: null,
+                                'subdivision_id' => $filterSubdivision ?: null,
+                                'per_page' => $perPage,
+                                ...$sharedFilters,
+                            ])) }}"
+                            :class="activeIncidentTab === 'incident' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                            class="px-1 pb-3 text-sm font-semibold transition border-b-2"
+                        >
+                            Incident
+                        </a>
+                        <a
+                            href="{{ route('incidents.index', array_filter([
+                                'q' => $filterQ ?: null,
+                                'subdivision_id' => $filterSubdivision ?: null,
+                                'view' => 'history',
+                                'per_page' => $perPage,
+                                ...$sharedFilters,
+                            ])) }}"
+                            :class="activeIncidentTab === 'history' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                            class="px-1 pb-3 text-sm font-semibold transition border-b-2"
+                        >
+                            Incident History
+                        </a>
+                    </nav>
+                    <template x-if="activeIncidentTab === 'history'">
+                        <button
+                            type="button"
+                            @click="openExportPreview()"
+                            class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
+                        >
+                            Export
+                        </button>
+                    </template>
+                </div>
             </div>
 
             <div class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
@@ -113,7 +204,7 @@
                             <p class="mt-1 text-sm text-slate-500">Browse resolved incident records and past cases.</p>
                         </div>
 
-                        @if ($filterQ !== '' || $filterSubdivision)
+                        @if ($filterQ !== '' || $filterSubdivision || !empty($sharedFilters))
                             <a
                                 href="{{ route('incidents.index', array_filter([
                                     'view' => 'history',
@@ -140,15 +231,14 @@
                         <thead class="bg-slate-50">
                             <tr>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Report ID</th>
-                                @if ($subdivisions->isNotEmpty())
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Subdivision</th>
-                                @endif
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Category</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Incident Status</th>
                                 @unless ($isResidentViewer)
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Reporter</th>
                                 @endunless
-                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Proof</th>
+                                @if ($activeIncidentTab === 'history')
+                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Proof</th>
+                                @endif
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">
                                     <a
                                         href="{{ route('incidents.index', array_filter([
@@ -157,6 +247,7 @@
                                             'view' => $historyView !== 'active' ? $historyView : null,
                                             'reported_sort' => $reportedSort === 'desc' ? 'asc' : 'desc',
                                             'per_page' => $perPage,
+                                            ...$sharedFilters,
                                         ])) }}"
                                         class="inline-flex items-center gap-1 hover:text-sky-700"
                                         title="{{ $reportedSort === 'desc' ? 'Sort oldest first' : 'Sort newest first' }}"
@@ -182,19 +273,13 @@
                                                 'subdivision_id' => $filterSubdivision ?: null,
                                                 'view' => $historyView !== 'active' ? $historyView : null,
                                                 'per_page' => $perPage,
+                                                ...$sharedFilters,
                                             ])) }}"
                                             class="font-mono font-medium text-slate-900 hover:text-sky-700"
                                         >
                                             {{ $incident->report_id }}
                                         </a>
                                     </td>
-                                    @if ($subdivisions->isNotEmpty())
-                                        <td class="px-6 py-4 text-slate-600">
-                                            <div class="max-w-[13rem] truncate" title="{{ $incident->subdivision->subdivision_name ?? '-' }}">
-                                                {{ $incident->subdivision->subdivision_name ?? '-' }}
-                                            </div>
-                                        </td>
-                                    @endif
                                     <td class="px-6 py-4 text-slate-600">
                                         <div class="min-w-[11rem]">
                                             <div class="font-medium text-slate-900">{{ $incident->category ?: '-' }}</div>
@@ -224,44 +309,46 @@
                                             </div>
                                         </td>
                                     @endunless
-                                    <td class="px-6 py-4 text-slate-600">
-                                        @if ($incident->proofPhotos->isNotEmpty())
-                                            @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proofPhotos->first()->photo_path]))
-                                            <button
-                                                type="button"
-                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ $incident->report_id }}')"
-                                                class="relative block w-16 h-16 overflow-hidden border group rounded-xl border-slate-200 bg-slate-100"
-                                                title="Preview proof images"
-                                            >
-                                                <img
-                                                    src="{{ $proofPhotoUrl }}"
-                                                    alt="Proof image for {{ $incident->report_id }}"
-                                                    class="object-cover w-full h-full transition duration-200 group-hover:scale-105"
+                                    @if ($activeIncidentTab === 'history')
+                                        <td class="px-6 py-4 text-slate-600">
+                                            @if ($isResolvedIncident && $incident->proofPhotos->isNotEmpty())
+                                                @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proofPhotos->first()->photo_path]))
+                                                <button
+                                                    type="button"
+                                                    @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ $incident->report_id }}')"
+                                                    class="relative block w-16 h-16 overflow-hidden border group rounded-xl border-slate-200 bg-slate-100"
+                                                    title="Preview proof images"
                                                 >
-                                                @if ($incident->proofPhotos->count() > 1)
-                                                    <span class="absolute bottom-1 right-1 rounded-full bg-slate-900/80 px-2 py-0.5 text-[11px] font-semibold text-white">
-                                                        +{{ $incident->proofPhotos->count() - 1 }}
-                                                    </span>
-                                                @endif
-                                            </button>
-                                        @elseif ($incident->proof_photo_path)
-                                            @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proof_photo_path]))
-                                            <button
-                                                type="button"
-                                                @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ $incident->report_id }}')"
-                                                class="relative block w-16 h-16 overflow-hidden border group rounded-xl border-slate-200 bg-slate-100"
-                                                title="Preview proof image"
-                                            >
-                                                <img
-                                                    src="{{ $proofPhotoUrl }}"
-                                                    alt="Proof image for {{ $incident->report_id }}"
-                                                    class="object-cover w-full h-full transition duration-200 group-hover:scale-105"
+                                                    <img
+                                                        src="{{ $proofPhotoUrl }}"
+                                                        alt="Proof image for {{ $incident->report_id }}"
+                                                        class="object-cover w-full h-full transition duration-200 group-hover:scale-105"
+                                                    >
+                                                    @if ($incident->proofPhotos->count() > 1)
+                                                        <span class="absolute bottom-1 right-1 rounded-full bg-slate-900/80 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                                            +{{ $incident->proofPhotos->count() - 1 }}
+                                                        </span>
+                                                    @endif
+                                                </button>
+                                            @elseif ($isResolvedIncident && $incident->proof_photo_path)
+                                                @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proof_photo_path]))
+                                                <button
+                                                    type="button"
+                                                    @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ $incident->report_id }}')"
+                                                    class="relative block w-16 h-16 overflow-hidden border group rounded-xl border-slate-200 bg-slate-100"
+                                                    title="Preview proof image"
                                                 >
-                                            </button>
-                                        @else
-                                            -
-                                        @endif
-                                    </td>
+                                                    <img
+                                                        src="{{ $proofPhotoUrl }}"
+                                                        alt="Proof image for {{ $incident->report_id }}"
+                                                        class="object-cover w-full h-full transition duration-200 group-hover:scale-105"
+                                                    >
+                                                </button>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                    @endif
                                     <td class="px-6 py-4 text-slate-600">
                                         @if ($incident->reported_at)
                                             <div class="min-w-[9rem]">
@@ -293,6 +380,7 @@
                                                 'subdivision_id' => $filterSubdivision ?: null,
                                                 'view' => $historyView !== 'active' ? $historyView : null,
                                                 'per_page' => $perPage,
+                                                ...$sharedFilters,
                                             ])) }}"
                                                 class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50"
                                             >
@@ -307,6 +395,7 @@
                                                         'subdivision_id' => $filterSubdivision ?: null,
                                                         'view' => $historyView !== 'active' ? $historyView : null,
                                                         'per_page' => $perPage,
+                                                        ...$sharedFilters,
                                                     ])) }}"
                                                     class="px-3 py-2 text-xs font-semibold border rounded-lg border-sky-200 text-sky-700 hover:bg-sky-50"
                                                 >
@@ -339,6 +428,24 @@
                             @endif
                             @if ($filterSubdivision)
                                 <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                            @endif
+                            @if ($filterPeriod !== '')
+                                <input type="hidden" name="period" value="{{ $filterPeriod }}">
+                            @endif
+                            @if ($filterType !== '')
+                                <input type="hidden" name="type" value="{{ $filterType }}">
+                            @endif
+                            @if ($filterDateFrom)
+                                <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
+                            @endif
+                            @if ($filterDateTo)
+                                <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
+                            @endif
+                            @if ($filterTimeFrom)
+                                <input type="hidden" name="time_from" value="{{ $filterTimeFrom }}">
+                            @endif
+                            @if ($filterTimeTo)
+                                <input type="hidden" name="time_to" value="{{ $filterTimeTo }}">
                             @endif
                             <input type="hidden" name="view" value="{{ $activeIncidentTab === 'history' ? 'history' : 'active' }}">
                             <label for="incidents-rows-per-page" class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
@@ -385,6 +492,86 @@
             @if (auth()->user()->hasRole(['staff', 'security']) || auth()->user()->isAdmin())
                 @include('incidents.partials.report-modal')
             @endif
+
+            <div
+                x-cloak
+                x-show="exportPreviewOpen"
+                x-on:keydown.escape.window="closeExportPreview()"
+                class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-slate-950/80"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closeExportPreview()"></div>
+                <div class="relative w-full max-w-6xl overflow-hidden bg-white shadow-2xl rounded-3xl">
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
+                        <h3 class="text-base font-semibold text-slate-900">Incident Report Preview</h3>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a
+                                href="{{ route('incidents.export', $reportQuery + ['view' => 'history', 'format' => 'excel']) }}"
+                                onclick="return confirm('Export incident history to Excel now?');"
+                                class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700"
+                            >
+                                To Excel
+                            </a>
+                            <button
+                                type="button"
+                                @click="openPdfConfirm('{{ route('incidents.export', $reportQuery + ['view' => 'history', 'format' => 'pdf']) }}')"
+                                class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700"
+                            >
+                                To PDF
+                            </button>
+                            <a
+                                href="{{ route('incidents.print', $reportQuery + ['view' => 'history', 'autoprint' => 1]) }}"
+                                target="_blank"
+                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
+                            >
+                                Print
+                            </a>
+                            <button
+                                type="button"
+                                @click="closeExportPreview()"
+                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                    <div class="h-[70vh] bg-slate-100">
+                        <iframe :src="exportPreviewUrl" class="w-full h-full border-0" title="Incident report preview"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                x-cloak
+                x-show="pdfConfirmOpen"
+                x-on:keydown.escape.window="closePdfConfirm()"
+                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/70"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closePdfConfirm()"></div>
+                <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl">
+                    <div class="px-5 py-4 border-b border-slate-200">
+                        <h3 class="text-base font-semibold text-slate-900">Confirm PDF Export</h3>
+                        <p class="mt-1 text-sm text-slate-600">Generate and download the incident history report as a PDF file?</p>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
+                        <button
+                            type="button"
+                            @click="closePdfConfirm()"
+                            class="px-3 py-2 text-sm font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-white"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            @click="proceedPdfExport()"
+                            class="px-3 py-2 text-sm font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700"
+                        >
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <div
                 x-cloak

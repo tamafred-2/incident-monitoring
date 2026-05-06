@@ -177,11 +177,11 @@
             @include('partials.alerts')
 
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
+                <form method="GET" action="{{ route('visitors.index') }}" class="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <input type="hidden" name="tab" :value="activeMonitoringTab">
                     <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                     <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
-                    <div class="flex-1 min-w-48">
+                    <div class="xl:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">Search</label>
                         <input
                             type="search"
@@ -191,7 +191,40 @@
                             class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                         >
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Period</label>
+                        <select name="period" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                            <option value="">All time</option>
+                            <option value="daily" @selected($filterPeriod === 'daily')>Daily</option>
+                            <option value="weekly" @selected($filterPeriod === 'weekly')>Weekly</option>
+                            <option value="monthly" @selected($filterPeriod === 'monthly')>Monthly</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Type</label>
+                        <select name="type" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                            <option value="">All</option>
+                            <option value="resident" @selected($filterType === 'resident')>Resident Visit</option>
+                            <option value="walk_in" @selected($filterType === 'walk_in')>Walk-in</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Date From</label>
+                        <input type="date" name="date_from" value="{{ $filterDateFrom }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Date To</label>
+                        <input type="date" name="date_to" value="{{ $filterDateTo }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Time From</label>
+                        <input type="time" name="time_from" value="{{ $filterTimeFrom }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Time To</label>
+                        <input type="time" name="time_to" value="{{ $filterTimeTo }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                    </div>
+                    <div class="flex flex-wrap items-end gap-3 xl:col-span-4 md:justify-end">
                         <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
                         <a
                             href="{{ route('visitors.index', ['history_per_page' => $historyPerPage, 'check_out_per_page' => $checkOutPerPage]) }}"
@@ -236,6 +269,12 @@
                         @csrf
                         <input type="hidden" name="tab" value="check-in">
                         <input type="hidden" name="q" value="{{ $filterQ }}">
+                        <input type="hidden" name="period" value="{{ $filterPeriod }}">
+                        <input type="hidden" name="type" value="{{ $filterType }}">
+                        <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
+                        <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
+                        <input type="hidden" name="time_from" value="{{ $filterTimeFrom }}">
+                        <input type="hidden" name="time_to" value="{{ $filterTimeTo }}">
                         <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                         <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
 
@@ -619,6 +658,12 @@
                                                             @csrf
                                                             <input type="hidden" name="tab" value="check-out">
                                                             <input type="hidden" name="q" value="{{ $filterQ }}">
+                                                            <input type="hidden" name="period" value="{{ $filterPeriod }}">
+                                                            <input type="hidden" name="type" value="{{ $filterType }}">
+                                                            <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
+                                                            <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
+                                                            <input type="hidden" name="time_from" value="{{ $filterTimeFrom }}">
+                                                            <input type="hidden" name="time_to" value="{{ $filterTimeTo }}">
                                                             <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                                                             <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                                                             <button class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700">Check Out</button>
@@ -650,6 +695,24 @@
                                     @endif
                                     @if ($filterSubdivision)
                                         <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                                    @endif
+                                    @if ($filterPeriod !== '')
+                                        <input type="hidden" name="period" value="{{ $filterPeriod }}">
+                                    @endif
+                                    @if ($filterType !== '')
+                                        <input type="hidden" name="type" value="{{ $filterType }}">
+                                    @endif
+                                    @if ($filterDateFrom)
+                                        <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
+                                    @endif
+                                    @if ($filterDateTo)
+                                        <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
+                                    @endif
+                                    @if ($filterTimeFrom)
+                                        <input type="hidden" name="time_from" value="{{ $filterTimeFrom }}">
+                                    @endif
+                                    @if ($filterTimeTo)
+                                        <input type="hidden" name="time_to" value="{{ $filterTimeTo }}">
                                     @endif
                                     <input type="hidden" name="tab" value="check-out">
                                     <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
@@ -709,7 +772,7 @@
                             <p class="mt-1 text-sm text-slate-500">Browse visitor check-in/check-out records with host, purpose, and status history.</p>
                         </div>
 
-                        @if ($filterQ !== '' || $filterSubdivision)
+                        @if ($filterQ !== '' || $filterSubdivision || $filterPeriod !== '' || $filterType !== '' || $filterDateFrom || $filterDateTo || $filterTimeFrom || $filterTimeTo)
                             <a
                                 href="{{ route('visitors.index', array_filter([
                                     'tab' => 'history',
@@ -835,6 +898,24 @@
                                 @endif
                                 @if ($filterSubdivision)
                                     <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                                @endif
+                                @if ($filterPeriod !== '')
+                                    <input type="hidden" name="period" value="{{ $filterPeriod }}">
+                                @endif
+                                @if ($filterType !== '')
+                                    <input type="hidden" name="type" value="{{ $filterType }}">
+                                @endif
+                                @if ($filterDateFrom)
+                                    <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
+                                @endif
+                                @if ($filterDateTo)
+                                    <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
+                                @endif
+                                @if ($filterTimeFrom)
+                                    <input type="hidden" name="time_from" value="{{ $filterTimeFrom }}">
+                                @endif
+                                @if ($filterTimeTo)
+                                    <input type="hidden" name="time_to" value="{{ $filterTimeTo }}">
                                 @endif
                                 <input type="hidden" name="tab" value="history">
                                 <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">

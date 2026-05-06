@@ -46,6 +46,18 @@ class BrandingController extends Controller
             abort(404);
         }
 
+        // Some environments run PHP without GD; fall back to the original image bytes.
+        if (!function_exists('imagecreatefromstring')) {
+            $mime = @mime_content_type($sourcePath) ?: 'image/png';
+
+            return response($raw, 200, [
+                'Content-Type' => $mime,
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+            ]);
+        }
+
         $src = @imagecreatefromstring($raw);
         if (!$src) {
             abort(404);

@@ -75,12 +75,8 @@
                             ->all();
                         $incidentStatusOptions = [
                             'Open' => 'Pending (Open)',
-                            'Under Investigation' => 'Pending (Under Investigation)',
-                            'Reported' => 'Pending (Reported)',
-                            'Investigating' => 'Pending (Investigating)',
-                            'Ongoing' => 'Pending (Ongoing)',
-                            'Resolved' => 'Resolved',
-                            'Closed' => 'Resolved (Closed)',
+                            'Under Investigation' => 'Pending (Investigating)',
+                            'Resolved' => 'Resolved (Close)',
                         ];
                         $selectedHouseId = (int) old('house_id', $incident->house_id);
                         $selectedHouseAddress = optional($houses->firstWhere('house_id', $selectedHouseId))->display_address;
@@ -149,12 +145,12 @@
                             @endforeach
                         </select>
                     </div>
-                    <div class="md:col-span-2 @if (!in_array(old('status', $incident->status), ['Resolved', 'Closed'], true)) hidden @endif" data-resolved-wrapper>
+                    <div class="md:col-span-2 @if (old('status', $incident->status) !== 'Resolved') hidden @endif" data-resolved-wrapper>
                         <label class="block text-sm font-medium text-slate-700">Date Resolved</label>
                         <input type="datetime-local" name="resolved_at" value="{{ old('resolved_at', optional($incident->resolved_at)->format('Y-m-d\TH:i')) }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-resolved-input>
                     </div>
 
-                    <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                    <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 @if (old('status', $incident->status) !== 'Resolved') hidden @endif" data-proof-section>
                         <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Existing Proof Images</h3>
                         @if ($proofPhotos->isNotEmpty())
                             <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -277,23 +273,82 @@
                 var resolvedWrapper = root ? root.querySelector('[data-resolved-wrapper]') : null;
                 var resolvedInput = root ? root.querySelector('[data-resolved-input]') : null;
                 var reportedInput = root ? root.querySelector('[name="reported_at"]') : null;
+                var proofSection = root ? root.querySelector('[data-proof-section]') : null;
+                var proofInput = root ? root.querySelector('[data-proof-input]') : null;
+                var removeProofCheckboxes = root ? root.querySelectorAll('input[name="remove_proof_photos[]"]') : [];
+                var form = root || select.closest('form');
 
                 if (!resolvedWrapper || !resolvedInput) {
                     return;
                 }
 
+                function syncProofRequirement(isResolved) {
+                    if (!proofInput) {
+                        return true;
+                    }
+
+                    var hasNewUpload = !!(proofInput.files && proofInput.files.length > 0);
+                    var remainingExistingProof = 0;
+
+                    Array.prototype.forEach.call(removeProofCheckboxes, function (checkbox) {
+                        if (!checkbox.checked) {
+                            remainingExistingProof += 1;
+                        }
+                    });
+
+                    var hasProof = hasNewUpload || remainingExistingProof > 0;
+
+                    proofInput.required = isResolved && !hasProof;
+                    proofInput.setCustomValidity(isResolved && !hasProof
+                        ? 'At least one proof image is required when status is Resolved.'
+                        : '');
+
+                    return hasProof;
+                }
+
                 function syncResolvedField() {
-                    var isResolved = select.value === 'Resolved' || select.value === 'Closed';
+                    var isResolved = select.value === 'Resolved';
                     resolvedWrapper.classList.toggle('hidden', !isResolved);
+                    if (proofSection) {
+                        proofSection.classList.toggle('hidden', !isResolved);
+                    }
 
                     if (isResolved) {
                         if (!resolvedInput.value && reportedInput && reportedInput.value) {
                             resolvedInput.value = reportedInput.value;
                         }
+                        syncProofRequirement(true);
                         return;
                     }
 
                     resolvedInput.value = '';
+                    syncProofRequirement(false);
+                }
+
+                if (proofInput) {
+                    proofInput.addEventListener('change', function () {
+                        syncProofRequirement(select.value === 'Resolved');
+                    });
+                }
+
+                Array.prototype.forEach.call(removeProofCheckboxes, function (checkbox) {
+                    checkbox.addEventListener('change', function () {
+                        syncProofRequirement(select.value === 'Resolved');
+                    });
+                });
+
+                if (form) {
+                    form.addEventListener('submit', function (event) {
+                        var isResolved = select.value === 'Resolved';
+                        var hasProof = syncProofRequirement(isResolved);
+
+                        if (isResolved && !hasProof) {
+                            event.preventDefault();
+                            if (proofInput) {
+                                proofInput.reportValidity();
+                            }
+                        }
+                    });
                 }
 
                 select.addEventListener('change', syncResolvedField);

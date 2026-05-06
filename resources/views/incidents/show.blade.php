@@ -188,31 +188,33 @@
                     <p class="mt-3 text-sm leading-7 whitespace-pre-line text-slate-700">{{ $incident->description ?: 'No description provided.' }}</p>
                 </div>
 
-                <div class="p-5 mt-6 bg-white border rounded-2xl border-slate-200">
-                    <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Proof Images</h4>
-                    @if ($proofPhotos->isNotEmpty())
-                        <div class="grid gap-4 mt-4 sm:grid-cols-2 xl:grid-cols-3">
-                            @foreach ($proofPhotos as $photo)
-                                <button
-                                    type="button"
-                                    @click="openPreview('{{ $photo['url'] }}', 'Proof image {{ $loop->iteration }} for {{ $incident->report_id }}')"
-                                    class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:-translate-y-0.5 hover:shadow-md"
-                                >
-                                    <img
-                                        src="{{ $photo['url'] }}"
-                                        alt="Proof image {{ $loop->iteration }} for {{ $incident->report_id }}"
-                                        class="object-cover w-full h-56"
+                @if ($isResolvedIncident)
+                    <div class="p-5 mt-6 bg-white border rounded-2xl border-slate-200">
+                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Proof Images</h4>
+                        @if ($proofPhotos->isNotEmpty())
+                            <div class="grid gap-4 mt-4 sm:grid-cols-2 xl:grid-cols-3">
+                                @foreach ($proofPhotos as $photo)
+                                    <button
+                                        type="button"
+                                        @click="openPreview('{{ $photo['url'] }}', 'Proof image {{ $loop->iteration }} for {{ $incident->report_id }}')"
+                                        class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:-translate-y-0.5 hover:shadow-md"
                                     >
-                                    <div class="px-4 py-3 text-sm font-medium text-slate-700">
-                                        Proof image {{ $loop->iteration }}
-                                    </div>
-                                </button>
-                            @endforeach
-                        </div>
-                    @else
-                        <p class="mt-3 text-sm text-slate-500">No proof images were attached to this incident.</p>
-                    @endif
-                </div>
+                                        <img
+                                            src="{{ $photo['url'] }}"
+                                            alt="Proof image {{ $loop->iteration }} for {{ $incident->report_id }}"
+                                            class="object-cover w-full h-56"
+                                        >
+                                        <div class="px-4 py-3 text-sm font-medium text-slate-700">
+                                            Proof image {{ $loop->iteration }}
+                                        </div>
+                                    </button>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="mt-3 text-sm text-slate-500">No proof images were attached to this incident.</p>
+                        @endif
+                    </div>
+                @endif
             </div>
 
             <div

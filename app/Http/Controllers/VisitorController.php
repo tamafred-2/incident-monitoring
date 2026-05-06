@@ -23,6 +23,12 @@ class VisitorController extends Controller
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
+        $filterPeriod = $this->resolvePeriodFilter((string) $request->query('period', ''));
+        $filterType = strtolower(trim((string) $request->query('type', '')));
+        $filterDateFrom = $this->normalizeDateInput($request->query('date_from'));
+        $filterDateTo = $this->normalizeDateInput($request->query('date_to'));
+        $filterTimeFrom = $this->normalizeTimeInput($request->query('time_from'));
+        $filterTimeTo = $this->normalizeTimeInput($request->query('time_to'));
         $historyPerPage = $this->resolvePerPageChoice(
             $request->query('history_per_page_custom'),
             $request->query('history_per_page'),
@@ -52,6 +58,16 @@ class VisitorController extends Controller
                     ->orWhere('status', 'like', "%{$filterQ}%");
             });
         }
+        $this->applyVisitorTypeFilter($query, $filterType);
+        $this->applyDateTimeFilters(
+            $query,
+            'check_in',
+            $filterPeriod,
+            $filterDateFrom,
+            $filterDateTo,
+            $filterTimeFrom,
+            $filterTimeTo
+        );
 
         if (!$user->isAdmin()) {
             $query->where('subdivision_id', $user->allowedSubdivisionId());
@@ -93,7 +109,7 @@ class VisitorController extends Controller
             ]);
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
 
-        $insideVisitors = Visitor::query()
+        $insideVisitorQuery = Visitor::query()
             ->with('subdivision')
             ->when(
                 $filterQ !== '',
@@ -112,6 +128,18 @@ class VisitorController extends Controller
                 }
             )
             ->when(
+                $filterType !== '',
+                function (Builder $builder) use ($filterType) {
+                    if ($filterType === 'resident') {
+                        $builder->whereNotNull('host_employee')->where('host_employee', '!=', '');
+                    } elseif ($filterType === 'walk_in') {
+                        $builder->where(function (Builder $inner) {
+                            $inner->whereNull('host_employee')->orWhere('host_employee', '');
+                        });
+                    }
+                }
+            )
+            ->when(
                 !$user->isAdmin(),
                 fn ($builder) => $builder->where('subdivision_id', $user->allowedSubdivisionId())
             )
@@ -119,7 +147,17 @@ class VisitorController extends Controller
                 $user->isAdmin() && $filterSubdivision,
                 fn ($builder) => $builder->where('subdivision_id', $filterSubdivision)
             )
-            ->where('status', 'Inside')
+            ->where('status', 'Inside');
+        $this->applyDateTimeFilters(
+            $insideVisitorQuery,
+            'check_in',
+            $filterPeriod,
+            $filterDateFrom,
+            $filterDateTo,
+            $filterTimeFrom,
+            $filterTimeTo
+        );
+        $insideVisitors = $insideVisitorQuery
             ->orderByDesc('check_in')
             ->paginate($checkOutPerPage, ['*'], 'check_out_page')
             ->withQueryString();
@@ -135,6 +173,12 @@ class VisitorController extends Controller
             'residentsByHouse',
             'historyPerPage',
             'checkOutPerPage',
+            'filterPeriod',
+            'filterType',
+            'filterDateFrom',
+            'filterDateTo',
+            'filterTimeFrom',
+            'filterTimeTo',
         ));
     }
 
@@ -503,6 +547,7 @@ class VisitorController extends Controller
         if ($filterQ !== '') {
             $context['q'] = $filterQ;
         }
+        $this->appendSharedFilterContext($context, $request);
 
         $historyPerPage = $this->resolvePerPageChoice(
             $request->input('history_per_page_custom', $request->query('history_per_page_custom')),
@@ -522,6 +567,116 @@ class VisitorController extends Controller
         }
 
         return $context;
+    }
+
+    private function appendSharedFilterContext(array &$context, Request $request): void
+    {
+        $period = $this->resolvePeriodFilter((string) $request->input('period', $request->query('period', '')));
+        if ($period !== '') {
+            $context['period'] = $period;
+        }
+
+        $type = strtolower(trim((string) $request->input('type', $request->query('type', ''))));
+        if (in_array($type, ['resident', 'walk_in'], true)) {
+            $context['type'] = $type;
+        }
+
+        $dateFrom = $this->normalizeDateInput($request->input('date_from', $request->query('date_from')));
+        $dateTo = $this->normalizeDateInput($request->input('date_to', $request->query('date_to')));
+        $timeFrom = $this->normalizeTimeInput($request->input('time_from', $request->query('time_from')));
+        $timeTo = $this->normalizeTimeInput($request->input('time_to', $request->query('time_to')));
+
+        if ($dateFrom !== null) {
+            $context['date_from'] = $dateFrom;
+        }
+        if ($dateTo !== null) {
+            $context['date_to'] = $dateTo;
+        }
+        if ($timeFrom !== null) {
+            $context['time_from'] = $timeFrom;
+        }
+        if ($timeTo !== null) {
+            $context['time_to'] = $timeTo;
+        }
+    }
+
+    private function applyVisitorTypeFilter(Builder $query, string $type): void
+    {
+        if ($type === 'resident') {
+            $query->whereNotNull('host_employee')->where('host_employee', '!=', '');
+
+            return;
+        }
+
+        if ($type === 'walk_in') {
+            $query->where(function (Builder $builder) {
+                $builder->whereNull('host_employee')->orWhere('host_employee', '');
+            });
+        }
+    }
+
+    private function resolvePeriodFilter(string $period): string
+    {
+        $period = strtolower(trim($period));
+
+        return in_array($period, ['daily', 'weekly', 'monthly'], true) ? $period : '';
+    }
+
+    private function normalizeDateInput(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private function normalizeTimeInput(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+        if ($value === '' || !preg_match('/^\d{2}:\d{2}$/', $value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private function applyDateTimeFilters(
+        Builder $query,
+        string $dateTimeColumn,
+        string $period,
+        ?string $dateFrom,
+        ?string $dateTo,
+        ?string $timeFrom,
+        ?string $timeTo
+    ): void {
+        if ($period !== '') {
+            $today = now();
+            if ($period === 'daily') {
+                $dateFrom = $today->toDateString();
+                $dateTo = $today->toDateString();
+            } elseif ($period === 'weekly') {
+                $dateFrom = $today->copy()->startOfWeek()->toDateString();
+                $dateTo = $today->copy()->endOfWeek()->toDateString();
+            } elseif ($period === 'monthly') {
+                $dateFrom = $today->copy()->startOfMonth()->toDateString();
+                $dateTo = $today->copy()->endOfMonth()->toDateString();
+            }
+        }
+
+        if ($dateFrom !== null) {
+            $query->whereDate($dateTimeColumn, '>=', $dateFrom);
+        }
+        if ($dateTo !== null) {
+            $query->whereDate($dateTimeColumn, '<=', $dateTo);
+        }
+        if ($timeFrom !== null) {
+            $query->whereRaw("time({$dateTimeColumn}) >= ?", [$timeFrom . ':00']);
+        }
+        if ($timeTo !== null) {
+            $query->whereRaw("time({$dateTimeColumn}) <= ?", [$timeTo . ':59']);
+        }
     }
 
     private function resolvePerPage(mixed $value, int $default = 10): int

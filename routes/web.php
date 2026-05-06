@@ -42,6 +42,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::delete('/users/{userId}/force', [UserController::class, 'forceDelete'])->middleware('role:admin')->name('users.force-delete');
 
     Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
+    Route::get('/incidents/export', [IncidentController::class, 'export'])->name('incidents.export');
+    Route::get('/incidents/print', [IncidentController::class, 'print'])->name('incidents.print');
     Route::get('/incidents/create', [IncidentController::class, 'create'])->middleware('role:admin,staff,security')->name('incidents.create');
     Route::post('/incidents', [IncidentController::class, 'store'])->middleware('role:admin,staff,security')->name('incidents.store');
     Route::get('/incident-photos/{path}', [IncidentController::class, 'photo'])
