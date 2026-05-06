@@ -7,14 +7,17 @@ use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
 use App\Models\VisitorRequest;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VisitorController extends Controller
 {
@@ -40,42 +43,7 @@ class VisitorController extends Controller
             10
         );
 
-        $query = Visitor::query()
-            ->with('subdivision')
-            ->where('status', 'Checked Out')
-            ->orderByDesc('check_in');
-
-        if ($filterQ !== '') {
-            $query->where(function (Builder $builder) use ($filterQ) {
-                $builder->where('surname', 'like', "%{$filterQ}%")
-                    ->orWhere('first_name', 'like', "%{$filterQ}%")
-                    ->orWhere('middle_initials', 'like', "%{$filterQ}%")
-                    ->orWhere('extension', 'like', "%{$filterQ}%")
-                    ->orWhere('phone', 'like', "%{$filterQ}%")
-                    ->orWhere('purpose', 'like', "%{$filterQ}%")
-                    ->orWhere('host_employee', 'like', "%{$filterQ}%")
-                    ->orWhere('house_address_or_unit', 'like', "%{$filterQ}%")
-                    ->orWhere('status', 'like', "%{$filterQ}%");
-            });
-        }
-        $this->applyVisitorTypeFilter($query, $filterType);
-        $this->applyDateTimeFilters(
-            $query,
-            'check_in',
-            $filterPeriod,
-            $filterDateFrom,
-            $filterDateTo,
-            $filterTimeFrom,
-            $filterTimeTo
-        );
-
-        if (!$user->isAdmin()) {
-            $query->where('subdivision_id', $user->allowedSubdivisionId());
-        } elseif ($filterSubdivision) {
-            $query->where('subdivision_id', $filterSubdivision);
-        }
-
-        $visitors = $query
+        $visitors = $this->buildVisitorHistoryQuery($request)
             ->paginate($historyPerPage, ['*'], 'history_page')
             ->withQueryString();
         $subdivisions = $user->isAdmin()
@@ -211,6 +179,65 @@ class VisitorController extends Controller
             'displayHouseAddress' => $displayHouseAddress,
             'dashboardQuery' => $request->only(['inside_per_page', 'page']),
         ]);
+    }
+
+    public function export(Request $request): Response|StreamedResponse|RedirectResponse
+    {
+        $format = strtolower((string) $request->query('format', 'excel'));
+        if (!in_array($format, ['excel', 'pdf'], true)) {
+            return back()->with('error', 'Unsupported export format.');
+        }
+
+        if ($format === 'pdf') {
+            try {
+                $pdf = Pdf::loadView('visitors.report-print', $this->visitorReportViewData($request, false, true, true))
+                    ->setPaper('a4', 'landscape');
+
+                return $pdf->download('visitor-report-' . now()->format('Ymd_His') . '.pdf');
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                return back()->with('error', 'PDF export failed on this server. Please try again.');
+            }
+        }
+
+        $visitors = $this->buildVisitorHistoryQuery($request)->get();
+        $reportRows = $this->buildVisitorReportRows($visitors, false);
+        $filename = 'visitor-report-' . now()->format('Ymd_His') . '.csv';
+
+        return response()->streamDownload(function () use ($reportRows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Name', 'Phone', 'Visit Type', 'Purpose', 'Resident / Host', 'House / Unit', 'Check In', 'Check Out', 'Duration', 'Status', 'ID Photo URL']);
+
+            foreach ($reportRows as $row) {
+                fputcsv($handle, [
+                    $row['name'],
+                    $row['phone'],
+                    $row['visit_type'],
+                    $row['purpose'],
+                    $row['host'],
+                    $row['house_unit'],
+                    $row['check_in'],
+                    $row['check_out'],
+                    $row['duration'],
+                    $row['status'],
+                    $row['photo_url'] ?: '-',
+                ]);
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function print(Request $request): View
+    {
+        return view('visitors.report-print', $this->visitorReportViewData(
+            $request,
+            $request->boolean('autoprint'),
+            true
+        ));
     }
 
     public function edit(Request $request, Visitor $visitor): View
@@ -677,6 +704,111 @@ class VisitorController extends Controller
         if ($timeTo !== null) {
             $query->whereRaw("time({$dateTimeColumn}) <= ?", [$timeTo . ':59']);
         }
+    }
+
+    private function buildVisitorHistoryQuery(Request $request): Builder
+    {
+        $user = $request->user();
+        $filterQ = trim((string) $request->query('q', ''));
+        $filterSubdivision = (int) $request->query('subdivision_id', 0);
+        $filterPeriod = $this->resolvePeriodFilter((string) $request->query('period', ''));
+        $filterType = strtolower(trim((string) $request->query('type', '')));
+        $filterDateFrom = $this->normalizeDateInput($request->query('date_from'));
+        $filterDateTo = $this->normalizeDateInput($request->query('date_to'));
+        $filterTimeFrom = $this->normalizeTimeInput($request->query('time_from'));
+        $filterTimeTo = $this->normalizeTimeInput($request->query('time_to'));
+
+        $query = Visitor::query()
+            ->with('subdivision')
+            ->where('status', 'Checked Out')
+            ->orderByDesc('check_in');
+
+        if ($filterQ !== '') {
+            $query->where(function (Builder $builder) use ($filterQ) {
+                $builder->where('surname', 'like', "%{$filterQ}%")
+                    ->orWhere('first_name', 'like', "%{$filterQ}%")
+                    ->orWhere('middle_initials', 'like', "%{$filterQ}%")
+                    ->orWhere('extension', 'like', "%{$filterQ}%")
+                    ->orWhere('phone', 'like', "%{$filterQ}%")
+                    ->orWhere('purpose', 'like', "%{$filterQ}%")
+                    ->orWhere('host_employee', 'like', "%{$filterQ}%")
+                    ->orWhere('house_address_or_unit', 'like', "%{$filterQ}%")
+                    ->orWhere('status', 'like', "%{$filterQ}%");
+            });
+        }
+
+        $this->applyVisitorTypeFilter($query, $filterType);
+        $this->applyDateTimeFilters(
+            $query,
+            'check_in',
+            $filterPeriod,
+            $filterDateFrom,
+            $filterDateTo,
+            $filterTimeFrom,
+            $filterTimeTo
+        );
+
+        if (!$user->isAdmin()) {
+            $query->where('subdivision_id', $user->allowedSubdivisionId());
+        } elseif ($filterSubdivision) {
+            $query->where('subdivision_id', $filterSubdivision);
+        }
+
+        return $query;
+    }
+
+    private function visitorReportViewData(
+        Request $request,
+        bool $autoPrint = false,
+        bool $includePhotos = true,
+        bool $renderingPdf = false
+    ): array {
+        $visitors = $this->buildVisitorHistoryQuery($request)->get();
+        $reportRows = $this->buildVisitorReportRows($visitors, $includePhotos);
+
+        return [
+            'title' => 'Visitor Report',
+            'generatedAt' => now(),
+            'reportRows' => $reportRows,
+            'autoPrint' => $autoPrint,
+            'renderingPdf' => $renderingPdf,
+            'reportQuery' => $request->query(),
+            'previewMode' => $request->boolean('preview'),
+        ];
+    }
+
+    private function buildVisitorReportRows($visitors, bool $includePhotos): array
+    {
+        return $visitors->map(function (Visitor $visitor) use ($includePhotos) {
+            $photoUrl = $visitor->id_photo_path
+                ? route('visitors.photo', ['visitor' => $visitor->visitor_id])
+                : null;
+            $photoDataUri = null;
+
+            if ($includePhotos && $visitor->id_photo_path) {
+                $absolutePath = $this->visitorPhotoAbsolutePath($visitor->id_photo_path);
+                if ($absolutePath && File::exists($absolutePath)) {
+                    $mime = File::mimeType($absolutePath) ?: 'image/png';
+                    $contents = File::get($absolutePath);
+                    $photoDataUri = 'data:' . $mime . ';base64,' . base64_encode($contents);
+                }
+            }
+
+            return [
+                'name' => $visitor->full_name,
+                'phone' => $visitor->phone ?: '-',
+                'visit_type' => filled($visitor->host_employee) ? 'Resident Visit' : 'Walk-in',
+                'purpose' => $visitor->purpose ?: '-',
+                'host' => $visitor->host_employee ?: 'Walk-in',
+                'house_unit' => $visitor->house_address_or_unit ?: '-',
+                'check_in' => $visitor->check_in?->format('Y-m-d h:i:s A') ?: '-',
+                'check_out' => $visitor->check_out?->format('Y-m-d h:i:s A') ?: '-',
+                'duration' => $visitor->visit_duration_label ?: '-',
+                'status' => $visitor->status ?: '-',
+                'photo_url' => $photoUrl,
+                'photo_data_uri' => $photoDataUri,
+            ];
+        })->all();
     }
 
     private function resolvePerPage(mixed $value, int $default = 10): int

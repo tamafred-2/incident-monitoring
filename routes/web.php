@@ -59,6 +59,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::put('/residents/{resident}', [ResidentController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('residents.update');
     Route::delete('/residents/{resident}', [ResidentController::class, 'destroy'])->middleware(['role:admin', 'subdivision'])->name('residents.destroy');
     Route::get('/visitors', [VisitorController::class, 'index'])->middleware('role:security')->name('visitors.index');
+    Route::get('/visitors/export', [VisitorController::class, 'export'])->middleware('role:security')->name('visitors.export');
+    Route::get('/visitors/print', [VisitorController::class, 'print'])->middleware('role:security')->name('visitors.print');
     Route::get('/visitors/{visitor}/id-photo', [VisitorController::class, 'idPhoto'])->middleware(['role:security', 'subdivision'])->name('visitors.photo');
     Route::get('/visitors/{visitor}', [VisitorController::class, 'show'])->middleware(['role:security', 'subdivision'])->name('visitors.show');
     Route::get('/visitors/{visitor}/edit', [VisitorController::class, 'edit'])->middleware(['role:admin', 'subdivision'])->name('visitors.edit');

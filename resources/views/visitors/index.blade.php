@@ -1,6 +1,8 @@
 <x-app-layout>
     @php
         $defaultMonitoringTab = request()->query('tab');
+        $visitorReportQuery = request()->query();
+        $visitorExportPreviewUrl = route('visitors.print', $visitorReportQuery + ['preview' => 1, 'embed' => 1]);
 
         if (!in_array($defaultMonitoringTab, ['check-out', 'history'], true)) {
             $defaultMonitoringTab = 'check-out';
@@ -68,8 +70,48 @@
                 hostSearch: @js(old('host_employee', '')),
                 selectedResidentPhone: '',
                 hostOpen: false,
+                exportPreviewOpen: false,
+                exportPreviewUrl: @js($visitorExportPreviewUrl),
+                excelConfirmOpen: false,
+                excelExportUrl: '',
+                pdfConfirmOpen: false,
+                pdfExportUrl: '',
                 init() {
                     this.initializeResidentSelection();
+                },
+                openExportPreview() {
+                    this.exportPreviewOpen = true;
+                },
+                closeExportPreview() {
+                    this.exportPreviewOpen = false;
+                },
+                openExcelConfirm(url) {
+                    this.excelExportUrl = url;
+                    this.excelConfirmOpen = true;
+                },
+                closeExcelConfirm() {
+                    this.excelConfirmOpen = false;
+                    this.excelExportUrl = '';
+                },
+                proceedExcelExport() {
+                    if (this.excelExportUrl) {
+                        window.open(this.excelExportUrl, '_blank');
+                    }
+                    this.closeExcelConfirm();
+                },
+                openPdfConfirm(url) {
+                    this.pdfExportUrl = url;
+                    this.pdfConfirmOpen = true;
+                },
+                closePdfConfirm() {
+                    this.pdfConfirmOpen = false;
+                    this.pdfExportUrl = '';
+                },
+                proceedPdfExport() {
+                    if (this.pdfExportUrl) {
+                        window.open(this.pdfExportUrl, '_blank');
+                    }
+                    this.closePdfConfirm();
                 },
                 get availableHouses() {
                     return this.housesBySubdivision[this.selectedSubdivision] || [];
@@ -568,24 +610,34 @@
             @endif
 
             <div class="p-4 bg-white border shadow-sm rounded-2xl border-slate-200">
-                <nav class="flex flex-wrap gap-6 px-2 pb-1 border-b border-slate-200" aria-label="Visitor monitoring sections">
-                    <a
-                        href="#visitor-check-out"
-                        @click.prevent="activeMonitoringTab = 'check-out'"
-                        :class="activeMonitoringTab === 'check-out' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
-                        class="px-1 pb-3 text-sm font-semibold transition border-b-2"
+                <div class="flex flex-wrap items-end justify-between gap-3 px-2 pb-1 border-b border-slate-200">
+                    <nav class="flex flex-wrap gap-6" aria-label="Visitor monitoring sections">
+                        <a
+                            href="#visitor-check-out"
+                            @click.prevent="activeMonitoringTab = 'check-out'"
+                            :class="activeMonitoringTab === 'check-out' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                            class="px-1 pb-3 text-sm font-semibold transition border-b-2"
+                        >
+                            Visitor Check-out
+                        </a>
+                        <a
+                            href="#visitor-history"
+                            @click.prevent="activeMonitoringTab = 'history'"
+                            :class="activeMonitoringTab === 'history' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                            class="px-1 pb-3 text-sm font-semibold transition border-b-2"
+                        >
+                            Visitor History
+                        </a>
+                    </nav>
+                    <button
+                        type="button"
+                        x-show="activeMonitoringTab === 'history'"
+                        @click="openExportPreview()"
+                        class="px-4 py-2 mb-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                     >
-                        Visitor Check-out
-                    </a>
-                    <a
-                        href="#visitor-history"
-                        @click.prevent="activeMonitoringTab = 'history'"
-                        :class="activeMonitoringTab === 'history' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
-                        class="px-1 pb-3 text-sm font-semibold transition border-b-2"
-                    >
-                        Visitor History
-                    </a>
-                </nav>
+                        Export
+                    </button>
+                </div>
             </div>
 
             <div>
@@ -772,18 +824,20 @@
                             <p class="mt-1 text-sm text-slate-500">Browse visitor check-in/check-out records with host, purpose, and status history.</p>
                         </div>
 
-                        @if ($filterQ !== '' || $filterSubdivision || $filterPeriod !== '' || $filterType !== '' || $filterDateFrom || $filterDateTo || $filterTimeFrom || $filterTimeTo)
-                            <a
-                                href="{{ route('visitors.index', array_filter([
-                                    'tab' => 'history',
-                                    'history_per_page' => $historyPerPage,
-                                    'check_out_per_page' => $checkOutPerPage,
-                                ])) }}"
-                                class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                            >
-                                Clear Filters
-                            </a>
-                        @endif
+                        <div class="flex flex-wrap items-center gap-2">
+                            @if ($filterQ !== '' || $filterSubdivision || $filterPeriod !== '' || $filterType !== '' || $filterDateFrom || $filterDateTo || $filterTimeFrom || $filterTimeTo)
+                                <a
+                                    href="{{ route('visitors.index', array_filter([
+                                        'tab' => 'history',
+                                        'history_per_page' => $historyPerPage,
+                                        'check_out_per_page' => $checkOutPerPage,
+                                    ])) }}"
+                                    class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
+                                >
+                                    Clear Filters
+                                </a>
+                            @endif
+                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm divide-y divide-slate-200">
@@ -963,6 +1017,117 @@
             </div>
 
 
+            <div
+                x-cloak
+                x-show="exportPreviewOpen"
+                x-on:keydown.escape.window="closeExportPreview()"
+                class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-slate-950/80"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closeExportPreview()"></div>
+                <div class="relative w-full max-w-6xl overflow-hidden bg-white shadow-2xl rounded-3xl">
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
+                        <h3 class="text-base font-semibold text-slate-900">Visitor Report Preview</h3>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                @click="openExcelConfirm('{{ route('visitors.export', $visitorReportQuery + ['format' => 'excel']) }}')"
+                                class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700"
+                            >
+                                To Excel
+                            </button>
+                            <button
+                                type="button"
+                                @click="openPdfConfirm('{{ route('visitors.export', $visitorReportQuery + ['format' => 'pdf']) }}')"
+                                class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700"
+                            >
+                                To PDF
+                            </button>
+                            <a
+                                href="{{ route('visitors.print', $visitorReportQuery + ['autoprint' => 1]) }}"
+                                target="_blank"
+                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
+                            >
+                                Print
+                            </a>
+                            <button
+                                type="button"
+                                @click="closeExportPreview()"
+                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                    <div class="h-[70vh] bg-slate-100">
+                        <iframe :src="exportPreviewUrl" class="w-full h-full border-0" title="Visitor report preview"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                x-cloak
+                x-show="excelConfirmOpen"
+                x-on:keydown.escape.window="closeExcelConfirm()"
+                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/70"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closeExcelConfirm()"></div>
+                <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl">
+                    <div class="px-5 py-4 border-b border-slate-200">
+                        <h3 class="text-base font-semibold text-slate-900">Confirm Excel Export</h3>
+                        <p class="mt-1 text-sm text-slate-600">Generate and download the visitor history report as an Excel-compatible CSV file?</p>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
+                        <button
+                            type="button"
+                            @click="closeExcelConfirm()"
+                            class="px-3 py-2 text-sm font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-white"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            @click="proceedExcelExport()"
+                            class="px-3 py-2 text-sm font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700"
+                        >
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                x-cloak
+                x-show="pdfConfirmOpen"
+                x-on:keydown.escape.window="closePdfConfirm()"
+                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/70"
+                style="display: none;"
+            >
+                <div class="absolute inset-0" @click="closePdfConfirm()"></div>
+                <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl">
+                    <div class="px-5 py-4 border-b border-slate-200">
+                        <h3 class="text-base font-semibold text-slate-900">Confirm PDF Export</h3>
+                        <p class="mt-1 text-sm text-slate-600">Generate and download the visitor history report as a PDF file?</p>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
+                        <button
+                            type="button"
+                            @click="closePdfConfirm()"
+                            class="px-3 py-2 text-sm font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-white"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            @click="proceedPdfExport()"
+                            class="px-3 py-2 text-sm font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700"
+                        >
+                            Continue
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </x-app-layout>
