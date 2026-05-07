@@ -34,12 +34,8 @@ class IncidentController extends Controller
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
-        $filterPeriod = $this->resolvePeriodFilter((string) $request->query('period', ''));
-        $filterType = trim((string) $request->query('type', ''));
-        $filterDateFrom = $this->normalizeDateInput($request->query('date_from'));
-        $filterDateTo = $this->normalizeDateInput($request->query('date_to'));
-        $filterTimeFrom = $this->normalizeTimeInput($request->query('time_from'));
-        $filterTimeTo = $this->normalizeTimeInput($request->query('time_to'));
+        $filterDateFrom = $this->normalizeDateTimeInput($request->query('date_from'));
+        $filterDateTo = $this->normalizeDateTimeInput($request->query('date_to'));
         $historyView = $this->resolveHistoryView($request->query('view'));
         $reportedSort = strtolower((string) $request->query('reported_sort', 'desc'));
         if (!in_array($reportedSort, ['asc', 'desc'], true)) {
@@ -69,15 +65,11 @@ class IncidentController extends Controller
             });
         }
 
-        $this->applyIncidentTypeFilter($query, $filterType);
         $this->applyDateTimeFilters(
             $query,
             'COALESCE(reported_at, incident_date, created_at)',
-            $filterPeriod,
             $filterDateFrom,
-            $filterDateTo,
-            $filterTimeFrom,
-            $filterTimeTo
+            $filterDateTo
         );
 
         $this->applyHistoryViewScope($query, $historyView);
@@ -119,12 +111,8 @@ class IncidentController extends Controller
             'residentReporter',
             'houses',
             'perPage',
-            'filterPeriod',
-            'filterType',
             'filterDateFrom',
             'filterDateTo',
-            'filterTimeFrom',
-            'filterTimeTo',
         ));
     }
 
@@ -666,20 +654,8 @@ class IncidentController extends Controller
 
     private function appendSharedFilterContext(array &$context, Request $request): void
     {
-        $period = $this->resolvePeriodFilter((string) $request->input('period', $request->query('period', '')));
-        if ($period !== '') {
-            $context['period'] = $period;
-        }
-
-        $type = trim((string) $request->input('type', $request->query('type', '')));
-        if ($type !== '') {
-            $context['type'] = $type;
-        }
-
-        $dateFrom = $this->normalizeDateInput($request->input('date_from', $request->query('date_from')));
-        $dateTo = $this->normalizeDateInput($request->input('date_to', $request->query('date_to')));
-        $timeFrom = $this->normalizeTimeInput($request->input('time_from', $request->query('time_from')));
-        $timeTo = $this->normalizeTimeInput($request->input('time_to', $request->query('time_to')));
+        $dateFrom = $this->normalizeDateTimeInput($request->input('date_from', $request->query('date_from')));
+        $dateTo = $this->normalizeDateTimeInput($request->input('date_to', $request->query('date_to')));
 
         if ($dateFrom !== null) {
             $context['date_from'] = $dateFrom;
@@ -687,84 +663,37 @@ class IncidentController extends Controller
         if ($dateTo !== null) {
             $context['date_to'] = $dateTo;
         }
-        if ($timeFrom !== null) {
-            $context['time_from'] = $timeFrom;
-        }
-        if ($timeTo !== null) {
-            $context['time_to'] = $timeTo;
-        }
     }
 
-    private function applyIncidentTypeFilter(Builder $query, string $type): void
-    {
-        if ($type === '') {
-            return;
-        }
-
-        $query->where('category', $type);
-    }
-
-    private function resolvePeriodFilter(string $period): string
-    {
-        $period = strtolower(trim($period));
-
-        return in_array($period, ['daily', 'weekly', 'monthly'], true) ? $period : '';
-    }
-
-    private function normalizeDateInput(mixed $value): ?string
+    private function normalizeDateTimeInput(mixed $value): ?string
     {
         $value = trim((string) $value);
-        if ($value === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+        if ($value === '') {
             return null;
         }
 
-        return $value;
-    }
-
-    private function normalizeTimeInput(mixed $value): ?string
-    {
-        $value = trim((string) $value);
-        if ($value === '' || !preg_match('/^\d{2}:\d{2}$/', $value)) {
-            return null;
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $value)) {
+            return str_replace('T', ' ', $value) . ':00';
         }
 
-        return $value;
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $value)) {
+            return strlen($value) === 16 ? $value . ':00' : $value;
+        }
+
+        return null;
     }
 
     private function applyDateTimeFilters(
         Builder $query,
         string $dateTimeExpression,
-        string $period,
         ?string $dateFrom,
-        ?string $dateTo,
-        ?string $timeFrom,
-        ?string $timeTo
+        ?string $dateTo
     ): void {
-        if ($period !== '') {
-            $today = now();
-            if ($period === 'daily') {
-                $dateFrom = $today->toDateString();
-                $dateTo = $today->toDateString();
-            } elseif ($period === 'weekly') {
-                $dateFrom = $today->copy()->startOfWeek()->toDateString();
-                $dateTo = $today->copy()->endOfWeek()->toDateString();
-            } elseif ($period === 'monthly') {
-                $dateFrom = $today->copy()->startOfMonth()->toDateString();
-                $dateTo = $today->copy()->endOfMonth()->toDateString();
-            }
-        }
-
         if ($dateFrom !== null) {
-            $query->whereRaw("date({$dateTimeExpression}) >= ?", [$dateFrom]);
+            $query->whereRaw("{$dateTimeExpression} >= ?", [$dateFrom]);
         }
         if ($dateTo !== null) {
-            $query->whereRaw("date({$dateTimeExpression}) <= ?", [$dateTo]);
-        }
-        if ($timeFrom !== null) {
-            $query->whereRaw("time({$dateTimeExpression}) >= ?", [$timeFrom . ':00']);
-        }
-        if ($timeTo !== null) {
-            $query->whereRaw("time({$dateTimeExpression}) <= ?", [$timeTo . ':59']);
+            $query->whereRaw("{$dateTimeExpression} <= ?", [$dateTo]);
         }
     }
 
@@ -1149,12 +1078,8 @@ class IncidentController extends Controller
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
-        $filterPeriod = $this->resolvePeriodFilter((string) $request->query('period', ''));
-        $filterType = trim((string) $request->query('type', ''));
-        $filterDateFrom = $this->normalizeDateInput($request->query('date_from'));
-        $filterDateTo = $this->normalizeDateInput($request->query('date_to'));
-        $filterTimeFrom = $this->normalizeTimeInput($request->query('time_from'));
-        $filterTimeTo = $this->normalizeTimeInput($request->query('time_to'));
+        $filterDateFrom = $this->normalizeDateTimeInput($request->query('date_from'));
+        $filterDateTo = $this->normalizeDateTimeInput($request->query('date_to'));
         $historyView = $historyOnly ? 'history' : $this->resolveHistoryView($request->query('view'));
         $reportedSort = strtolower((string) $request->query('reported_sort', 'desc'));
         if (!in_array($reportedSort, ['asc', 'desc'], true)) {
@@ -1179,15 +1104,11 @@ class IncidentController extends Controller
             });
         }
 
-        $this->applyIncidentTypeFilter($query, $filterType);
         $this->applyDateTimeFilters(
             $query,
             'COALESCE(reported_at, incident_date, created_at)',
-            $filterPeriod,
             $filterDateFrom,
-            $filterDateTo,
-            $filterTimeFrom,
-            $filterTimeTo
+            $filterDateTo
         );
         $this->applyHistoryViewScope($query, $historyView);
 
@@ -1219,12 +1140,8 @@ class IncidentController extends Controller
             'reported_sort' => in_array(strtolower((string) $request->query('reported_sort', 'desc')), ['asc', 'desc'], true)
                 ? strtolower((string) $request->query('reported_sort', 'desc'))
                 : null,
-            'period' => $this->resolvePeriodFilter((string) $request->query('period', '')) ?: null,
-            'type' => trim((string) $request->query('type', '')) ?: null,
-            'date_from' => $this->normalizeDateInput($request->query('date_from')),
-            'date_to' => $this->normalizeDateInput($request->query('date_to')),
-            'time_from' => $this->normalizeTimeInput($request->query('time_from')),
-            'time_to' => $this->normalizeTimeInput($request->query('time_to')),
+            'date_from' => $this->normalizeDateTimeInput($request->query('date_from')),
+            'date_to' => $this->normalizeDateTimeInput($request->query('date_to')),
         ]);
 
         return [

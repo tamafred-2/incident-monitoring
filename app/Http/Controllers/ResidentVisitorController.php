@@ -50,6 +50,8 @@ class ResidentVisitorController extends Controller
             'phone'                 => $visitorRequest->phone,
             'plate_number'          => $visitorRequest->plate_number,
             'passenger_count'       => $visitorRequest->passenger_count,
+            'vehicle_type'          => $visitorRequest->vehicle_type,
+            'vehicle_color'         => $visitorRequest->vehicle_color,
             'id_photo_path'         => $visitorRequest->id_photo_path,
             'purpose'               => $visitorRequest->purpose,
             'host_employee'         => $request->user()->resident->full_name,

@@ -132,9 +132,9 @@ class SqliteDemoSeeder extends Seeder
             ]);
 
             $residentData = [
-                ['full_name' => 'Rina M. Dela Cruz', 'phone' => '09179998877', 'email' => 'resident1@example.com', 'house' => $house1, 'relation_to_owner' => 'Owner'],
+                ['full_name' => 'Rina M. Dela Cruz', 'phone' => '09179998877', 'email' => 'resident1@example.com', 'house' => $house1, 'relation_to_owner' => 'Wife'],
                 ['full_name' => 'Marco Reyes', 'phone' => '09181112222', 'email' => 'resident2@example.com', 'house' => $house1, 'relation_to_owner' => 'Husband'],
-                ['full_name' => 'Liza B. Santos', 'phone' => '09192223333', 'email' => 'resident3@example.com', 'house' => $house2, 'relation_to_owner' => 'Owner'],
+                ['full_name' => 'Liza B. Santos', 'phone' => '09192223333', 'email' => 'resident3@example.com', 'house' => $house2, 'relation_to_owner' => 'Wife'],
                 ['full_name' => 'Carlos Bautista', 'phone' => '09203334444', 'email' => 'resident4@example.com', 'house' => $house2, 'relation_to_owner' => 'Husband'],
                 ['full_name' => 'Ana R. Villanueva', 'phone' => '09214445555', 'email' => 'resident5@example.com', 'house' => $house2, 'relation_to_owner' => 'Child'],
                 ['full_name' => 'Roberto Pascual', 'phone' => '09221116666', 'email' => 'roberto.pascual@email.com', 'house' => $house1, 'relation_to_owner' => 'Child'],

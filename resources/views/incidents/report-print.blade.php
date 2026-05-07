@@ -73,7 +73,6 @@
             <div class="actions">
                 <a
                     href="{{ route('incidents.export', $reportQuery + ['format' => 'excel']) }}"
-                    onclick="return confirm('Export incident history to Excel now?');"
                     style="display:inline-block;padding:8px 14px;font-size:12px;border-radius:8px;background:#059669;color:#fff;text-decoration:none;"
                 >
                     To Excel
@@ -84,19 +83,27 @@
                 >
                     To PDF
                 </a>
-                <button type="button" onclick="window.print()">Print</button>
-            </div>
-        @elseif (empty($renderingPdf) && empty(request()->boolean('embed')))
-            <div class="actions">
-                <button type="button" onclick="window.print()">Print</button>
             </div>
         @endif
     </div>
 
     @if (!empty($autoPrint))
         <script>
+            let printHandled = false;
+            const closePrintWindow = () => {
+                if (printHandled) {
+                    return;
+                }
+                printHandled = true;
+                window.close();
+            };
+
+            window.addEventListener('afterprint', closePrintWindow);
             window.addEventListener('load', function () {
                 window.print();
+            });
+            window.addEventListener('focus', function () {
+                setTimeout(closePrintWindow, 400);
             });
         </script>
     @endif

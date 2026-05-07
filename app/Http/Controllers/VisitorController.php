@@ -26,12 +26,8 @@ class VisitorController extends Controller
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
-        $filterPeriod = $this->resolvePeriodFilter((string) $request->query('period', ''));
-        $filterType = strtolower(trim((string) $request->query('type', '')));
-        $filterDateFrom = $this->normalizeDateInput($request->query('date_from'));
-        $filterDateTo = $this->normalizeDateInput($request->query('date_to'));
-        $filterTimeFrom = $this->normalizeTimeInput($request->query('time_from'));
-        $filterTimeTo = $this->normalizeTimeInput($request->query('time_to'));
+        $filterDateFrom = $this->normalizeDateTimeInput($request->query('date_from'));
+        $filterDateTo = $this->normalizeDateTimeInput($request->query('date_to'));
         $historyPerPage = $this->resolvePerPageChoice(
             $request->query('history_per_page_custom'),
             $request->query('history_per_page'),
@@ -96,18 +92,6 @@ class VisitorController extends Controller
                 }
             )
             ->when(
-                $filterType !== '',
-                function (Builder $builder) use ($filterType) {
-                    if ($filterType === 'resident') {
-                        $builder->whereNotNull('host_employee')->where('host_employee', '!=', '');
-                    } elseif ($filterType === 'walk_in') {
-                        $builder->where(function (Builder $inner) {
-                            $inner->whereNull('host_employee')->orWhere('host_employee', '');
-                        });
-                    }
-                }
-            )
-            ->when(
                 !$user->isAdmin(),
                 fn ($builder) => $builder->where('subdivision_id', $user->allowedSubdivisionId())
             )
@@ -119,11 +103,8 @@ class VisitorController extends Controller
         $this->applyDateTimeFilters(
             $insideVisitorQuery,
             'check_in',
-            $filterPeriod,
             $filterDateFrom,
-            $filterDateTo,
-            $filterTimeFrom,
-            $filterTimeTo
+            $filterDateTo
         );
         $insideVisitors = $insideVisitorQuery
             ->orderByDesc('check_in')
@@ -141,12 +122,8 @@ class VisitorController extends Controller
             'residentsByHouse',
             'historyPerPage',
             'checkOutPerPage',
-            'filterPeriod',
-            'filterType',
             'filterDateFrom',
             'filterDateTo',
-            'filterTimeFrom',
-            'filterTimeTo',
         ));
     }
 
@@ -207,7 +184,7 @@ class VisitorController extends Controller
 
         return response()->streamDownload(function () use ($reportRows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Name', 'Phone', 'Visit Type', 'Purpose', 'Resident / Host', 'House / Unit', 'Check In', 'Check Out', 'Duration', 'Status', 'ID Photo URL']);
+            fputcsv($handle, ['Name', 'Phone', 'Visit Type', 'Purpose', 'Resident / Host', 'House / Unit', 'Vehicle Type', 'Vehicle Color', 'Plate Number', 'Check In', 'Check Out', 'Duration', 'Status', 'ID Photo URL']);
 
             foreach ($reportRows as $row) {
                 fputcsv($handle, [
@@ -217,6 +194,9 @@ class VisitorController extends Controller
                     $row['purpose'],
                     $row['host'],
                     $row['house_unit'],
+                    $row['vehicle_type'],
+                    $row['vehicle_color'],
+                    $row['plate_number'],
                     $row['check_in'],
                     $row['check_out'],
                     $row['duration'],
@@ -320,6 +300,8 @@ class VisitorController extends Controller
             'on_vehicle'            => ['nullable', 'boolean'],
             'plate_number'          => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
             'passenger_count'       => ['nullable', 'integer', 'min:1', 'max:20', 'required_if:on_vehicle,1'],
+            'vehicle_type'          => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
+            'vehicle_color'         => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
             'id_photo'              => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'host_employee'         => ['nullable', 'string', 'max:150'],
             'house_address_or_unit' => ['nullable', 'string', 'max:120', 'required_if:visit_type,resident', 'required_if:visit_type,walk_in'],
@@ -342,6 +324,12 @@ class VisitorController extends Controller
             $passengerCount = $onVehicle
                 ? (int) ($data['passenger_count'] ?? 0)
                 : null;
+            $vehicleType = $onVehicle
+                ? (trim((string) ($data['vehicle_type'] ?? '')) ?: null)
+                : null;
+            $vehicleColor = $onVehicle
+                ? (trim((string) ($data['vehicle_color'] ?? '')) ?: null)
+                : null;
 
             Visitor::create([
                 'subdivision_id'        => $subdivisionId,
@@ -352,6 +340,8 @@ class VisitorController extends Controller
                 'phone'                 => $data['phone'],
                 'plate_number'          => $plateNumber,
                 'passenger_count'       => $passengerCount,
+                'vehicle_type'          => $vehicleType,
+                'vehicle_color'         => $vehicleColor,
                 'id_photo_path'         => $idPhotoPath,
                 'purpose'               => $data['purpose'] ?? null,
                 'host_employee'         => null,
@@ -415,6 +405,12 @@ class VisitorController extends Controller
         $passengerCount = $onVehicle
             ? (int) ($data['passenger_count'] ?? 0)
             : null;
+        $vehicleType = $onVehicle
+            ? (trim((string) ($data['vehicle_type'] ?? '')) ?: null)
+            : null;
+        $vehicleColor = $onVehicle
+            ? (trim((string) ($data['vehicle_color'] ?? '')) ?: null)
+            : null;
 
         $visitor = Visitor::create([
             'subdivision_id'        => $subdivisionId,
@@ -425,6 +421,8 @@ class VisitorController extends Controller
             'phone'                 => $data['phone'],
             'plate_number'          => $plateNumber,
             'passenger_count'       => $passengerCount,
+            'vehicle_type'          => $vehicleType,
+            'vehicle_color'         => $vehicleColor,
             'id_photo_path'         => $idPhotoPath,
             'purpose'               => $data['purpose'] ?? null,
             'host_employee'         => $resident->full_name,
@@ -451,6 +449,8 @@ class VisitorController extends Controller
             'phone'                 => $data['phone'],
             'plate_number'          => $plateNumber,
             'passenger_count'       => $passengerCount,
+            'vehicle_type'          => $vehicleType,
+            'vehicle_color'         => $vehicleColor,
             'id_photo_path'         => $idPhotoPath,
             'purpose'               => $data['purpose'] ?? null,
             'house_address_or_unit' => $house->display_address,
@@ -598,20 +598,8 @@ class VisitorController extends Controller
 
     private function appendSharedFilterContext(array &$context, Request $request): void
     {
-        $period = $this->resolvePeriodFilter((string) $request->input('period', $request->query('period', '')));
-        if ($period !== '') {
-            $context['period'] = $period;
-        }
-
-        $type = strtolower(trim((string) $request->input('type', $request->query('type', ''))));
-        if (in_array($type, ['resident', 'walk_in'], true)) {
-            $context['type'] = $type;
-        }
-
-        $dateFrom = $this->normalizeDateInput($request->input('date_from', $request->query('date_from')));
-        $dateTo = $this->normalizeDateInput($request->input('date_to', $request->query('date_to')));
-        $timeFrom = $this->normalizeTimeInput($request->input('time_from', $request->query('time_from')));
-        $timeTo = $this->normalizeTimeInput($request->input('time_to', $request->query('time_to')));
+        $dateFrom = $this->normalizeDateTimeInput($request->input('date_from', $request->query('date_from')));
+        $dateTo = $this->normalizeDateTimeInput($request->input('date_to', $request->query('date_to')));
 
         if ($dateFrom !== null) {
             $context['date_from'] = $dateFrom;
@@ -619,90 +607,37 @@ class VisitorController extends Controller
         if ($dateTo !== null) {
             $context['date_to'] = $dateTo;
         }
-        if ($timeFrom !== null) {
-            $context['time_from'] = $timeFrom;
-        }
-        if ($timeTo !== null) {
-            $context['time_to'] = $timeTo;
-        }
     }
 
-    private function applyVisitorTypeFilter(Builder $query, string $type): void
-    {
-        if ($type === 'resident') {
-            $query->whereNotNull('host_employee')->where('host_employee', '!=', '');
-
-            return;
-        }
-
-        if ($type === 'walk_in') {
-            $query->where(function (Builder $builder) {
-                $builder->whereNull('host_employee')->orWhere('host_employee', '');
-            });
-        }
-    }
-
-    private function resolvePeriodFilter(string $period): string
-    {
-        $period = strtolower(trim($period));
-
-        return in_array($period, ['daily', 'weekly', 'monthly'], true) ? $period : '';
-    }
-
-    private function normalizeDateInput(mixed $value): ?string
+    private function normalizeDateTimeInput(mixed $value): ?string
     {
         $value = trim((string) $value);
-        if ($value === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+        if ($value === '') {
             return null;
         }
 
-        return $value;
-    }
-
-    private function normalizeTimeInput(mixed $value): ?string
-    {
-        $value = trim((string) $value);
-        if ($value === '' || !preg_match('/^\d{2}:\d{2}$/', $value)) {
-            return null;
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $value)) {
+            return str_replace('T', ' ', $value) . ':00';
         }
 
-        return $value;
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $value)) {
+            return strlen($value) === 16 ? $value . ':00' : $value;
+        }
+
+        return null;
     }
 
     private function applyDateTimeFilters(
         Builder $query,
         string $dateTimeColumn,
-        string $period,
         ?string $dateFrom,
-        ?string $dateTo,
-        ?string $timeFrom,
-        ?string $timeTo
+        ?string $dateTo
     ): void {
-        if ($period !== '') {
-            $today = now();
-            if ($period === 'daily') {
-                $dateFrom = $today->toDateString();
-                $dateTo = $today->toDateString();
-            } elseif ($period === 'weekly') {
-                $dateFrom = $today->copy()->startOfWeek()->toDateString();
-                $dateTo = $today->copy()->endOfWeek()->toDateString();
-            } elseif ($period === 'monthly') {
-                $dateFrom = $today->copy()->startOfMonth()->toDateString();
-                $dateTo = $today->copy()->endOfMonth()->toDateString();
-            }
-        }
-
         if ($dateFrom !== null) {
-            $query->whereDate($dateTimeColumn, '>=', $dateFrom);
+            $query->where($dateTimeColumn, '>=', $dateFrom);
         }
         if ($dateTo !== null) {
-            $query->whereDate($dateTimeColumn, '<=', $dateTo);
-        }
-        if ($timeFrom !== null) {
-            $query->whereRaw("time({$dateTimeColumn}) >= ?", [$timeFrom . ':00']);
-        }
-        if ($timeTo !== null) {
-            $query->whereRaw("time({$dateTimeColumn}) <= ?", [$timeTo . ':59']);
+            $query->where($dateTimeColumn, '<=', $dateTo);
         }
     }
 
@@ -711,12 +646,8 @@ class VisitorController extends Controller
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
-        $filterPeriod = $this->resolvePeriodFilter((string) $request->query('period', ''));
-        $filterType = strtolower(trim((string) $request->query('type', '')));
-        $filterDateFrom = $this->normalizeDateInput($request->query('date_from'));
-        $filterDateTo = $this->normalizeDateInput($request->query('date_to'));
-        $filterTimeFrom = $this->normalizeTimeInput($request->query('time_from'));
-        $filterTimeTo = $this->normalizeTimeInput($request->query('time_to'));
+        $filterDateFrom = $this->normalizeDateTimeInput($request->query('date_from'));
+        $filterDateTo = $this->normalizeDateTimeInput($request->query('date_to'));
 
         $query = Visitor::query()
             ->with('subdivision')
@@ -737,15 +668,11 @@ class VisitorController extends Controller
             });
         }
 
-        $this->applyVisitorTypeFilter($query, $filterType);
         $this->applyDateTimeFilters(
             $query,
             'check_in',
-            $filterPeriod,
             $filterDateFrom,
-            $filterDateTo,
-            $filterTimeFrom,
-            $filterTimeTo
+            $filterDateTo
         );
 
         if (!$user->isAdmin()) {
@@ -801,6 +728,9 @@ class VisitorController extends Controller
                 'purpose' => $visitor->purpose ?: '-',
                 'host' => $visitor->host_employee ?: 'Walk-in',
                 'house_unit' => $visitor->house_address_or_unit ?: '-',
+                'vehicle_type' => $visitor->vehicle_type ?: '-',
+                'vehicle_color' => $visitor->vehicle_color ?: '-',
+                'plate_number' => $visitor->plate_number ?: '-',
                 'check_in' => $visitor->check_in?->format('Y-m-d h:i:s A') ?: '-',
                 'check_out' => $visitor->check_out?->format('Y-m-d h:i:s A') ?: '-',
                 'duration' => $visitor->visit_duration_label ?: '-',

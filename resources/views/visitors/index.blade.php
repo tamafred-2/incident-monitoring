@@ -95,7 +95,7 @@
                 },
                 proceedExcelExport() {
                     if (this.excelExportUrl) {
-                        window.open(this.excelExportUrl, '_blank');
+                        window.location.href = this.excelExportUrl;
                     }
                     this.closeExcelConfirm();
                 },
@@ -109,7 +109,7 @@
                 },
                 proceedPdfExport() {
                     if (this.pdfExportUrl) {
-                        window.open(this.pdfExportUrl, '_blank');
+                        window.location.href = this.pdfExportUrl;
                     }
                     this.closePdfConfirm();
                 },
@@ -234,37 +234,12 @@
                         >
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700">Period</label>
-                        <select name="period" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                            <option value="">All time</option>
-                            <option value="daily" @selected($filterPeriod === 'daily')>Daily</option>
-                            <option value="weekly" @selected($filterPeriod === 'weekly')>Weekly</option>
-                            <option value="monthly" @selected($filterPeriod === 'monthly')>Monthly</option>
-                        </select>
+                        <label class="block text-sm font-medium text-slate-700">Start Time</label>
+                        <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700">Type</label>
-                        <select name="type" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                            <option value="">All</option>
-                            <option value="resident" @selected($filterType === 'resident')>Resident Visit</option>
-                            <option value="walk_in" @selected($filterType === 'walk_in')>Walk-in</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Date From</label>
-                        <input type="date" name="date_from" value="{{ $filterDateFrom }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Date To</label>
-                        <input type="date" name="date_to" value="{{ $filterDateTo }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Time From</label>
-                        <input type="time" name="time_from" value="{{ $filterTimeFrom }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Time To</label>
-                        <input type="time" name="time_to" value="{{ $filterTimeTo }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                        <label class="block text-sm font-medium text-slate-700">End Time</label>
+                        <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                     </div>
                     <div class="flex flex-wrap items-end gap-3 xl:col-span-4 md:justify-end">
                         <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
@@ -311,12 +286,8 @@
                         @csrf
                         <input type="hidden" name="tab" value="check-in">
                         <input type="hidden" name="q" value="{{ $filterQ }}">
-                        <input type="hidden" name="period" value="{{ $filterPeriod }}">
-                        <input type="hidden" name="type" value="{{ $filterType }}">
                         <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
                         <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
-                        <input type="hidden" name="time_from" value="{{ $filterTimeFrom }}">
-                        <input type="hidden" name="time_to" value="{{ $filterTimeTo }}">
                         <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                         <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
 
@@ -471,6 +442,30 @@
                                         max="20"
                                         step="1"
                                         placeholder="e.g., 2"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Vehicle Type</label>
+                                    <input
+                                        type="text"
+                                        name="vehicle_type"
+                                        value="{{ old('vehicle_type') }}"
+                                        :required="isVehicle"
+                                        :disabled="!isVehicle"
+                                        placeholder="e.g., Sedan, SUV, Motorcycle"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Vehicle Color</label>
+                                    <input
+                                        type="text"
+                                        name="vehicle_color"
+                                        value="{{ old('vehicle_color') }}"
+                                        :required="isVehicle"
+                                        :disabled="!isVehicle"
+                                        placeholder="e.g., White, Black, Blue"
                                         class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                 </div>
@@ -710,12 +705,8 @@
                                                             @csrf
                                                             <input type="hidden" name="tab" value="check-out">
                                                             <input type="hidden" name="q" value="{{ $filterQ }}">
-                                                            <input type="hidden" name="period" value="{{ $filterPeriod }}">
-                                                            <input type="hidden" name="type" value="{{ $filterType }}">
                                                             <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
                                                             <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
-                                                            <input type="hidden" name="time_from" value="{{ $filterTimeFrom }}">
-                                                            <input type="hidden" name="time_to" value="{{ $filterTimeTo }}">
                                                             <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                                                             <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                                                             <button class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700">Check Out</button>
@@ -748,23 +739,11 @@
                                     @if ($filterSubdivision)
                                         <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                     @endif
-                                    @if ($filterPeriod !== '')
-                                        <input type="hidden" name="period" value="{{ $filterPeriod }}">
-                                    @endif
-                                    @if ($filterType !== '')
-                                        <input type="hidden" name="type" value="{{ $filterType }}">
-                                    @endif
                                     @if ($filterDateFrom)
                                         <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
                                     @endif
                                     @if ($filterDateTo)
                                         <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
-                                    @endif
-                                    @if ($filterTimeFrom)
-                                        <input type="hidden" name="time_from" value="{{ $filterTimeFrom }}">
-                                    @endif
-                                    @if ($filterTimeTo)
-                                        <input type="hidden" name="time_to" value="{{ $filterTimeTo }}">
                                     @endif
                                     <input type="hidden" name="tab" value="check-out">
                                     <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
@@ -825,7 +804,7 @@
                         </div>
 
                         <div class="flex flex-wrap items-center gap-2">
-                            @if ($filterQ !== '' || $filterSubdivision || $filterPeriod !== '' || $filterType !== '' || $filterDateFrom || $filterDateTo || $filterTimeFrom || $filterTimeTo)
+                            @if ($filterQ !== '' || $filterSubdivision || $filterDateFrom || $filterDateTo)
                                 <a
                                     href="{{ route('visitors.index', array_filter([
                                         'tab' => 'history',
@@ -953,23 +932,11 @@
                                 @if ($filterSubdivision)
                                     <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
                                 @endif
-                                @if ($filterPeriod !== '')
-                                    <input type="hidden" name="period" value="{{ $filterPeriod }}">
-                                @endif
-                                @if ($filterType !== '')
-                                    <input type="hidden" name="type" value="{{ $filterType }}">
-                                @endif
                                 @if ($filterDateFrom)
                                     <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
                                 @endif
                                 @if ($filterDateTo)
                                     <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
-                                @endif
-                                @if ($filterTimeFrom)
-                                    <input type="hidden" name="time_from" value="{{ $filterTimeFrom }}">
-                                @endif
-                                @if ($filterTimeTo)
-                                    <input type="hidden" name="time_to" value="{{ $filterTimeTo }}">
                                 @endif
                                 <input type="hidden" name="tab" value="history">
                                 <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
@@ -1046,6 +1013,7 @@
                             <a
                                 href="{{ route('visitors.print', $visitorReportQuery + ['autoprint' => 1]) }}"
                                 target="_blank"
+                                rel="noopener noreferrer"
                                 class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
                             >
                                 Print
@@ -1073,10 +1041,11 @@
                 style="display: none;"
             >
                 <div class="absolute inset-0" @click="closeExcelConfirm()"></div>
-                <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl">
-                    <div class="px-5 py-4 border-b border-slate-200">
-                        <h3 class="text-base font-semibold text-slate-900">Confirm Excel Export</h3>
-                        <p class="mt-1 text-sm text-slate-600">Generate and download the visitor history report as an Excel-compatible CSV file?</p>
+                <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl ring-1 ring-emerald-200">
+                    <div class="px-5 py-4 border-b border-emerald-100 bg-emerald-50">
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Export</p>
+                        <h3 class="mt-1 text-base font-semibold text-slate-900">Confirm Excel Export</h3>
+                        <p class="mt-1 text-sm text-slate-700">Generate the visitor history report now as an Excel-compatible CSV file.</p>
                     </div>
                     <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
                         <button

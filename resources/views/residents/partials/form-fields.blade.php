@@ -174,7 +174,7 @@
         <div class="mt-4">
             <label class="block text-sm font-medium text-slate-700">Relation to Head/Owner</label>
             @php
-                $relationOptions = ['Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
+                $relationOptions = ['Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
                 $savedRelation = old('relation_to_owner', $resident?->relation_to_owner ?? '');
                 $isCustomRelation = $savedRelation !== '' && !in_array($savedRelation, $relationOptions, true);
                 $selectedRelation = $isCustomRelation ? 'Other' : $savedRelation;

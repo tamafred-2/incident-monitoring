@@ -24,6 +24,8 @@ class VisitorRequest extends Model
         'phone',
         'plate_number',
         'passenger_count',
+        'vehicle_type',
+        'vehicle_color',
         'id_photo_path',
         'house_address_or_unit',
         'purpose',

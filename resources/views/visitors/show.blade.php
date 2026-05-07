@@ -101,6 +101,14 @@
                                 <dd class="text-right font-medium text-slate-900">{{ $visitor->plate_number ?: '-' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Vehicle Type</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ $visitor->vehicle_type ?: '-' }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
+                                <dt class="text-slate-500">Vehicle Color</dt>
+                                <dd class="text-right font-medium text-slate-900">{{ $visitor->vehicle_color ?: '-' }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Passenger Count</dt>
                                 <dd class="text-right font-medium text-slate-900">{{ $visitor->passenger_count ?: '-' }}</dd>
                             </div>

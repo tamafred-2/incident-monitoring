@@ -39,6 +39,9 @@
                     <th>Purpose</th>
                     <th>Resident / Host</th>
                     <th>House / Unit</th>
+                    <th>Vehicle Type</th>
+                    <th>Vehicle Color</th>
+                    <th>Plate Number</th>
                     <th>Check In</th>
                     <th>Check Out</th>
                     <th>Duration</th>
@@ -55,6 +58,9 @@
                         <td>{{ $row['purpose'] }}</td>
                         <td>{{ $row['host'] }}</td>
                         <td>{{ $row['house_unit'] }}</td>
+                        <td>{{ $row['vehicle_type'] }}</td>
+                        <td>{{ $row['vehicle_color'] }}</td>
+                        <td>{{ $row['plate_number'] }}</td>
                         <td>{{ $row['check_in'] }}</td>
                         <td>{{ $row['check_out'] }}</td>
                         <td>{{ $row['duration'] }}</td>
@@ -69,7 +75,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11">No visitor history records found for current filters.</td>
+                        <td colspan="14">No visitor history records found for current filters.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -79,7 +85,6 @@
             <div class="actions">
                 <a
                     href="{{ route('visitors.export', $reportQuery + ['format' => 'excel']) }}"
-                    onclick="return confirm('Export visitor history to Excel now?');"
                     style="display:inline-block;padding:8px 14px;font-size:12px;border-radius:8px;background:#059669;color:#fff;text-decoration:none;"
                 >
                     To Excel
@@ -90,19 +95,27 @@
                 >
                     To PDF
                 </a>
-                <button type="button" onclick="window.print()">Print</button>
-            </div>
-        @elseif (empty($renderingPdf) && empty(request()->boolean('embed')))
-            <div class="actions">
-                <button type="button" onclick="window.print()">Print</button>
             </div>
         @endif
     </div>
 
     @if (!empty($autoPrint))
         <script>
+            let printHandled = false;
+            const closePrintWindow = () => {
+                if (printHandled) {
+                    return;
+                }
+                printHandled = true;
+                window.close();
+            };
+
+            window.addEventListener('afterprint', closePrintWindow);
             window.addEventListener('load', function () {
                 window.print();
+            });
+            window.addEventListener('focus', function () {
+                setTimeout(closePrintWindow, 400);
             });
         </script>
     @endif

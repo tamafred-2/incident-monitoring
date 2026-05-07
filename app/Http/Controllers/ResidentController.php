@@ -240,7 +240,7 @@ class ResidentController extends Controller
         }
 
         if ($relation !== '') {
-            $allowedRelations = ['Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
+            $allowedRelations = ['Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
             if (!in_array($relation, $allowedRelations, true)) {
                 $relation = Str::title($relation);
             }
@@ -258,16 +258,22 @@ class ResidentController extends Controller
             }
         }
 
-        if ($relation === 'Owner' && $house) {
-            $ownerExists = Resident::query()
+        if (in_array($relation, ['Husband', 'Wife'], true) && $house) {
+            $houseResidents = Resident::query()
                 ->where('house_id', $house->house_id)
-                ->where('relation_to_owner', 'Owner')
                 ->when($resident, fn ($query) => $query->where('resident_id', '!=', $resident->resident_id))
-                ->exists();
+                ->get(['relation_to_owner']);
 
-            if ($ownerExists) {
+            $hasOwner = $houseResidents->contains(fn (Resident $existing) => strcasecmp((string) $existing->relation_to_owner, 'Owner') === 0);
+            $hasHusband = $houseResidents->contains(fn (Resident $existing) => strcasecmp((string) $existing->relation_to_owner, 'Husband') === 0);
+            $hasWife = $houseResidents->contains(fn (Resident $existing) => strcasecmp((string) $existing->relation_to_owner, 'Wife') === 0);
+
+            $husbandSlotTaken = $hasHusband || ($hasOwner && $hasWife);
+            $wifeSlotTaken = $hasWife || ($hasOwner && $hasHusband);
+
+            if (($relation === 'Husband' && $husbandSlotTaken) || ($relation === 'Wife' && $wifeSlotTaken)) {
                 throw ValidationException::withMessages([
-                    'relation_to_owner' => 'This block/lot already has an owner. Only one owner is allowed per house.',
+                    'relation_to_owner' => 'This house already has a husband/wife pair. Owner + Wife means owner is husband, and Owner + Husband means owner is wife, so another spouse cannot be added.',
                 ]);
             }
         }
