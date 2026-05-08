@@ -243,7 +243,7 @@
         </x-modal>
 
         {{-- Add House Modal --}}
-        <x-modal name="create-house" :show="$errors->any() && old('edit_house_id') === null && !$errors->has('subdivision_name')" maxWidth="2xl" focusable>
+        <x-modal name="create-house" :show="$errors->houseCreate->any()" maxWidth="2xl" focusable>
             <div
                 class="p-6 bg-white sm:p-8"
                 x-data
@@ -273,9 +273,10 @@
                 </div>
                 <form method="POST" action="{{ route('houses.store') }}" class="mt-6 space-y-4">
                     @csrf
+                    <input type="hidden" name="house_form_mode" value="create">
                     <input type="hidden" name="subdivision_id" value="{{ $subdivision->subdivision_id }}">
                     <input type="hidden" name="_redirect" value="{{ route('subdivisions.show', $subdivision) }}">
-                    @include('subdivisions.partials.house-form-fields')
+                    @include('subdivisions.partials.house-form-fields', ['errorBag' => 'houseCreate'])
                     <div class="flex flex-wrap gap-3 pt-2">
                         <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800">Save House</button>
                         <button type="button" x-on:click="$dispatch('close')" class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Cancel</button>
@@ -286,7 +287,7 @@
 
         {{-- Edit/Delete House Modals --}}
         @foreach ($houses as $house)
-            <x-modal name="edit-house-{{ $house->house_id }}" :show="(string) old('edit_house_id') === (string) $house->house_id" maxWidth="2xl" focusable>
+            <x-modal name="edit-house-{{ $house->house_id }}" :show="$errors->houseEdit->any() && (string) old('edit_house_id') === (string) $house->house_id" maxWidth="2xl" focusable>
                 <div class="p-6 bg-white sm:p-8">
                     <div class="flex items-start justify-between gap-4">
                         <div>
@@ -302,10 +303,11 @@
                     <form method="POST" action="{{ route('houses.update', $house) }}" class="mt-6 space-y-4">
                         @csrf
                         @method('PUT')
+                        <input type="hidden" name="house_form_mode" value="edit">
                         <input type="hidden" name="edit_house_id" value="{{ $house->house_id }}">
                         <input type="hidden" name="subdivision_id" value="{{ $subdivision->subdivision_id }}">
                         <input type="hidden" name="_redirect" value="{{ route('subdivisions.show', $subdivision) }}">
-                        @include('subdivisions.partials.house-form-fields', ['house' => $house])
+                        @include('subdivisions.partials.house-form-fields', ['house' => $house, 'errorBag' => 'houseEdit'])
                         <div class="flex flex-wrap gap-3 pt-2">
                             <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800">Save Changes</button>
                             <button type="button" x-on:click="$dispatch('close')" class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">Cancel</button>

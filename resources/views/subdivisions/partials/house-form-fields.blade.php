@@ -1,4 +1,6 @@
 @php
+    $errorBag = $errorBag ?? 'default';
+    $errorsForForm = $errors->getBag($errorBag);
     $streetOptions = ['Imperial Street', 'Plaza Boulevard'];
     $streetValue = old('street', $house->street ?? '');
     $streetSelection = in_array($streetValue, $streetOptions, true)
@@ -37,9 +39,9 @@
             <input type="hidden" name="street" :value="streetSelection">
         </template>
 
-        @error('street')
-            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-        @enderror
+        @if ($errorsForForm->has('street'))
+            <p class="mt-1 text-xs text-rose-600">{{ $errorsForForm->first('street') }}</p>
+        @endif
     </div>
     <div>
         <label class="block text-sm font-medium text-slate-700">Block</label>
@@ -52,9 +54,9 @@
             placeholder="e.g. 3"
             class="mt-1 w-full rounded-xl border-slate-300 text-sm uppercase shadow-sm focus:border-sky-500 focus:ring-sky-500"
         >
-        @error('block')
-            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-        @enderror
+        @if ($errorsForForm->has('block'))
+            <p class="mt-1 text-xs text-rose-600">{{ $errorsForForm->first('block') }}</p>
+        @endif
     </div>
     <div>
         <label class="block text-sm font-medium text-slate-700">Lot</label>
@@ -67,8 +69,8 @@
             placeholder="e.g. 12"
             class="mt-1 w-full rounded-xl border-slate-300 text-sm uppercase shadow-sm focus:border-sky-500 focus:ring-sky-500"
         >
-        @error('lot')
-            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-        @enderror
+        @if ($errorsForForm->has('lot'))
+            <p class="mt-1 text-xs text-rose-600">{{ $errorsForForm->first('lot') }}</p>
+        @endif
     </div>
 </div>

@@ -110,7 +110,7 @@
                 </div>
             </div>
 
-            <x-modal name="create-house" :show="$errors->any() && old('edit_house_id') === null" maxWidth="2xl" focusable>
+            <x-modal name="create-house" :show="$errors->houseCreate->any()" maxWidth="2xl" focusable>
                 <div class="bg-white p-6 sm:p-8" x-data x-on:open-modal.window="if ($event.detail === 'create-house') { $nextTick(() => { $el.querySelectorAll('input:not([type=hidden])').forEach(i => i.value = ''); $el.querySelectorAll('textarea').forEach(t => t.value = ''); $el.querySelectorAll('select').forEach(s => s.selectedIndex = 0); }); }">
                     <div class="flex items-start justify-between gap-4">
                         <div>
@@ -131,7 +131,8 @@
 
                     <form method="POST" action="{{ route('houses.store') }}" class="mt-6 space-y-4">
                         @csrf
-                        @include('houses.partials.form-fields')
+                        <input type="hidden" name="house_form_mode" value="create">
+                        @include('houses.partials.form-fields', ['errorBag' => 'houseCreate'])
 
                         <div class="flex flex-wrap gap-3 pt-2">
                             <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">
@@ -150,7 +151,7 @@
             </x-modal>
 
             @foreach ($houses as $house)
-                <x-modal name="edit-house-{{ $house->house_id }}" :show="(string) old('edit_house_id') === (string) $house->house_id" maxWidth="2xl" focusable>
+                <x-modal name="edit-house-{{ $house->house_id }}" :show="$errors->houseEdit->any() && (string) old('edit_house_id') === (string) $house->house_id" maxWidth="2xl" focusable>
                     <div class="bg-white p-6 sm:p-8">
                         <div class="flex items-start justify-between gap-4">
                             <div>
@@ -172,9 +173,10 @@
                         <form method="POST" action="{{ route('houses.update', $house) }}" class="mt-6 space-y-4">
                             @csrf
                             @method('PUT')
+                            <input type="hidden" name="house_form_mode" value="edit">
                             <input type="hidden" name="edit_house_id" value="{{ $house->house_id }}">
 
-                            @include('houses.partials.form-fields', ['house' => $house])
+                            @include('houses.partials.form-fields', ['house' => $house, 'errorBag' => 'houseEdit'])
 
                             <div class="flex flex-wrap gap-3 pt-2">
                                 <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">

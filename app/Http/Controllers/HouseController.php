@@ -7,6 +7,7 @@ use App\Models\Subdivision;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class HouseController extends Controller
@@ -82,7 +83,7 @@ class HouseController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $this->validateHouse($request);
+        $data = $this->validateHouse($request, null, 'houseCreate');
 
         House::create($data);
 
@@ -94,7 +95,7 @@ class HouseController extends Controller
 
     public function update(Request $request, House $house): RedirectResponse
     {
-        $data = $this->validateHouse($request, $house);
+        $data = $this->validateHouse($request, $house, 'houseEdit');
 
         $house->update($data);
 
@@ -114,29 +115,34 @@ class HouseController extends Controller
             ->with('success', 'House deleted successfully.');
     }
 
-    private function validateHouse(Request $request, ?House $house = null): array
+    private function validateHouse(Request $request, ?House $house = null, string $errorBag = 'default'): array
     {
         $request->merge([
+            'street' => $this->normalizeStreet((string) $request->input('street')),
             'block' => House::normalizeBlock((string) $request->input('block')),
             'lot' => House::normalizeLot((string) $request->input('lot')),
         ]);
 
-        $data = $request->validate([
+        $validator = Validator::make($request->all(), [
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
             'street' => ['required', 'string', 'max:120'],
-            'block' => [
+            'block' => ['required', 'string', 'max:30'],
+            'lot' => [
                 'required',
                 'string',
                 'max:30',
-                Rule::unique('houses', 'block')
+                Rule::unique('houses', 'lot')
                     ->where(function ($query) use ($request) {
                         $query->where('subdivision_id', $request->integer('subdivision_id'))
-                            ->where('lot', House::normalizeLot((string) $request->input('lot')));
+                            ->where('street', $this->normalizeStreet((string) $request->input('street')))
+                            ->where('block', House::normalizeBlock((string) $request->input('block')));
                     })
                     ->ignore($house?->house_id, 'house_id'),
             ],
-            'lot' => ['required', 'string', 'max:30'],
+        ], [
+            'lot.unique' => 'This lot already exists for the same street and block.',
         ]);
+        $data = $validator->validateWithBag($errorBag);
 
         return [
             'subdivision_id' => (int) $data['subdivision_id'],

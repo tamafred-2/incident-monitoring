@@ -1,4 +1,6 @@
 @php
+    $errorBag = $errorBag ?? 'default';
+    $errorsForForm = $errors->getBag($errorBag);
     $selectedSubdivision = old('subdivision_id', $house->subdivision_id ?? '');
     if ($selectedSubdivision === '' || $selectedSubdivision === null) {
         $selectedSubdivision = $subdivisions->first()?->subdivision_id ?? '';
@@ -20,9 +22,9 @@
     <div class="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
         {{ $selectedSubdivisionName }}
     </div>
-    @error('subdivision_id')
-        <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-    @enderror
+    @if ($errorsForForm->has('subdivision_id'))
+        <p class="mt-1 text-xs text-rose-600">{{ $errorsForForm->first('subdivision_id') }}</p>
+    @endif
 </div>
 
 <div class="grid gap-4 md:grid-cols-2" x-data="{ streetSelection: '{{ $streetSelection }}' }">
@@ -56,9 +58,9 @@
             <input type="hidden" name="street" :value="streetSelection">
         </template>
 
-        @error('street')
-            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-        @enderror
+        @if ($errorsForForm->has('street'))
+            <p class="mt-1 text-xs text-rose-600">{{ $errorsForForm->first('street') }}</p>
+        @endif
     </div>
     <div>
         <label class="block text-sm font-medium text-slate-700">Block</label>
@@ -71,9 +73,9 @@
             placeholder="e.g. 3"
             class="mt-1 w-full rounded-xl border-slate-300 text-sm uppercase shadow-sm focus:border-sky-500 focus:ring-sky-500"
         >
-        @error('block')
-            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-        @enderror
+        @if ($errorsForForm->has('block'))
+            <p class="mt-1 text-xs text-rose-600">{{ $errorsForForm->first('block') }}</p>
+        @endif
     </div>
     <div>
         <label class="block text-sm font-medium text-slate-700">Lot</label>
@@ -86,8 +88,8 @@
             placeholder="e.g. 12"
             class="mt-1 w-full rounded-xl border-slate-300 text-sm uppercase shadow-sm focus:border-sky-500 focus:ring-sky-500"
         >
-        @error('lot')
-            <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
-        @enderror
+        @if ($errorsForForm->has('lot'))
+            <p class="mt-1 text-xs text-rose-600">{{ $errorsForForm->first('lot') }}</p>
+        @endif
     </div>
 </div>
