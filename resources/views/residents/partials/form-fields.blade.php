@@ -174,7 +174,7 @@
         <div class="mt-4">
             <label class="block text-sm font-medium text-slate-700">Relation to Head/Owner</label>
             @php
-                $relationOptions = ['Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
+                $relationOptions = ['Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
                 $savedRelation = old('relation_to_owner', $resident?->relation_to_owner ?? '');
                 $isCustomRelation = $savedRelation !== '' && !in_array($savedRelation, $relationOptions, true);
                 $selectedRelation = $isCustomRelation ? 'Other' : $savedRelation;
@@ -203,10 +203,10 @@
                 >
             </div>
             @error('relation_to_owner')
-                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                <p data-validation-error class="mt-1 text-xs text-rose-600">{{ $message }}</p>
             @enderror
             @error('relation_to_owner_other')
-                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                <p data-validation-error class="mt-1 text-xs text-rose-600">{{ $message }}</p>
             @enderror
             <p class="mt-1 text-xs text-slate-500">Define how this resident is related to the lot/house head or owner.</p>
         </div>
@@ -244,7 +244,7 @@
                                 class="mt-1 w-full rounded-xl text-sm shadow-sm focus:ring-sky-500 @error('account_email') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-sky-500 @enderror"
                             >
                             @error('account_email')
-                                <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
+                                <p data-validation-error class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                             @enderror
                         </div>
                         <div>

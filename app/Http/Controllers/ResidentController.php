@@ -240,7 +240,7 @@ class ResidentController extends Controller
         }
 
         if ($relation !== '') {
-            $allowedRelations = ['Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
+            $allowedRelations = ['Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
             if (!in_array($relation, $allowedRelations, true)) {
                 $relation = Str::title($relation);
             }
@@ -258,7 +258,7 @@ class ResidentController extends Controller
             }
         }
 
-        if (in_array($relation, ['Husband', 'Wife'], true) && $house) {
+        if (in_array($relation, ['Owner', 'Husband', 'Wife'], true) && $house) {
             $houseResidents = Resident::query()
                 ->where('house_id', $house->house_id)
                 ->when($resident, fn ($query) => $query->where('resident_id', '!=', $resident->resident_id))
@@ -273,8 +273,24 @@ class ResidentController extends Controller
 
             if (($relation === 'Husband' && $husbandSlotTaken) || ($relation === 'Wife' && $wifeSlotTaken)) {
                 throw ValidationException::withMessages([
-                    'relation_to_owner' => 'This house already has a husband/wife pair. Owner + Wife means owner is husband, and Owner + Husband means owner is wife, so another spouse cannot be added.',
+                    'relation_to_owner' => 'Cannot add this relation. This house already has a spouse pair: Owner + Wife (owner is husband) or Owner + Husband (owner is wife).',
                 ]);
+            }
+
+            if ($relation === 'Owner') {
+                if ($hasOwner) {
+                    throw ValidationException::withMessages([
+                        'relation_to_owner' => 'This house already has an owner.',
+                    ]);
+                }
+
+                // Owner + Wife implies owner is husband; Owner + Husband implies owner is wife.
+                // If both spouse roles already exist, adding owner would create an invalid duplicate spouse mapping.
+                if ($hasHusband && $hasWife) {
+                    throw ValidationException::withMessages([
+                        'relation_to_owner' => 'Cannot set Owner for this house because both Husband and Wife are already assigned.',
+                    ]);
+                }
             }
         }
 

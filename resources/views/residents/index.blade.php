@@ -238,7 +238,21 @@
             @foreach ($residents as $resident)
                 @if (auth()->user()->isAdmin())
                     <x-modal name="edit-resident-{{ $resident->resident_id }}" :show="(string) old('edit_resident_id') === (string) $resident->resident_id" maxWidth="3xl" focusable>
-                        <div class="p-6 bg-white sm:p-8">
+                        <div
+                            class="p-6 bg-white sm:p-8"
+                            x-data
+                            x-on:open-modal.window="
+                                if ($event.detail === 'edit-resident-{{ $resident->resident_id }}') {
+                                    $nextTick(() => {
+                                        $el.querySelectorAll('[data-validation-error]').forEach(node => node.remove());
+                                        $el.querySelectorAll('.border-rose-300').forEach(node => {
+                                            node.classList.remove('border-rose-300', 'focus:border-rose-500');
+                                            node.classList.add('border-slate-300', 'focus:border-sky-500');
+                                        });
+                                    });
+                                }
+                            "
+                        >
                             <div class="flex items-start justify-between gap-4">
                                 <div>
                                     <h3 class="text-lg font-semibold text-slate-900">Edit Resident</h3>

@@ -58,6 +58,17 @@
                 <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
                     <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Assigned Residents</h4>
                     @if ($house->residents->isNotEmpty())
+                        @php
+                            $ownerResident = $house->residents->first(function ($resident) {
+                                return strcasecmp((string) $resident->relation_to_owner, 'Owner') === 0;
+                            });
+                        @endphp
+
+                        <div class="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3">
+                            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">Owner</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-900">{{ $ownerResident?->full_name ?? 'No owner assigned' }}</p>
+                        </div>
+
                         <div class="mt-4 overflow-x-auto">
                             <table class="min-w-full divide-y divide-slate-200 text-sm">
                                 <thead class="bg-slate-50">
