@@ -6,6 +6,7 @@ use App\Models\House;
 use App\Models\Subdivision;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
@@ -133,8 +134,10 @@ class HouseController extends Controller
                 'max:30',
                 Rule::unique('houses', 'lot')
                     ->where(function ($query) use ($request) {
+                        $normalizedStreet = $this->normalizeStreet((string) $request->input('street'));
+
                         $query->where('subdivision_id', $request->integer('subdivision_id'))
-                            ->where('street', $this->normalizeStreet((string) $request->input('street')))
+                            ->whereRaw('LOWER(street) = ?', [mb_strtolower($normalizedStreet)])
                             ->where('block', House::normalizeBlock((string) $request->input('block')));
                     })
                     ->ignore($house?->house_id, 'house_id'),
@@ -154,7 +157,9 @@ class HouseController extends Controller
 
     private function normalizeStreet(string $value): string
     {
-        return preg_replace('/\s+/', ' ', trim($value)) ?? '';
+        $normalized = preg_replace('/\s+/', ' ', trim($value)) ?? '';
+
+        return Str::title(mb_strtolower($normalized));
     }
 
     private function indexContext(Request $request): array
