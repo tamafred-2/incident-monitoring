@@ -31,6 +31,7 @@
             'title' => 'Core',
             'items' => array_values(array_filter([
                 ['label' => 'Dashboard', 'href' => route('dashboard'), 'active' => 'dashboard'],
+                ($isStaffUser || $isAdminUser) ? ['label' => 'Analytics', 'href' => route('analytics.index'), 'active' => 'analytics.*'] : null,
                 ($isStaffUser || $isSecurityUser || $isAdminUser) ? [
                     'label' => $isAdminUser ? 'House Management' : 'Contacts',
                     'href' => route('subdivisions.index'),

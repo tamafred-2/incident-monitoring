@@ -1,8 +1,10 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import Chart from 'chart.js/auto';
 
 window.Alpine = Alpine;
+window.Chart = Chart;
 window.sidebarNavigation = ({ sectionOpenState }) => ({
     open: false,
     accountOpen: false,

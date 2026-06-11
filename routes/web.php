@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HouseController;
 use App\Http\Controllers\IncidentController;
@@ -23,6 +24,7 @@ Route::get('/subdivision-logo/{subdivision}', [SubdivisionController::class, 'lo
 
 Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('role:admin,staff')->name('analytics.index');
     Route::get('/subdivisions', [SubdivisionController::class, 'index'])->middleware('role:admin,staff,security')->name('subdivisions.index');
     Route::get('/subdivisions/{subdivision}', [SubdivisionController::class, 'show'])->middleware('role:admin,staff,security')->name('subdivisions.show');
     Route::get('/subdivisions/{subdivision}/edit', [SubdivisionController::class, 'edit'])->middleware('role:admin')->name('subdivisions.edit');
