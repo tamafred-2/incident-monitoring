@@ -131,7 +131,7 @@ class IncidentManagementTest extends TestCase
         ]);
 
         $reporter = User::factory()->create([
-            'role' => 'investigator',
+            'role' => 'staff',
             'subdivision_id' => $subdivision->subdivision_id,
         ]);
 

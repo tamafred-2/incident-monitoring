@@ -127,6 +127,44 @@ class SubdivisionController extends Controller
             ->with('success', 'Subdivision updated successfully.');
     }
 
+    public function destroy(Request $request, Subdivision $subdivision): RedirectResponse
+    {
+        $subdivision->delete();
+
+        return redirect()->route('subdivisions.index')
+            ->with('success', 'Subdivision archived successfully.');
+    }
+
+    public function restore(Request $request, int $subdivisionId): RedirectResponse
+    {
+        $subdivision = Subdivision::withTrashed()->findOrFail($subdivisionId);
+
+        if (!$subdivision->trashed()) {
+            return redirect()->route('subdivisions.index', ['view' => 'deleted'])
+                ->with('error', 'That subdivision is already active.');
+        }
+
+        $subdivision->restore();
+
+        return redirect()->route('subdivisions.index', ['view' => 'deleted'])
+            ->with('success', 'Subdivision restored successfully.');
+    }
+
+    public function forceDelete(Request $request, int $subdivisionId): RedirectResponse
+    {
+        $subdivision = Subdivision::withTrashed()->findOrFail($subdivisionId);
+
+        if (!$subdivision->trashed()) {
+            return redirect()->route('subdivisions.index', ['view' => 'deleted'])
+                ->with('error', 'Only archived subdivisions can be permanently deleted.');
+        }
+
+        $subdivision->forceDelete();
+
+        return redirect()->route('subdivisions.index', ['view' => 'deleted'])
+            ->with('success', 'Subdivision permanently deleted.');
+    }
+
     private function resolvePerPage(mixed $value, int $default = 10): int
     {
         $perPage = (int) $value;
