@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\House;
 use App\Models\Subdivision;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
