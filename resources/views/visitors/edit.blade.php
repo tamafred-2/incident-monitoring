@@ -1,10 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">Edit Visitor History</h2>
-                <p class="mt-1 text-sm text-slate-500">Admin-only update for visitor history details.</p>
-            </div>
+            <x-page-header title="Edit Visitor History" subtitle="Admin-only update for visitor history details." />
             <a
                 href="{{ route('visitors.index', $indexContext) }}"
                 class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"

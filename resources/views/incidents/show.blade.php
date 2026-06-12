@@ -1,10 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">Incident Details</h2>
-                <p class="mt-1 text-sm text-slate-500">Full incident information with proof images and pending-to-resolved status tracking.</p>
-            </div>
+            <x-page-header title="Incident Details" subtitle="Full incident information with proof images and pending-to-resolved status tracking." />
             <div class="flex flex-wrap gap-3">
                 <a
                     href="{{ route('incidents.index', $indexContext) }}"
