@@ -1,11 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Dashboard
-            </h2>
-            <p class="mt-1 text-sm text-slate-500">Overview of visitor approvals, resident response tracking, and incident monitoring activity.</p>
-        </div>
+        <x-page-header title="Dashboard" subtitle="Overview of visitor approvals, resident response tracking, and incident monitoring activity." />
     </x-slot>
 
     <div class="py-10">
@@ -14,22 +9,10 @@
 
             @if ($isResidentDashboard)
                 <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <p class="text-sm text-slate-500">Your Subdivision</p>
-                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalSubdivisions }}</p>
-                    </div>
-                    <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <p class="text-sm text-slate-500">Your Complaints</p>
-                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalIncidents }}</p>
-                    </div>
-                    <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <p class="text-sm text-slate-500">Pending Complaints</p>
-                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $residentOpenIncidents }}</p>
-                    </div>
-                    <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <p class="text-sm text-slate-500">Resolved Complaints</p>
-                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $residentResolvedIncidents }}</p>
-                    </div>
+                    <x-stat-card label="Your Subdivision" :value="$totalSubdivisions" />
+                    <x-stat-card label="Your Complaints" :value="$totalIncidents" />
+                    <x-stat-card label="Pending Complaints" :value="$residentOpenIncidents" tone="amber" />
+                    <x-stat-card label="Resolved Complaints" :value="$residentResolvedIncidents" tone="emerald" />
                 </div>
 
                 <div class="p-6 mt-8 bg-white border shadow-sm rounded-2xl border-slate-200">
@@ -51,33 +34,18 @@
                     $canViewVisitorMonitoring = auth()->user()->isAdmin() || auth()->user()->role === 'security';
                 @endphp
                 <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <p class="text-sm text-slate-500">{{ $isStaffDashboard ? 'Active Incidents' : 'Total Incidents' }}</p>
-                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $isStaffDashboard ? $staffActiveIncidents : $totalIncidents }}</p>
-                    </div>
-                    <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <p class="text-sm text-slate-500">Total Residents</p>
-                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalResidents }}</p>
-                    </div>
+                    <x-stat-card
+                        :label="$isStaffDashboard ? 'Active Incidents' : 'Total Incidents'"
+                        :value="$isStaffDashboard ? $staffActiveIncidents : $totalIncidents"
+                    />
+                    <x-stat-card label="Total Residents" :value="$totalResidents" />
                     @if ($isStaffDashboard)
-                        <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                            <p class="text-sm text-slate-500">Pending Incidents</p>
-                            <p class="mt-2 text-3xl font-bold text-slate-900">{{ $staffPendingIncidents }}</p>
-                        </div>
+                        <x-stat-card label="Pending Incidents" :value="$staffPendingIncidents" tone="amber" />
                     @endif
-                    <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <p class="text-sm text-slate-500">Total Houses</p>
-                        <p class="mt-2 text-3xl font-bold text-slate-900">{{ $totalHouses }}</p>
-                    </div>
+                    <x-stat-card label="Total Houses" :value="$totalHouses" />
                     @if ($canViewVisitorMonitoring)
-                        <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                            <p class="text-sm text-slate-500">Visitors Today</p>
-                            <p class="mt-2 text-3xl font-bold text-slate-900">{{ $visitorsToday }}</p>
-                        </div>
-                        <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                            <p class="text-sm text-slate-500">Visitors Inside</p>
-                            <p class="mt-2 text-3xl font-bold text-slate-900">{{ $visitorsInside }}</p>
-                        </div>
+                        <x-stat-card label="Visitors Today" :value="$visitorsToday" />
+                        <x-stat-card label="Visitors Inside" :value="$visitorsInside" tone="sky" />
                     @endif
                 </div>
 
@@ -119,9 +87,7 @@
                                                 <td class="px-6 py-4 text-slate-700">{{ $pendingIncident->category ?: '-' }}</td>
                                                 <td class="px-6 py-4 text-slate-600">{{ $pendingIncident->location ?: '-' }}</td>
                                                 <td class="px-6 py-4">
-                                                    <span class="inline-flex px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">
-                                                        {{ $pendingIncident->status }}
-                                                    </span>
+                                                    <x-status-badge :status="$pendingIncident->status" />
                                                 </td>
                                                 <td class="px-6 py-4 text-slate-600">
                                                     @if ($pendingIncident->reported_at)

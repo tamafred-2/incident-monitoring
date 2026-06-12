@@ -1,13 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">
-                Analytics
-            </h2>
-            <p class="mt-1 text-sm text-slate-500">
-                Incident, visitor, and community trends &mdash; {{ $scopeLabel }}.
-            </p>
-        </div>
+        <x-page-header title="Analytics" :subtitle="'Incident, visitor, and community trends — ' . $scopeLabel . '.'" />
     </x-slot>
 
     <div class="py-10">
@@ -16,42 +9,14 @@
 
             {{-- Summary stat cards --}}
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <p class="text-sm text-slate-500">Total Incidents</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $summary['total_incidents'] }}</p>
-                    <p class="mt-1 text-xs text-slate-400">{{ $summary['pending_incidents'] }} pending</p>
-                </div>
-                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <p class="text-sm text-slate-500">Resolution Rate</p>
-                    <p class="mt-2 text-3xl font-bold text-emerald-600">{{ $summary['resolution_rate'] }}%</p>
-                    <p class="mt-1 text-xs text-slate-400">{{ $summary['resolved_incidents'] }} resolved</p>
-                </div>
-                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <p class="text-sm text-slate-500">Avg. Resolution Time</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $summary['avg_resolution_label'] }}</p>
-                    <p class="mt-1 text-xs text-slate-400">reported &rarr; resolved</p>
-                </div>
-                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <p class="text-sm text-slate-500">Total Visitors</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $summary['total_visitors'] }}</p>
-                    <p class="mt-1 text-xs text-slate-400">{{ $summary['visitors_inside'] }} currently inside</p>
-                </div>
-                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <p class="text-sm text-slate-500">Total Residents</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $summary['total_residents'] }}</p>
-                </div>
-                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <p class="text-sm text-slate-500">Total Houses</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $summary['total_houses'] }}</p>
-                </div>
-                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <p class="text-sm text-slate-500">Avg. Residents / House</p>
-                    <p class="mt-2 text-3xl font-bold text-slate-900">{{ $community['avg_residents_per_house'] }}</p>
-                </div>
-                <div class="p-5 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <p class="text-sm text-slate-500">Pending Incidents</p>
-                    <p class="mt-2 text-3xl font-bold text-amber-600">{{ $summary['pending_incidents'] }}</p>
-                </div>
+                <x-stat-card label="Total Incidents" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
+                <x-stat-card label="Resolution Rate" :value="$summary['resolution_rate'] . '%'" :hint="$summary['resolved_incidents'] . ' resolved'" tone="emerald" />
+                <x-stat-card label="Avg. Resolution Time" :value="$summary['avg_resolution_label']" hint="reported → resolved" />
+                <x-stat-card label="Total Visitors" :value="$summary['total_visitors']" :hint="$summary['visitors_inside'] . ' currently inside'" />
+                <x-stat-card label="Total Residents" :value="$summary['total_residents']" />
+                <x-stat-card label="Total Houses" :value="$summary['total_houses']" />
+                <x-stat-card label="Avg. Residents / House" :value="$community['avg_residents_per_house']" />
+                <x-stat-card label="Pending Incidents" :value="$summary['pending_incidents']" tone="amber" />
             </div>
 
             {{-- Incident analytics --}}
