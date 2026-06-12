@@ -1,9 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">Residents</h2>
-            <p class="mt-1 text-sm text-slate-500">Manage resident records and house assignments used in visitor approval and incident monitoring.</p>
-        </div>
+        <x-page-header title="Residents" subtitle="Manage resident records and house assignments used in visitor approval and incident monitoring." />
     </x-slot>
 
     <div class="py-10">
@@ -86,9 +83,7 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-slate-600">
-                                        <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold {{ $resident->status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
-                                            {{ $resident->status }}
-                                        </span>
+                                        <x-status-badge :status="$resident->status" class="whitespace-nowrap" />
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3 flex-nowrap">

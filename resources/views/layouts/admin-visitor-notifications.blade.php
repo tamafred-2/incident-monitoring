@@ -31,7 +31,7 @@
         x-cloak
         x-show="open"
         x-transition.origin.top.right.duration.200ms
-        class="absolute right-0 mt-3 w-[22rem] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5"
+        class="absolute right-0 mt-3 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5"
     >
         <div class="border-b border-slate-200 px-5 py-4">
             <div class="flex items-start justify-between gap-4">

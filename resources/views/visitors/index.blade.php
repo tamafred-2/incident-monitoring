@@ -11,10 +11,7 @@
 
     <x-slot name="header">
         <div class="flex items-start justify-between gap-4">
-            <div>
-                <h2 class="text-xl font-semibold leading-tight text-gray-800">Visitors</h2>
-                <p class="mt-1 text-sm text-slate-500">Visitor approval follows the corrected flow: contact resident using the registered phone number or use the automated resident response request.</p>
-            </div>
+            <x-page-header title="Visitors" subtitle="Visitor approval follows the corrected flow: contact resident using the registered phone number or use the automated resident response request." />
 
             <div
                 x-data="{ reminderOpen: false }"
@@ -885,9 +882,7 @@
                                             <span class="whitespace-nowrap">{{ $visitor->visit_duration_label }}</span>
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
-                                            <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold {{ $visitor->status === 'Inside' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
-                                                {{ $visitor->status }}
-                                            </span>
+                                            <x-status-badge :status="$visitor->status" class="whitespace-nowrap" />
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
                                             <div class="flex items-center gap-2">

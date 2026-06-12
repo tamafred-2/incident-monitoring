@@ -1,9 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <div>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">My Visitors</h2>
-            <p class="mt-1 text-sm text-slate-500">Respond to visitor requests so Admin/Guard can allow or deny entry using your confirmed resident response.</p>
-        </div>
+        <x-page-header title="My Visitors" subtitle="Respond to visitor requests so Admin/Guard can allow or deny entry using your confirmed resident response." />
     </x-slot>
 
     <div class="py-10">

@@ -4,10 +4,10 @@
     @endphp
 
     <x-slot name="header">
-        <div>
-            <h2 class="text-xl font-semibold leading-tight text-gray-800">{{ $isResidentViewer ? 'My Incidents' : 'Incidents' }}</h2>
-            <p class="mt-1 text-sm text-slate-500">{{ $isResidentViewer ? 'Track your submitted incident reports and their current status.' : 'Incident reporting supports manual or system submission, then tracks each case from pending handling to resolved status.' }}</p>
-        </div>
+        <x-page-header
+            :title="$isResidentViewer ? 'My Incidents' : 'Incidents'"
+            :subtitle="$isResidentViewer ? 'Track your submitted incident reports and their current status.' : 'Incident reporting supports manual or system submission, then tracks each case from pending handling to resolved status.'"
+        />
     </x-slot>
 
     @php
