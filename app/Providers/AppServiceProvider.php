@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Support\VisitorActivityFeed;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
@@ -22,6 +23,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Administrators implicitly hold every Spatie permission.
+        Gate::before(function ($user, string $ability): ?bool {
+            return $user->isAdmin() ? true : null;
+        });
+
         View::composer(['layouts.app', 'layouts.navigation'], function ($view): void {
             $user = auth()->user();
 

@@ -11,11 +11,21 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Role as SpatieRole;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasFactory, Notifiable, SoftDeletes, HasRoles {
+        HasRoles::hasRole as protected spatieHasRole;
+    }
+
+    /**
+     * Spatie guard backing the role/permission assignments.
+     */
+    protected string $guard_name = 'web';
 
     protected $primaryKey = 'user_id';
 
@@ -62,6 +72,31 @@ class User extends Authenticatable
                 );
             }
         });
+
+        static::saved(function (self $user): void {
+            $user->syncSpatieRoleFromColumn();
+        });
+    }
+
+    /**
+     * Keep the Spatie role assignment in sync with the canonical `role` column.
+     */
+    public function syncSpatieRoleFromColumn(): void
+    {
+        if (blank($this->role) || !Schema::hasTable('roles')) {
+            return;
+        }
+
+        try {
+            $role = SpatieRole::findOrCreate($this->role, $this->guard_name);
+
+            if (!$this->roles()->where($role->getKeyName(), $role->getKey())->exists()) {
+                $this->syncRoles([$role->name]);
+            }
+        } catch (\Throwable $exception) {
+            // Never block user persistence on a role-sync hiccup.
+            report($exception);
+        }
     }
 
     public static function formatFullName(
@@ -138,15 +173,30 @@ class User extends Authenticatable
         return $this->role === 'resident';
     }
 
-    public function hasRole(string|array $roles): bool
+    /**
+     * Role check used throughout the app. Admins implicitly pass any role gate.
+     *
+     * Accepts role-name strings/arrays (matched against the canonical `role`
+     * column) and also defers to Spatie's implementation when called with Role
+     * models/collections (e.g. from Spatie's permission-via-role internals).
+     */
+    public function hasRole($roles, ?string $guard = null): bool
     {
         if ($this->isAdmin()) {
             return true;
         }
 
-        $roles = is_array($roles) ? $roles : [$roles];
+        if (!is_string($roles) && !is_array($roles)) {
+            return $this->spatieHasRole($roles, $guard);
+        }
 
-        return in_array($this->role, $roles, true);
+        $list = is_array($roles) ? $roles : [$roles];
+
+        if (collect($list)->contains(fn ($role) => !is_string($role))) {
+            return $this->spatieHasRole($roles, $guard);
+        }
+
+        return in_array($this->role, $list, true);
     }
 
     public function allowedSubdivisionId(): ?int
