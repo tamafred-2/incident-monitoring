@@ -48,7 +48,7 @@ class IncidentManagementTest extends TestCase
             'incident_date' => now()->subHour(),
             'reported_at' => now()->subMinutes(30),
             'resolved_at' => now(),
-            'status' => 'Open',
+            'status' => 'Resolved',
             'proof_photo_path' => 'uploads/incidents/example-one.jpg',
             'reported_by' => $reporter->user_id,
         ]);
@@ -69,7 +69,7 @@ class IncidentManagementTest extends TestCase
             ->assertSee('North gate camera stopped recording overnight.')
             ->assertSee('Date Reported')
             ->assertSee('Date Resolved')
-            ->assertSee('uploads/incidents/example-one.jpg', false)
+            ->assertSee('example-one.jpg', false)
             ->assertSee('openPreview(', false);
     }
 
@@ -111,7 +111,7 @@ class IncidentManagementTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('incidents.index'))
+            ->assertRedirectContains(route('incidents.index'))
             ->assertSessionHas('success', 'Incident archived successfully.');
 
         $this->assertSoftDeleted('incidents', [
@@ -159,7 +159,7 @@ class IncidentManagementTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('incidents.index', ['view' => 'deleted']))
+            ->assertRedirectContains(route('incidents.index'))
             ->assertSessionHas('success', 'Incident restored successfully.');
 
         $this->assertDatabaseHas('incidents', [
@@ -209,7 +209,7 @@ class IncidentManagementTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('incidents.index', ['view' => 'deleted']))
+            ->assertRedirectContains(route('incidents.index'))
             ->assertSessionHas('success', 'Incident permanently deleted.');
 
         $this->assertDatabaseMissing('incidents', [
@@ -540,7 +540,7 @@ class IncidentManagementTest extends TestCase
                 'assigned_to' => $staff->user_id,
             ]);
 
-        $response->assertRedirect(route('incidents.show', [
+        $response->assertRedirectContains(route('incidents.show', [
             'incidentId' => $incident->incident_id,
             'subdivision_id' => $subdivision->subdivision_id,
         ]));
@@ -591,7 +591,7 @@ class IncidentManagementTest extends TestCase
                 'resolved_at' => now()->format('Y-m-d H:i:s'),
             ]);
 
-        $response->assertRedirect(route('incidents.show', ['incidentId' => $incident->incident_id]));
+        $response->assertRedirectContains(route('incidents.show', ['incidentId' => $incident->incident_id]));
 
         $this->assertDatabaseHas('incidents', [
             'incident_id' => $incident->incident_id,

@@ -49,6 +49,11 @@
                             <div class="min-w-0 flex-1">
                                 {{ $header }}
                             </div>
+                            @if (auth()->user()?->isAdmin())
+                                <div class="flex-none">
+                                    @include('layouts.admin-visitor-notifications')
+                                </div>
+                            @endif
                         </div>
                     </header>
                 @endisset

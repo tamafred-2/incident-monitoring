@@ -232,10 +232,9 @@ class IncidentController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $isResident = $request->user()->isResident();
         $data = $request->validate(
-            $this->incidentValidationRules(
-                false
-            )
+            $this->incidentValidationRules($isResident)
         );
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
@@ -250,9 +249,13 @@ class IncidentController extends Controller
             ])->withInput();
         }
 
-        $status = $this->mapIncidentStatusForStorage((string) $data['status']);
+        $reportedAt = $isResident ? now()->format('Y-m-d H:i:s') : $data['reported_at'];
+        $status = $isResident
+            ? $this->mapIncidentStatusForStorage('Open')
+            : $this->mapIncidentStatusForStorage((string) $data['status']);
+
         $proofPhotoUploadCount = count((array) $request->file('proof_photos', []));
-        if ($this->requiresProofPhotoForStatus($status) && $proofPhotoUploadCount < 1) {
+        if (!$isResident && $this->requiresProofPhotoForStatus($status) && $proofPhotoUploadCount < 1) {
             return back()->withErrors([
                 'proof_photos' => 'At least one proof image is required when incident status is Resolved (Close).',
             ])->withInput();
@@ -266,8 +269,8 @@ class IncidentController extends Controller
             'category' => $this->resolveCategory($data),
             'location' => $this->resolveLocation($data),
             'incident_date' => $data['incident_date'],
-            'reported_at' => $data['reported_at'],
-            'resolved_at' => $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $data['reported_at']], null),
+            'reported_at' => $reportedAt,
+            'resolved_at' => $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $reportedAt], null),
             'status' => $status,
             'proof_photo_path' => $proofPhotoPaths[0] ?? null,
             'reported_by' => $request->user()->user_id,
@@ -293,7 +296,7 @@ class IncidentController extends Controller
             'indexContext' => $this->indexContext($request),
             'proofPhotos' => $this->proofPhotosFor($incident),
             'incidentCategories' => $this->incidentCategories(),
-            'isFullEditor' => $request->user()->isAdmin() || $request->user()->hasRole(['staff']),
+            'isFullEditor' => $request->user()->isAdmin(),
         ]);
     }
 
@@ -301,7 +304,7 @@ class IncidentController extends Controller
     {
         $incident = $this->findIncidentOrFail($request, $incidentId);
         $this->authorizeIncidentEdit($request, $incident);
-        $isFullEditor = $request->user()->isAdmin() || $request->user()->hasRole(['staff']);
+        $isFullEditor = $request->user()->isAdmin();
         $previousStatus = $incident->status;
         $data = $request->validate($isFullEditor
             ? $this->incidentValidationRules(false)
@@ -315,14 +318,6 @@ class IncidentController extends Controller
             $existingProofPhotoPaths,
             $data['remove_proof_photos'] ?? []
         );
-        $newProofPhotoUploadCount = count((array) $request->file('proof_photos', []));
-        $remainingProofPhotoCount = count(array_diff($existingProofPhotoPaths, $proofPhotosToRemove));
-
-        if ($this->requiresProofPhotoForStatus($status) && ($remainingProofPhotoCount + $newProofPhotoUploadCount) < 1) {
-            return back()->withErrors([
-                'proof_photos' => 'At least one proof image is required when incident status is Resolved (Close).',
-            ])->withInput();
-        }
 
         if ($isFullEditor) {
             $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
@@ -336,6 +331,12 @@ class IncidentController extends Controller
                     'house_id' => 'Please select a valid house for the selected subdivision.',
                 ])->withInput();
             }
+
+            $assignedTo = $this->resolveAssignedStaffId($data['assigned_to'] ?? null, $subdivisionId);
+            if ($assignedTo !== null && $this->isPrimaryPendingStatus($status)) {
+                $status = $this->secondaryPendingStatus();
+            }
+
             $incident->update([
                 'subdivision_id' => $subdivisionId,
                 'house_id' => $houseId,
@@ -346,7 +347,7 @@ class IncidentController extends Controller
                 'reported_at' => $data['reported_at'],
                 'resolved_at' => $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $data['reported_at']], $incident),
                 'status' => $status,
-                'assigned_to' => null,
+                'assigned_to' => $assignedTo,
             ]);
 
             $this->notifyIncidentStatusIfNeeded($incident, $previousStatus);
@@ -498,11 +499,12 @@ class IncidentController extends Controller
             'subdivision_id' => ['nullable', 'integer'],
             'house_id' => ['required', 'integer', 'exists:houses,house_id'],
             'description' => ['required', 'string'],
-            'category' => ['required', 'string', 'max:100', Rule::in($this->incidentCategories())],
+            'category' => ['nullable', 'string', 'max:100', Rule::in($this->incidentCategories())],
             'category_other' => ['nullable', 'string', 'max:100', 'required_if:category,Other'],
-            'location' => ['required', 'string', 'max:150'],
+            'location' => ['nullable', 'string', 'max:150'],
             'location_other' => ['nullable', 'string', 'max:150', 'required_if:location,__other__'],
             'incident_date' => ['required', 'date'],
+            'assigned_to' => ['nullable', 'integer', 'exists:users,user_id'],
             'proof_photos' => ['nullable', 'array', 'max:10'],
             'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'remove_proof_photos' => ['nullable', 'array'],
@@ -542,6 +544,22 @@ class IncidentController extends Controller
         return House::where('house_id', $houseId)->where('subdivision_id', $subdivisionId)->exists()
             ? $houseId
             : null;
+    }
+
+    private function resolveAssignedStaffId(mixed $assignedTo, int $subdivisionId): ?int
+    {
+        $assignedId = (int) ($assignedTo ?? 0);
+        if ($assignedId < 1) {
+            return null;
+        }
+
+        $isAssignable = User::query()
+            ->whereKey($assignedId)
+            ->where('role', 'staff')
+            ->where('subdivision_id', $subdivisionId)
+            ->exists();
+
+        return $isAssignable ? $assignedId : null;
     }
 
     private function resolveLocation(array $data): ?string
@@ -986,6 +1004,7 @@ class IncidentController extends Controller
             'Open',
             'Under Investigation',
             'Resolved',
+            'Closed',
         ];
     }
 

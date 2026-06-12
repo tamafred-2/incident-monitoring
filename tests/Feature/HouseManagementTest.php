@@ -29,6 +29,7 @@ class HouseManagementTest extends TestCase
             ->actingAs($admin)
             ->post(route('houses.store'), [
                 'subdivision_id' => $subdivision->subdivision_id,
+                'street' => 'Main Street',
                 'block' => '3',
                 'lot' => '12',
             ]);
@@ -116,6 +117,7 @@ class HouseManagementTest extends TestCase
 
         House::create([
             'subdivision_id' => $subdivision->subdivision_id,
+            'street' => 'Main Street',
             'block' => 'A',
             'lot' => '7',
         ]);
@@ -125,13 +127,14 @@ class HouseManagementTest extends TestCase
             ->from(route('houses.index'))
             ->post(route('houses.store'), [
                 'subdivision_id' => $subdivision->subdivision_id,
+                'street' => 'Main Street',
                 'block' => 'A',
                 'lot' => '7',
             ]);
 
         $response
             ->assertRedirect(route('houses.index'))
-            ->assertSessionHasErrors('block');
+            ->assertSessionHasErrors(['lot'], null, 'houseCreate');
     }
 
     public function test_same_block_and_lot_can_exist_in_different_subdivisions(): void
@@ -153,6 +156,7 @@ class HouseManagementTest extends TestCase
 
         House::create([
             'subdivision_id' => $firstSubdivision->subdivision_id,
+            'street' => 'Main Street',
             'block' => '5',
             'lot' => '9',
         ]);
@@ -161,6 +165,7 @@ class HouseManagementTest extends TestCase
             ->actingAs($admin)
             ->post(route('houses.store'), [
                 'subdivision_id' => $secondSubdivision->subdivision_id,
+                'street' => 'Main Street',
                 'block' => '5',
                 'lot' => '9',
             ]);

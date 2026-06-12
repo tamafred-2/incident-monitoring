@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\House;
+use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Models\Visitor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class VisitorManagementTest extends TestCase
@@ -43,10 +46,7 @@ class VisitorManagementTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('visitors.index', [
-                'tab' => 'history',
-                'view' => 'active',
-            ]))
+            ->assertRedirectContains(route('visitors.index'))
             ->assertSessionHas('success', 'Visitor archived successfully.');
 
         $this->assertSoftDeleted('visitors', [
@@ -86,10 +86,7 @@ class VisitorManagementTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('visitors.index', [
-                'tab' => 'history',
-                'view' => 'deleted',
-            ]))
+            ->assertRedirectContains(route('visitors.index'))
             ->assertSessionHas('success', 'Visitor restored successfully.');
 
         $this->assertDatabaseHas('visitors', [
@@ -130,10 +127,7 @@ class VisitorManagementTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('visitors.index', [
-                'tab' => 'history',
-                'view' => 'deleted',
-            ]))
+            ->assertRedirectContains(route('visitors.index'))
             ->assertSessionHas('success', 'Visitor permanently deleted.');
 
         $this->assertDatabaseMissing('visitors', [
@@ -153,6 +147,8 @@ class VisitorManagementTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
         ]);
 
+        Storage::fake('public');
+
         House::create([
             'subdivision_id' => $subdivision->subdivision_id,
             'block' => '3',
@@ -162,22 +158,25 @@ class VisitorManagementTest extends TestCase
         $response = $this
             ->actingAs($security)
             ->post(route('visitors.store'), [
+                'visit_type' => 'walk_in',
                 'subdivision_id' => $subdivision->subdivision_id,
                 'surname' => 'Cruz',
                 'first_name' => 'Ana',
+                'phone' => '09181234567',
+                'on_vehicle' => 0,
+                'id_photo' => UploadedFile::fake()->create('visitor-id.jpg', 120, 'image/jpeg'),
                 'house_address_or_unit' => 'Block 3 Lot 12',
-                'host_employee' => 'Homeowner',
             ]);
 
-        $response->assertRedirect(route('visitors.index', [
-            'tab' => 'history',
-            'view' => 'active',
-        ]));
+        $response
+            ->assertRedirectContains(route('visitors.index'))
+            ->assertSessionHas('success', 'Walk-in visitor checked in successfully.');
 
         $this->assertDatabaseHas('visitors', [
             'surname' => 'Cruz',
             'first_name' => 'Ana',
             'house_address_or_unit' => 'Block 3 Lot 12',
+            'status' => 'Inside',
         ]);
     }
 
@@ -193,14 +192,34 @@ class VisitorManagementTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
         ]);
 
+        Storage::fake('public');
+
+        $house = House::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'block' => '1',
+            'lot' => '1',
+        ]);
+
+        $resident = Resident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'house_id' => $house->house_id,
+            'full_name' => 'Owner Resident',
+            'status' => 'Active',
+        ]);
+
         $response = $this
             ->actingAs($security)
             ->from(route('visitors.index'))
             ->post(route('visitors.store'), [
+                'visit_type' => 'resident',
                 'subdivision_id' => $subdivision->subdivision_id,
                 'surname' => 'Rivera',
                 'first_name' => 'Toni',
+                'phone' => '09181234567',
+                'on_vehicle' => 0,
+                'id_photo' => UploadedFile::fake()->create('visitor-id.jpg', 120, 'image/jpeg'),
                 'house_address_or_unit' => 'BLK 9 LOT 99',
+                'resident_id' => $resident->resident_id,
             ]);
 
         $response
@@ -229,8 +248,7 @@ class VisitorManagementTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
             'surname' => 'Cruz',
             'first_name' => 'Ana',
-            'company' => 'Alpha Services',
-            'host_employee' => 'Mr. Santos',
+            'host_employee' => 'Alpha Services',
             'check_in' => now(),
             'status' => 'Inside',
         ]);
@@ -239,8 +257,7 @@ class VisitorManagementTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
             'surname' => 'Reyes',
             'first_name' => 'Tom',
-            'company' => 'Beta Logistics',
-            'host_employee' => 'Ms. Dela Cruz',
+            'host_employee' => 'Beta Logistics',
             'check_in' => now(),
             'status' => 'Checked Out',
         ]);

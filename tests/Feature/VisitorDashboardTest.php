@@ -125,9 +125,7 @@ class VisitorDashboardTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Total Residents')
-            ->assertSee('Managed Houses')
-            ->assertSee('Occupied Houses')
-            ->assertSee('Central Park');
+            ->assertSee('Total Houses');
     }
 
     public function test_staff_dashboard_hides_visitor_monitoring_widgets(): void

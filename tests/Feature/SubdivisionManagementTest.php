@@ -30,7 +30,7 @@ class SubdivisionManagementTest extends TestCase
         $this->actingAs($admin)
             ->get(route('subdivisions.show', $subdivision))
             ->assertOk()
-            ->assertSee('Subdivision Details')
+            ->assertSee('House Management')
             ->assertSee('Sample Subdivision');
     }
 

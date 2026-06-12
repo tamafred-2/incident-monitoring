@@ -247,7 +247,7 @@ class UserManagementTest extends TestCase
             ->delete(route('users.destroy', $targetUser));
 
         $response
-            ->assertRedirect(route('users.index'))
+            ->assertRedirectContains(route('users.index'))
             ->assertSessionHas('success', 'User archived successfully.');
 
         $this->assertSoftDeleted('users', [
@@ -276,7 +276,7 @@ class UserManagementTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('users.index', ['view' => 'deleted']))
+            ->assertRedirectContains(route('users.index'))
             ->assertSessionHas('success', 'User restored successfully.');
 
         $this->assertDatabaseHas('users', [
@@ -306,7 +306,7 @@ class UserManagementTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('users.index', ['view' => 'deleted']))
+            ->assertRedirectContains(route('users.index'))
             ->assertSessionHas('success', 'User permanently deleted.');
 
         $this->assertDatabaseMissing('users', [

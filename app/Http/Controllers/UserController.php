@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\House;
+use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -79,19 +82,33 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate(
-            [
-                'surname' => ['required', 'string', 'max:100'],
-                'first_name' => ['required', 'string', 'max:100'],
-                'middle_name' => ['nullable', 'string', 'max:100'],
-                'extension' => ['nullable', 'string', 'max:20'],
-                'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
-                'role' => ['required', Rule::in(['admin', 'security', 'staff'])],
-                'is_active' => ['nullable', 'boolean'],
-                'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
-                'password' => ['required', 'string', 'min:8', 'confirmed'],
-            ]
-        );
+        $isResident = $request->input('role') === 'resident';
+
+        $rules = [
+            'surname' => ['required', 'string', 'max:100'],
+            'first_name' => ['required', 'string', 'max:100'],
+            'middle_name' => ['nullable', 'string', 'max:100'],
+            'extension' => ['nullable', 'string', 'max:20'],
+            'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
+            'role' => ['required', Rule::in(['admin', 'security', 'staff', 'resident'])],
+            'is_active' => ['nullable', 'boolean'],
+            'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ];
+
+        if ($isResident) {
+            $rules['resident_mode'] = ['nullable', Rule::in(['existing', 'new'])];
+            $rules['resident_id'] = ['nullable', 'integer', 'exists:residents,resident_id'];
+            $rules['new_resident_subdivision_id'] = ['nullable', 'integer', 'exists:subdivisions,subdivision_id'];
+            $rules['new_resident_house_id'] = ['nullable', 'integer', 'exists:houses,house_id'];
+            $rules['new_resident_phone'] = ['nullable', 'string', 'max:40'];
+        }
+
+        $data = $request->validate($rules);
+
+        if ($isResident) {
+            return $this->storeResidentAccount($request, $data);
+        }
 
         if ($data['role'] !== 'admin' && empty($data['subdivision_id'])) {
             return back()->withErrors(['subdivision_id' => 'Please select a subdivision for non-admin users.'])->withInput();
@@ -99,14 +116,81 @@ class UserController extends Controller
 
         if ($data['role'] === 'admin') {
             $data['subdivision_id'] = null;
-            $data['resident_id'] = null;
-        } else {
-            $data['resident_id'] = null;
         }
+        $data['resident_id'] = null;
 
         $data['is_active'] = $request->boolean('is_active', true);
 
-        $user = User::create($data);
+        User::create($data);
+
+        return redirect()->route('users.index')
+            ->with('success', 'User created successfully.');
+    }
+
+    private function storeResidentAccount(Request $request, array $data): RedirectResponse
+    {
+        $mode = $request->input('resident_mode', 'existing');
+
+        if ($mode === 'new') {
+            $subdivisionId = (int) $request->input('new_resident_subdivision_id');
+            if (!$subdivisionId) {
+                return back()->withErrors(['new_resident_subdivision_id' => 'Please select a subdivision for the new resident.'])->withInput();
+            }
+
+            $house = House::query()
+                ->where('house_id', (int) $request->input('new_resident_house_id'))
+                ->where('subdivision_id', $subdivisionId)
+                ->first();
+            if (!$house) {
+                return back()->withErrors(['new_resident_house_id' => 'Please select a valid house for the chosen subdivision.'])->withInput();
+            }
+
+            $resident = Resident::create([
+                'subdivision_id' => $subdivisionId,
+                'house_id' => $house->house_id,
+                'full_name' => User::formatFullName($data['first_name'], $data['surname'], $data['middle_name'] ?? null, $data['extension'] ?? null),
+                'phone' => $request->input('new_resident_phone'),
+                'email' => $data['email'],
+                'address_or_unit' => $house->display_address,
+                'status' => 'Active',
+            ]);
+
+            $residentId = $resident->resident_id;
+            $userSubdivisionId = $subdivisionId;
+        } else {
+            $residentId = (int) ($data['resident_id'] ?? 0);
+            if (!$residentId) {
+                return back()->withErrors(['resident_id' => 'Please select a resident record to link to this account.'])->withInput();
+            }
+
+            $resident = Resident::find($residentId);
+            if (!$resident) {
+                return back()->withErrors(['resident_id' => 'The selected resident record was not found.'])->withInput();
+            }
+
+            $alreadyLinked = User::query()
+                ->where('resident_id', $residentId)
+                ->whereNull('deleted_at')
+                ->exists();
+            if ($alreadyLinked) {
+                return back()->withErrors(['resident_id' => 'This resident is already linked to an active account.'])->withInput();
+            }
+
+            $userSubdivisionId = $resident->subdivision_id;
+        }
+
+        User::create([
+            'surname' => $data['surname'],
+            'first_name' => $data['first_name'],
+            'middle_name' => $data['middle_name'] ?? null,
+            'extension' => $data['extension'] ?? null,
+            'email' => $data['email'],
+            'role' => 'resident',
+            'password' => $data['password'],
+            'subdivision_id' => $userSubdivisionId,
+            'resident_id' => $residentId,
+            'is_active' => $request->boolean('is_active', true),
+        ]);
 
         return redirect()->route('users.index')
             ->with('success', 'User created successfully.');
