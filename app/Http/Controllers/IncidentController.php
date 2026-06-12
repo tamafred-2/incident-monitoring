@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Notifications\IncidentUpdatedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Notification;
@@ -210,17 +209,6 @@ class IncidentController extends Controller
         ]);
     }
 
-    public function qrCard(Request $request, int $incidentId): View|Response
-    {
-        $incident = $this->findIncidentOrFail($request, $incidentId);
-        $incident->load(['subdivision', 'house', 'reporter']);
-
-        return view('incidents.qr-card', [
-            'incident' => $incident,
-            'qrPayload' => 'INCIDENT:' . $incident->report_id,
-        ]);
-    }
-
     public function create(Request $request): RedirectResponse
     {
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
@@ -381,33 +369,6 @@ class IncidentController extends Controller
         ))->with('success', 'Incident updated successfully.');
     }
 
-    public function verifyOnScene(Request $request, int $incidentId): RedirectResponse
-    {
-        $incident = $this->findIncidentOrFail($request, $incidentId);
-        $user = $request->user();
-
-        if (!$user->isAdmin() && !$user->canAccessSubdivision($incident->subdivision_id)) {
-            abort(403);
-        }
-
-        if ($incident->verified_on_site_at) {
-            return back()->with('success', 'This incident has already been verified on site.');
-        }
-
-        $status = $this->isPrimaryPendingStatus($incident->status)
-            ? $this->secondaryPendingStatus()
-            : $incident->status;
-        $incident->update([
-            'verified_by_staff_id' => $user->user_id,
-            'verified_on_site_at' => now(),
-            'status' => $status,
-        ]);
-
-        $this->notifyIncidentVerification($incident);
-
-        return back()->with('success', 'Incident verified on site successfully.');
-    }
-
     public function destroy(Request $request, int $incidentId): RedirectResponse
     {
         $incident = $this->findIncidentOrFail($request, $incidentId);
@@ -452,25 +413,6 @@ class IncidentController extends Controller
 
         return redirect()->route('incidents.index', $this->indexContext($request))
             ->with('success', 'Incident permanently deleted.');
-    }
-
-    public function housesBySubdivision(Request $request): JsonResponse
-    {
-        $subdivisionId = (int) $request->query('subdivision_id', 0);
-
-        if (!$subdivisionId || !$request->user()->canAccessSubdivision($subdivisionId)) {
-            return response()->json([]);
-        }
-
-        $houses = House::where('subdivision_id', $subdivisionId)
-            ->orderBy('block')
-            ->orderBy('lot')
-            ->get(['house_id', 'block', 'lot']);
-
-        return response()->json($houses->map(fn ($h) => [
-            'house_id' => $h->house_id,
-            'display_address' => $h->display_address,
-        ]));
     }
 
     public function photo(Request $request, string $path): BinaryFileResponse
@@ -929,27 +871,6 @@ class IncidentController extends Controller
                 $incident,
                 'Incident Status Updated',
                 "Your incident {$incident->report_id} is now {$incident->status}."
-            ));
-        }
-    }
-
-    private function notifyIncidentVerification(Incident $incident): void
-    {
-        $reporter = $incident->reporter;
-        if ($reporter) {
-            Notification::send($reporter, new IncidentUpdatedNotification(
-                $incident,
-                'Incident Verified On Site',
-                "Your incident {$incident->report_id} has been verified on site by {$incident->verifiedStaff?->full_name}."
-            ));
-        }
-
-        $verificationUser = $incident->verifiedStaff;
-        if ($verificationUser && (! $reporter || $verificationUser->user_id !== $reporter->user_id)) {
-            Notification::send($verificationUser, new IncidentUpdatedNotification(
-                $incident,
-                'Incident Verification Confirmed',
-                "You have verified incident {$incident->report_id} on site."
             ));
         }
     }

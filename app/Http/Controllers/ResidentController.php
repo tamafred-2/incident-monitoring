@@ -8,7 +8,6 @@ use App\Models\Subdivision;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -192,20 +191,6 @@ class ResidentController extends Controller
 
         return redirect()->route('residents.index', $this->indexContext($request))
             ->with('success', 'Resident deleted successfully. Linked resident account(s) were archived.');
-    }
-
-    public function qrCard(Request $request, Resident $resident): View|Response
-    {
-        if (!$request->user()->canAccessSubdivision($resident->subdivision_id)) {
-            abort(403);
-        }
-
-        $resident->load(['subdivision', 'house']);
-
-        return view('residents.qr-card', [
-            'resident' => $resident,
-            'qrPayload' => 'RESIDENT:' . $resident->resident_id,
-        ]);
     }
 
     private function validateResident(Request $request, ?Resident $resident = null): array
