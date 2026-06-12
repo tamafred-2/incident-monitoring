@@ -1,3 +1,7 @@
+@php
+    $rememberedEmail = old('email', request()->cookie('remembered_email'));
+@endphp
+
 <x-guest-layout>
     <div class="mb-8">
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Account Access</p>
@@ -9,6 +13,31 @@
 
     <x-auth-session-status class="mb-5" :status="session('status')" />
 
+    @isset($quickLoginUser)
+        <div class="mb-6 rounded-xl border border-sky-100 bg-sky-50/60 p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Welcome back</p>
+            <p class="mt-2 text-sm text-slate-600">
+                Continue as <span class="font-semibold text-slate-900">{{ $quickLoginUser->email }}</span>
+            </p>
+
+            <form method="POST" action="{{ route('quick-login') }}" class="mt-4">
+                @csrf
+                <x-primary-button class="w-full justify-center">
+                    {{ __('Continue as :name', ['name' => $quickLoginUser->first_name ?: $quickLoginUser->email]) }}
+                </x-primary-button>
+            </form>
+
+            <form method="POST" action="{{ route('quick-login.forget') }}" class="mt-3 text-center">
+                @csrf
+                <button
+                    type="submit"
+                    class="text-sm font-medium text-slate-500 transition hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 rounded-md"
+                >
+                    {{ __('Use a different account') }}
+                </button>
+            </form>
+        </div>
+    @else
     <form method="POST" action="{{ route('login') }}" class="space-y-5">
         @csrf
 
@@ -19,7 +48,7 @@
                 class="mt-2 block w-full"
                 type="email"
                 name="email"
-                :value="old('email')"
+                :value="$rememberedEmail"
                 required
                 autofocus
                 autocomplete="username"
@@ -61,6 +90,7 @@
                     type="checkbox"
                     class="rounded border-slate-300 text-sky-600 shadow-sm focus:ring-sky-500"
                     name="remember"
+                    @checked(old('remember', filled(request()->cookie('remembered_email'))))
                 >
                 <span>Remember me</span>
             </label>
@@ -70,5 +100,6 @@
             </x-primary-button>
         </div>
     </form>
+    @endisset
 
 </x-guest-layout>

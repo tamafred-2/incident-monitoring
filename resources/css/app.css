@@ -7,6 +7,13 @@
         display: none !important;
     }
 
+    /* Hide the browser's native password reveal/clear control so only the
+       app's custom show/hide toggle is shown (avoids a duplicate eye icon). */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+        display: none;
+    }
+
     :root {
         --shell-sidebar: #0d1726;
         --shell-sidebar-strong: #0a1321;

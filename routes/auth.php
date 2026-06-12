@@ -16,6 +16,12 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
+    Route::post('quick-login', [AuthenticatedSessionController::class, 'quickLogin'])
+        ->name('quick-login');
+
+    Route::post('quick-login/forget', [AuthenticatedSessionController::class, 'forgetQuickLogin'])
+        ->name('quick-login.forget');
+
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
