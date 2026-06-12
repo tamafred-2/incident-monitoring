@@ -17,8 +17,6 @@ class AnalyticsController extends Controller
 {
     private const MONTHS_WINDOW = 12;
 
-    private ?bool $incidentStatusSchemaIsLegacy = null;
-
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -32,41 +30,10 @@ class AnalyticsController extends Controller
 
         return view('analytics.index', [
             'scopeLabel' => $isAdmin ? 'All subdivisions' : ($user->subdivision?->subdivision_name ?? 'Your subdivision'),
-            'summary' => $this->buildSummary($scope),
             'incidents' => $this->buildIncidentAnalytics($scope),
             'visitors' => $this->buildVisitorAnalytics($scope),
             'community' => $this->buildCommunityAnalytics($scope),
         ]);
-    }
-
-    /**
-     * @param  callable(Builder): Builder  $scope
-     */
-    private function buildSummary(callable $scope): array
-    {
-        $totalIncidents = $scope(Incident::query())->count();
-        $resolvedIncidents = $scope(Incident::query())
-            ->whereIn('status', $this->resolvedIncidentStatuses())
-            ->count();
-        $pendingIncidents = $scope(Incident::query())
-            ->whereIn('status', $this->pendingIncidentStatuses())
-            ->count();
-
-        $resolutionRate = $totalIncidents > 0
-            ? round(($resolvedIncidents / $totalIncidents) * 100)
-            : 0;
-
-        return [
-            'total_incidents' => $totalIncidents,
-            'pending_incidents' => $pendingIncidents,
-            'resolved_incidents' => $resolvedIncidents,
-            'resolution_rate' => $resolutionRate,
-            'avg_resolution_label' => $this->averageResolutionLabel($scope),
-            'total_visitors' => $scope(Visitor::query())->count(),
-            'visitors_inside' => $scope(Visitor::query())->where('status', 'Inside')->count(),
-            'total_residents' => $scope(Resident::query())->count(),
-            'total_houses' => $scope(House::query())->count(),
-        ];
     }
 
     /**
@@ -214,81 +181,8 @@ class AnalyticsController extends Controller
         return $buckets;
     }
 
-    /**
-     * @param  callable(Builder): Builder  $scope
-     */
-    private function averageResolutionLabel(callable $scope): string
-    {
-        $resolved = $scope(Incident::query())
-            ->whereNotNull('reported_at')
-            ->whereNotNull('resolved_at')
-            ->whereIn('status', $this->resolvedIncidentStatuses())
-            ->get(['reported_at', 'resolved_at']);
-
-        if ($resolved->isEmpty()) {
-            return 'N/A';
-        }
-
-        $totalHours = 0.0;
-        $count = 0;
-
-        foreach ($resolved as $incident) {
-            $hours = $incident->reported_at->diffInHours($incident->resolved_at, false);
-            if ($hours < 0) {
-                continue;
-            }
-
-            $totalHours += $hours;
-            $count++;
-        }
-
-        if ($count === 0) {
-            return 'N/A';
-        }
-
-        $avgHours = $totalHours / $count;
-
-        if ($avgHours < 24) {
-            return round($avgHours) . 'h';
-        }
-
-        return round($avgHours / 24, 1) . 'd';
-    }
-
     private function windowStart(): Carbon
     {
         return now()->startOfMonth()->subMonths(self::MONTHS_WINDOW - 1);
-    }
-
-    private function pendingIncidentStatuses(): array
-    {
-        return $this->usesLegacyIncidentStatusSchema()
-            ? ['Reported', 'Investigating']
-            : ['Open', 'Under Investigation'];
-    }
-
-    private function resolvedIncidentStatuses(): array
-    {
-        return ['Resolved', 'Closed', 'Completed', 'Done'];
-    }
-
-    private function usesLegacyIncidentStatusSchema(): bool
-    {
-        if ($this->incidentStatusSchemaIsLegacy !== null) {
-            return $this->incidentStatusSchemaIsLegacy;
-        }
-
-        if (DB::connection()->getDriverName() !== 'sqlite') {
-            return $this->incidentStatusSchemaIsLegacy = false;
-        }
-
-        $tableSql = DB::table('sqlite_master')
-            ->where('type', 'table')
-            ->where('name', 'incidents')
-            ->value('sql');
-
-        return $this->incidentStatusSchemaIsLegacy = is_string($tableSql)
-            && str_contains($tableSql, "'Reported'")
-            && str_contains($tableSql, "'Investigating'");
     }
 }

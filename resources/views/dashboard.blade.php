@@ -33,20 +33,15 @@
                 @php
                     $canViewVisitorMonitoring = auth()->user()->isAdmin() || auth()->user()->role === 'security';
                 @endphp
-                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <x-stat-card
-                        :label="$isStaffDashboard ? 'Active Incidents' : 'Total Incidents'"
-                        :value="$isStaffDashboard ? $staffActiveIncidents : $totalIncidents"
-                    />
-                    <x-stat-card label="Total Residents" :value="$totalResidents" />
-                    @if ($isStaffDashboard)
-                        <x-stat-card label="Pending Incidents" :value="$staffPendingIncidents" tone="amber" />
-                    @endif
-                    <x-stat-card label="Total Houses" :value="$totalHouses" />
-                    @if ($canViewVisitorMonitoring)
-                        <x-stat-card label="Visitors Today" :value="$visitorsToday" />
-                        <x-stat-card label="Visitors Inside" :value="$visitorsInside" tone="sky" />
-                    @endif
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <x-stat-card label="Total Incidents" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
+                    <x-stat-card label="Resolution Rate" :value="$summary['resolution_rate'] . '%'" :hint="$summary['resolved_incidents'] . ' resolved'" tone="emerald" />
+                    <x-stat-card label="Avg. Resolution Time" :value="$summary['avg_resolution_label']" hint="reported → resolved" />
+                    <x-stat-card label="Total Visitors" :value="$summary['total_visitors']" :hint="$summary['visitors_inside'] . ' currently inside'" />
+                    <x-stat-card label="Total Residents" :value="$summary['total_residents']" />
+                    <x-stat-card label="Total Houses" :value="$summary['total_houses']" />
+                    <x-stat-card label="Avg. Residents / House" :value="$summary['avg_residents_per_house']" />
+                    <x-stat-card label="Pending Incidents" :value="$summary['pending_incidents']" tone="amber" />
                 </div>
 
                 @php

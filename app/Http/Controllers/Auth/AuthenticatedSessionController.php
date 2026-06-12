@@ -11,11 +11,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\View\View;
 
-/**
- * One-click "Continue as" login is backed by the encrypted `quick_login_id`
- * cookie. It is intentionally NOT cleared on logout so the account stays
- * available for fast re-login on a trusted device.
- */
 
 class AuthenticatedSessionController extends Controller
 {
@@ -101,9 +96,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        // When "remember me" is checked, remember the email (to pre-fill the
-        // form) and enable one-click login for this account on this device.
-        // Otherwise forget both so the next logout requires full credentials.
+
         if ($request->boolean('remember')) {
             Cookie::queue('remembered_email', $request->string('email')->toString(), self::REMEMBER_MINUTES);
             Cookie::queue(self::QUICK_LOGIN_COOKIE, (string) $request->user()->getKey(), self::REMEMBER_MINUTES);

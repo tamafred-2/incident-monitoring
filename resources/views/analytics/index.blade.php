@@ -7,18 +7,6 @@
         <div class="mx-auto max-w-7xl space-y-8 sm:px-6 lg:px-8">
             @include('partials.alerts')
 
-            {{-- Summary stat cards --}}
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <x-stat-card label="Total Incidents" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
-                <x-stat-card label="Resolution Rate" :value="$summary['resolution_rate'] . '%'" :hint="$summary['resolved_incidents'] . ' resolved'" tone="emerald" />
-                <x-stat-card label="Avg. Resolution Time" :value="$summary['avg_resolution_label']" hint="reported → resolved" />
-                <x-stat-card label="Total Visitors" :value="$summary['total_visitors']" :hint="$summary['visitors_inside'] . ' currently inside'" />
-                <x-stat-card label="Total Residents" :value="$summary['total_residents']" />
-                <x-stat-card label="Total Houses" :value="$summary['total_houses']" />
-                <x-stat-card label="Avg. Residents / House" :value="$community['avg_residents_per_house']" />
-                <x-stat-card label="Pending Incidents" :value="$summary['pending_incidents']" tone="amber" />
-            </div>
-
             {{-- Incident analytics --}}
             <section class="space-y-4">
                 <h3 class="text-lg font-semibold text-slate-900">Incident Trends</h3>

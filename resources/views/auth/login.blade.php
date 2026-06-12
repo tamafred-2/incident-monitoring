@@ -16,14 +16,11 @@
     @isset($quickLoginUser)
         <div class="mb-6 rounded-xl border border-sky-100 bg-sky-50/60 p-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Welcome back</p>
-            <p class="mt-2 text-sm text-slate-600">
-                Continue as <span class="font-semibold text-slate-900">{{ $quickLoginUser->email }}</span>
-            </p>
 
             <form method="POST" action="{{ route('quick-login') }}" class="mt-4">
                 @csrf
                 <x-primary-button class="w-full justify-center">
-                    {{ __('Continue as :name', ['name' => $quickLoginUser->first_name ?: $quickLoginUser->email]) }}
+                    {{ __('Continue as :name', ['name' => $quickLoginUser->full_name ?: $quickLoginUser->email]) }}
                 </x-primary-button>
             </form>
 

@@ -7,6 +7,7 @@ use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -32,6 +33,13 @@ class DashboardController extends Controller
         $isResidentDashboard = $user->isResident();
         $isStaffDashboard = !$isResidentDashboard && $user->role === 'staff';
         $showPendingIncidentList = !$isResidentDashboard && ($isStaffDashboard || $user->isAdmin());
+
+        $scope = fn (Builder $query): Builder => $query->when(
+            !$user->isAdmin(),
+            fn (Builder $inner) => $inner->where('subdivision_id', $allowedId)
+        );
+
+        $summary = $isResidentDashboard ? null : $this->buildSummary($scope);
 
         $totalSubdivisions = $user->isAdmin()
             ? Subdivision::count()
@@ -139,6 +147,7 @@ class DashboardController extends Controller
             'isResidentDashboard',
             'isStaffDashboard',
             'showPendingIncidentList',
+            'summary',
             'totalSubdivisions',
             'totalIncidents',
             'totalResidents',
@@ -154,6 +163,85 @@ class DashboardController extends Controller
             'staffPendingIncidents',
             'dashboardPendingIncidentList',
         ));
+    }
+
+    /**
+     * Build the summary stat cards shown on the admin/staff dashboard.
+     *
+     * @param  callable(Builder): Builder  $scope
+     */
+    private function buildSummary(callable $scope): array
+    {
+        $totalIncidents = $scope(Incident::query())->count();
+        $resolvedIncidents = $scope(Incident::query())
+            ->whereIn('status', $this->resolvedIncidentStatuses())
+            ->count();
+        $pendingIncidents = $scope(Incident::query())
+            ->whereIn('status', $this->pendingIncidentStatuses())
+            ->count();
+
+        $resolutionRate = $totalIncidents > 0
+            ? round(($resolvedIncidents / $totalIncidents) * 100)
+            : 0;
+
+        $totalResidents = $scope(Resident::query())->count();
+        $totalHouses = $scope(House::query())->count();
+
+        return [
+            'total_incidents' => $totalIncidents,
+            'pending_incidents' => $pendingIncidents,
+            'resolved_incidents' => $resolvedIncidents,
+            'resolution_rate' => $resolutionRate,
+            'avg_resolution_label' => $this->averageResolutionLabel($scope),
+            'total_visitors' => $scope(Visitor::query())->count(),
+            'visitors_inside' => $scope(Visitor::query())->where('status', 'Inside')->count(),
+            'total_residents' => $totalResidents,
+            'total_houses' => $totalHouses,
+            'avg_residents_per_house' => $totalHouses > 0
+                ? round($totalResidents / $totalHouses, 1)
+                : 0,
+        ];
+    }
+
+    /**
+     * @param  callable(Builder): Builder  $scope
+     */
+    private function averageResolutionLabel(callable $scope): string
+    {
+        $resolved = $scope(Incident::query())
+            ->whereNotNull('reported_at')
+            ->whereNotNull('resolved_at')
+            ->whereIn('status', $this->resolvedIncidentStatuses())
+            ->get(['reported_at', 'resolved_at']);
+
+        if ($resolved->isEmpty()) {
+            return 'N/A';
+        }
+
+        $totalHours = 0.0;
+        $count = 0;
+
+        foreach ($resolved as $incident) {
+            $hours = $incident->reported_at->diffInHours($incident->resolved_at, false);
+            if ($hours < 0) {
+                continue;
+            }
+
+            $totalHours += $hours;
+            $count++;
+        }
+
+        if ($count === 0) {
+            return 'N/A';
+        }
+
+        $avgHours = $totalHours / $count;
+
+        if ($avgHours < 24) {
+            return round($avgHours) . 'h';
+        }
+
+        return round($avgHours / 24, 1) . 'd';
     }
 
     private function resolvePerPage(mixed $value, int $default = 10): int
