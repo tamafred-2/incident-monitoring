@@ -173,6 +173,12 @@
                 @empty
                     <p class="py-6 text-center text-sm text-slate-400">No activity yet.</p>
                 @endforelse
+
+                @if ($recentRequests->hasPages())
+                    <div class="mt-4 border-t border-slate-100 pt-4">
+                        {{ $recentRequests->links() }}
+                    </div>
+                @endif
             </div>
         </div>
     </div>

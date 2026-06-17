@@ -26,8 +26,7 @@ class PasswordResetRequestController extends Controller
         $recent = PasswordResetRequest::with(['user', 'resolver'])
             ->whereIn('status', [PasswordResetRequest::STATUS_COMPLETED, PasswordResetRequest::STATUS_EXPIRED])
             ->orderByDesc('updated_at')
-            ->limit(20)
-            ->get();
+            ->paginate(15);
 
         return view('password-resets.index', [
             'pendingRequests' => $pending,
