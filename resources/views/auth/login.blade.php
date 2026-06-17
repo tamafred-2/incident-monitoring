@@ -11,7 +11,7 @@
         </p>
     </div>
 
-    <x-auth-session-status class="mb-5" :status="session('status')" />
+    <x-popup-alert type="success" title="Request Sent" :message="session('status')" />
 
     @isset($quickLoginUser)
         <div class="mb-6 rounded-xl border border-sky-100 bg-sky-50/60 p-5">
@@ -60,6 +60,8 @@
 
                 @if (Route::has('password.request'))
                     <a
+                        id="forgot-password-link"
+                        data-base-url="{{ route('password.request') }}"
                         class="text-sm font-medium text-sky-700 transition hover:text-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 rounded-md"
                         href="{{ route('password.request') }}"
                     >
@@ -99,4 +101,26 @@
     </form>
     @endisset
 
+    <script>
+        (function () {
+            const emailInput = document.getElementById('email');
+            const forgotLink = document.getElementById('forgot-password-link');
+
+            if (!emailInput || !forgotLink) {
+                return;
+            }
+
+            const baseUrl = forgotLink.dataset.baseUrl;
+
+            const syncForgotLink = function () {
+                const email = emailInput.value.trim();
+                forgotLink.href = email
+                    ? baseUrl + '?email=' + encodeURIComponent(email)
+                    : baseUrl;
+            };
+
+            emailInput.addEventListener('input', syncForgotLink);
+            syncForgotLink();
+        })();
+    </script>
 </x-guest-layout>
