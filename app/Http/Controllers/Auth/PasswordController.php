@@ -25,7 +25,14 @@ class PasswordController extends Controller
         $request->user()->update([
             'password' => Hash::make($validated['password']),
             'requires_password_change' => false,
+            'temporary_password' => null,
         ]);
+
+        // After a forced change there's nothing else on the locked screen, so
+        // send the user into the app instead of back to the password form.
+        if ($requiresPasswordChange) {
+            return redirect()->route('dashboard')->with('status', 'Your password has been updated.');
+        }
 
         return back()->with('status', 'password-updated');
     }

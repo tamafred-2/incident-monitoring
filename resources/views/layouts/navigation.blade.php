@@ -1,10 +1,21 @@
 @php
+    use App\Models\PasswordResetRequest;
     use App\Models\Subdivision;
     use Illuminate\Support\Str;
     use Illuminate\Support\Facades\Schema;
 
     $user = auth()->user();
     $brandingSubdivision = null;
+
+    $pendingPasswordResets = 0;
+
+    if (($user?->isAdmin() ?? false) && Schema::hasTable('password_reset_requests')) {
+        $pendingPasswordResets = PasswordResetRequest::where('status', 'pending')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
+            ->count();
+    }
 
     if (Schema::hasTable('subdivisions')) {
         $brandingSubdivision = $user?->subdivision_id
@@ -38,6 +49,12 @@
                     'active' => 'subdivisions.*',
                 ] : null,
                 $user->isAdmin() ? ['label' => 'Users', 'href' => route('users.index'), 'active' => 'users.*'] : null,
+                $user->isAdmin() ? [
+                    'label' => 'Password Resets',
+                    'href' => route('admin.password-resets.index'),
+                    'active' => 'admin.password-resets.*',
+                    'badge' => $pendingPasswordResets,
+                ] : null,
             ])),
         ],
         [
@@ -132,6 +149,11 @@
                                     class="sidebar-link {{ request()->routeIs($item['active']) ? 'sidebar-link-active' : '' }}"
                                 >
                                     <span>{{ $item['label'] }}</span>
+                                    @if (($item['badge'] ?? 0) > 0)
+                                        <span class="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                                            {{ $item['badge'] > 99 ? '99+' : $item['badge'] }}
+                                        </span>
+                                    @endif
                                 </a>
                             @endforeach
                         </div>

@@ -229,6 +229,9 @@ class UserController extends Controller
 
         if (empty($data['password'])) {
             unset($data['password']);
+        } else {
+            // An admin-set password supersedes any pending temporary password.
+            $data['temporary_password'] = null;
         }
 
         $data['is_active'] = $request->boolean('is_active');

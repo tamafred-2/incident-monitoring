@@ -5,6 +5,7 @@ use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HouseController;
 use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\PasswordResetRequestController;
 use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ResidentVisitorController;
@@ -32,6 +33,12 @@ Route::middleware(['auth', 'password.change'])->group(function () {
         Route::post('/read-all', [AdminVisitorNotificationController::class, 'readAll'])->name('read-all');
         Route::post('/read-one', [AdminVisitorNotificationController::class, 'readOne'])->name('read-one');
         Route::delete('/clear-all', [AdminVisitorNotificationController::class, 'clearAll'])->name('clear-all');
+    });
+
+    Route::prefix('/admin/password-resets')->middleware('role:admin')->name('admin.password-resets.')->group(function () {
+        Route::get('/', [PasswordResetRequestController::class, 'index'])->name('index');
+        Route::post('/{passwordResetRequest}/resolve', [PasswordResetRequestController::class, 'resolve'])->name('resolve');
+        Route::delete('/{passwordResetRequest}', [PasswordResetRequestController::class, 'destroy'])->name('destroy');
     });
     Route::get('/subdivisions', [SubdivisionController::class, 'index'])->middleware('role:admin,staff,security')->name('subdivisions.index');
     Route::get('/subdivisions/{subdivision}', [SubdivisionController::class, 'show'])->middleware('role:admin,staff,security')->name('subdivisions.show');

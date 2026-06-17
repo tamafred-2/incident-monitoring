@@ -45,6 +45,7 @@ class User extends Authenticatable
         'email',
         'password',
         'requires_password_change',
+        'temporary_password',
         'role',
         'is_active',
         'subdivision_id',
@@ -58,6 +59,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'temporary_password',
     ];
 
     protected static function booted(): void
