@@ -121,16 +121,18 @@
     </head>
     <body class="guest-page text-slate-900 antialiased">
         <div class="guest-shell">
-            <div class="guest-header">
-                <a href="/" class="guest-logo">
-                    <img src="{{ $appBrandLogo }}" alt="{{ $appBrandName }} logo">
-                </a>
-                <div class="guest-kicker">Monitoring Platform</div>
-                <h1 class="guest-title">{{ $appBrandName }}</h1>
-                <p class="guest-subtitle">
-                    Access the system for visitor monitoring, resident records, and incident coordination.
-                </p>
-            </div>
+            @if ($showHeader)
+                <div class="guest-header">
+                    <a href="/" class="guest-logo">
+                        <img src="{{ $appBrandLogo }}" alt="{{ $appBrandName }} logo">
+                    </a>
+                    <div class="guest-kicker">Monitoring Platform</div>
+                    <h1 class="guest-title">{{ $appBrandName }}</h1>
+                    <p class="guest-subtitle">
+                        Access the system for visitor monitoring, resident records, and incident coordination.
+                    </p>
+                </div>
+            @endif
 
             <div class="guest-card">
                 {{ $slot }}

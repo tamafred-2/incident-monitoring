@@ -16,6 +16,12 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        // Users flagged for a forced password change get a locked-down screen
+        // (no navigation, only the Update Password form) until they change it.
+        if ($request->user()->requires_password_change) {
+            return view('auth.force-password-change');
+        }
+
         return view('profile.edit', [
             'user' => $request->user(),
         ]);
