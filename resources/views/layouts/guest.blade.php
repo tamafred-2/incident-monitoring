@@ -17,7 +17,8 @@
 
             $appBrandName = $brandingSubdivision?->subdivision_name ?? config('app.name', 'Laravel');
             $appBrandVersion = md5(($brandingSubdivision?->logo_path ?? 'default') . '|' . ($brandingSubdivision?->updated_at?->timestamp ?? 0));
-            $appBrandIcon = route('branding.favicon', ['v' => $appBrandVersion]);
+            $appBrandIcon = route('branding.favicon.svg', ['v' => $appBrandVersion]);
+            $appAppleIcon = route('branding.favicon', ['v' => $appBrandVersion]);
             $appBrandLogo = $brandingSubdivision?->logo_url ?? asset('imgsrc/logo.png');
         @endphp
         <meta charset="utf-8">
@@ -25,8 +26,8 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ $appBrandName }}</title>
-        <link rel="icon" type="image/png" href="{{ $appBrandIcon }}">
-        <link rel="apple-touch-icon" href="{{ $appBrandIcon }}">
+        <link rel="icon" type="image/svg+xml" href="{{ $appBrandIcon }}">
+        <link rel="apple-touch-icon" href="{{ $appAppleIcon }}">
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

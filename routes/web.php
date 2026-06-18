@@ -22,6 +22,7 @@ Route::get('/', function () {
 });
 
 Route::get('/branding/favicon.png', [BrandingController::class, 'favicon'])->name('branding.favicon');
+Route::get('/branding/favicon.svg', [BrandingController::class, 'faviconSvg'])->name('branding.favicon.svg');
 Route::get('/subdivision-logo/{subdivision}', [SubdivisionController::class, 'logo'])->name('subdivisions.logo');
 
 Route::middleware(['auth', 'password.change'])->group(function () {

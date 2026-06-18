@@ -10,6 +10,43 @@ use Symfony\Component\HttpFoundation\Response;
 
 class BrandingController extends Controller
 {
+    public function faviconSvg(Request $request): Response
+    {
+        $subdivision = null;
+
+        if (Schema::hasTable('subdivisions')) {
+            $subdivision = $request->user()?->subdivision_id
+                ? Subdivision::find($request->user()->subdivision_id)
+                : null;
+
+            $subdivision ??= Subdivision::query()
+                ->where('status', 'Active')
+                ->orderBy('subdivision_name')
+                ->first()
+                ?? Subdivision::query()->orderBy('subdivision_name')->first();
+        }
+
+        $brandName = $subdivision?->subdivision_name ?? config('app.name', 'Laravel');
+        $initials = $this->brandInitials($brandName);
+        $label = htmlspecialchars($brandName, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $text = htmlspecialchars($initials, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+        $svg = <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="{$label}">
+  <circle cx="32" cy="32" r="29" fill="#3d4343"/>
+  <circle cx="32" cy="32" r="25" fill="none" stroke="#ffffff" stroke-width="4"/>
+  <text x="32" y="38" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" fill="#ffffff">{$text}</text>
+</svg>
+SVG;
+
+        return response($svg, 200, [
+            'Content-Type' => 'image/svg+xml',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
+    }
+
     public function favicon(Request $request): Response
     {
         $subdivision = null;
@@ -105,5 +142,25 @@ class BrandingController extends Controller
             'Pragma' => 'no-cache',
             'Expires' => '0',
         ]);
+    }
+
+    private function brandInitials(string $brandName): string
+    {
+        $words = preg_split('/\s+/', trim($brandName)) ?: [];
+        $initials = '';
+
+        foreach ($words as $word) {
+            if ($word === '') {
+                continue;
+            }
+
+            $initials .= strtoupper(substr($word, 0, 1));
+
+            if (strlen($initials) >= 3) {
+                break;
+            }
+        }
+
+        return $initials !== '' ? $initials : 'IM';
     }
 }
