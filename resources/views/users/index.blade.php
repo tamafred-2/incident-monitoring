@@ -11,19 +11,71 @@
             @include('partials.alerts')
 
             @if (session('generated_password'))
-                <div x-data="{ copied: false }" class="flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
-                    <div class="text-sm text-emerald-800">
-                        <span class="font-semibold">Account created.</span> Copy the generated password and share it with the user — they will be prompted to change it on first login.
-                        <span class="ml-2 font-mono font-bold tracking-widest">{{ session('generated_password') }}</span>
-                    </div>
-                    <button
-                        type="button"
-                        x-on:click="navigator.clipboard.writeText('{{ session('generated_password') }}'); copied = true; setTimeout(() => copied = false, 2000)"
-                        class="shrink-0 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                <div
+                    x-data="{
+                        open: true,
+                        password: @js(session('generated_password')),
+                        copied: false,
+                        copy() {
+                            navigator.clipboard.writeText(this.password).then(() => {
+                                this.copied = true;
+                                setTimeout(() => this.copied = false, 2000);
+                            });
+                        }
+                    }"
+                    x-cloak
+                    x-show="open"
+                    x-transition.opacity
+                    @keydown.escape.window="open = false"
+                    class="fixed inset-0 z-50 flex items-center justify-center px-4"
+                    role="dialog"
+                    aria-modal="true"
+                >
+                    <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" @click="open = false"></div>
+
+                    <div
+                        x-show="open"
+                        x-transition.scale.origin.center
+                        class="relative w-full max-w-md rounded-3xl bg-white p-7 text-center shadow-2xl"
                     >
-                        <span x-show="!copied">Copy</span>
-                        <span x-show="copied" x-cloak>Copied!</span>
-                    </button>
+                        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
+                            <svg class="h-7 w-7 text-amber-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+
+                        <h3 class="mt-4 text-lg font-semibold text-slate-900">Account created</h3>
+                        <p class="mt-1 text-sm text-slate-500">Generated password for the new user</p>
+
+                        <div class="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+                            <code class="font-mono text-lg font-bold tracking-wide text-slate-900" x-text="password"></code>
+                        </div>
+
+                        <button
+                            type="button"
+                            @click="copy()"
+                            class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                        >
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
+                                <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
+                            </svg>
+                            <span x-show="!copied">Copy password</span>
+                            <span x-show="copied" x-cloak>Copied!</span>
+                        </button>
+
+                        <p class="mt-4 text-xs leading-5 text-slate-400">
+                            Copy it now and give it to the user. For security it is shown only once &mdash; once you close, leave, or refresh this page it cannot be retrieved again.
+                        </p>
+
+                        <button
+                            type="button"
+                            @click="open = false"
+                            class="mt-3 text-sm font-medium text-slate-500 transition hover:text-slate-700"
+                        >
+                            Close
+                        </button>
+                    </div>
                 </div>
             @endif
 
