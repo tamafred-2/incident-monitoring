@@ -21,20 +21,10 @@ return new class extends Migration
         }
 
         Schema::table('incidents', function (Blueprint $table) {
-            if (!Schema::hasColumn('incidents', 'report_id')) {
-                $table->string('report_id', 20)->unique()->after('incident_id');
-            }
             if (!Schema::hasColumn('incidents', 'house_id')) {
                 $table->unsignedInteger('house_id')->nullable()->after('subdivision_id');
                 $table->index('house_id');
             }
-        });
-
-        // Generate report_id for existing rows
-        DB::table('incidents')->whereNull('report_id')->orWhere('report_id', '')->get()->each(function ($row) {
-            DB::table('incidents')->where('incident_id', $row->incident_id)->update([
-                'report_id' => strtoupper(str_pad(dechex((int) $row->incident_id), 8, '0', STR_PAD_LEFT)),
-            ]);
         });
 
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
@@ -57,15 +47,11 @@ return new class extends Migration
 
         Schema::table('incidents', function (Blueprint $table) {
             if (!Schema::hasColumn('incidents', 'title')) {
-                $table->string('title', 150)->nullable()->after('report_id');
+                $table->string('title', 150)->nullable()->after('incident_id');
             }
             if (Schema::hasColumn('incidents', 'house_id')) {
                 $table->dropIndex(['house_id']);
                 $table->dropColumn('house_id');
-            }
-            if (Schema::hasColumn('incidents', 'report_id')) {
-                $table->dropUnique(['report_id']);
-                $table->dropColumn('report_id');
             }
         });
     }
@@ -79,7 +65,6 @@ return new class extends Migration
             DB::statement("
                 CREATE TABLE incidents (
                     incident_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                    report_id VARCHAR(20) NOT NULL DEFAULT '',
                     subdivision_id INTEGER NOT NULL,
                     house_id INTEGER NULL,
                     description TEXT NULL,
@@ -102,14 +87,13 @@ return new class extends Migration
 
             DB::statement("
                 INSERT INTO incidents (
-                    incident_id, report_id, subdivision_id, house_id, description, category, location,
+                    incident_id, subdivision_id, house_id, description, category, location,
                     incident_date, reported_at, resolved_at, status, proof_photo_path,
                     reported_by, assigned_to, verified_resident_id, verification_method, verified_at,
                     created_at, deleted_at
                 )
                 SELECT
                     incident_id,
-                    upper(printf('%08X', incident_id)),
                     subdivision_id,
                     NULL,
                     description, category, location,
@@ -150,7 +134,7 @@ return new class extends Migration
                     created_at, deleted_at
                 )
                 SELECT
-                    incident_id, subdivision_id, COALESCE(report_id, ''), description, category, location,
+                    incident_id, subdivision_id, '', description, category, location,
                     incident_date, reported_at, resolved_at, status, proof_photo_path,
                     reported_by, assigned_to, verified_resident_id, verification_method, verified_at,
                     created_at, deleted_at
@@ -159,7 +143,6 @@ return new class extends Migration
         }
 
         DB::statement('DROP TABLE incidents_old');
-        DB::statement('CREATE UNIQUE INDEX incidents_report_id_unique ON incidents (report_id)') ;
         DB::statement('CREATE INDEX incidents_subdivision_id_index ON incidents (subdivision_id)');
         DB::statement('CREATE INDEX incidents_house_id_index ON incidents (house_id)');
         DB::statement('CREATE INDEX incidents_status_index ON incidents (status)');

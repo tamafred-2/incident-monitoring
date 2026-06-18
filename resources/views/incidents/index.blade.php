@@ -26,7 +26,7 @@
         ]);
         $exportPreviewUrl = route('incidents.print', $reportQuery + ['view' => 'history', 'preview' => 1, 'embed' => 1]);
         $emptyStateColspan = ($isResidentViewer ? 0 : 1)
-            + ($activeIncidentTab === 'history' ? 7 : 5);
+            + ($activeIncidentTab === 'history' ? 6 : 4);
     @endphp
 
     <div class="py-10">
@@ -97,7 +97,7 @@
                                 type="search"
                                 name="q"
                                 value="{{ $filterQ }}"
-                                placeholder="Report ID, description, reporter, category, status"
+                                placeholder="Description, reporter, category, status"
                                 class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                             >
                         </div>
@@ -212,7 +212,6 @@
                     <table class="min-w-full text-sm divide-y divide-slate-200">
                         <thead class="bg-slate-50">
                             <tr>
-                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Report ID</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Category</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Incident Status</th>
                                 @unless ($isResidentViewer)
@@ -247,24 +246,21 @@
                         <tbody class="bg-white divide-y divide-slate-100">
                             @forelse ($incidents as $incident)
                                 <tr>
-                                    <td class="px-6 py-4">
-                                        <a
-                                            href="{{ route('incidents.show', array_filter([
-                                                'incidentId' => $incident->incident_id,
-                                                'q' => $filterQ ?: null,
-                                                'subdivision_id' => $filterSubdivision ?: null,
-                                                'view' => $historyView !== 'active' ? $historyView : null,
-                                                'per_page' => $perPage,
-                                                ...$sharedFilters,
-                                            ])) }}"
-                                            class="font-mono font-medium text-slate-900 hover:text-sky-700"
-                                        >
-                                            {{ $incident->report_id }}
-                                        </a>
-                                    </td>
                                     <td class="px-6 py-4 text-slate-600">
                                         <div class="min-w-[11rem]">
-                                            <div class="font-medium text-slate-900">{{ $incident->category ?: '-' }}</div>
+                                            <a
+                                                href="{{ route('incidents.show', array_filter([
+                                                    'incidentId' => $incident->incident_id,
+                                                    'q' => $filterQ ?: null,
+                                                    'subdivision_id' => $filterSubdivision ?: null,
+                                                    'view' => $historyView !== 'active' ? $historyView : null,
+                                                    'per_page' => $perPage,
+                                                    ...$sharedFilters,
+                                                ])) }}"
+                                                class="font-medium text-slate-900 hover:text-sky-700"
+                                            >
+                                                {{ $incident->category ?: 'Uncategorized' }}
+                                            </a>
                                             <div class="mt-1 max-w-[14rem] truncate text-xs text-slate-500" title="{{ $incident->location ?: 'No location provided' }}">
                                                 {{ $incident->location ?: 'No location provided' }}
                                             </div>
@@ -297,13 +293,13 @@
                                                 @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proofPhotos->first()->photo_path]))
                                                 <button
                                                     type="button"
-                                                    @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ $incident->report_id }}')"
+                                                    @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image')"
                                                     class="relative block w-16 h-16 overflow-hidden border group rounded-xl border-slate-200 bg-slate-100"
                                                     title="Preview proof images"
                                                 >
                                                     <img
                                                         src="{{ $proofPhotoUrl }}"
-                                                        alt="Proof image for {{ $incident->report_id }}"
+                                                        alt="Proof image"
                                                         class="object-cover w-full h-full transition duration-200 group-hover:scale-105"
                                                     >
                                                     @if ($incident->proofPhotos->count() > 1)
@@ -316,13 +312,13 @@
                                                 @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proof_photo_path]))
                                                 <button
                                                     type="button"
-                                                    @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image for {{ $incident->report_id }}')"
+                                                    @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image')"
                                                     class="relative block w-16 h-16 overflow-hidden border group rounded-xl border-slate-200 bg-slate-100"
                                                     title="Preview proof image"
                                                 >
                                                     <img
                                                         src="{{ $proofPhotoUrl }}"
-                                                        alt="Proof image for {{ $incident->report_id }}"
+                                                        alt="Proof image"
                                                         class="object-cover w-full h-full transition duration-200 group-hover:scale-105"
                                                     >
                                                 </button>

@@ -26,7 +26,6 @@ class IncidentUpdatedNotification extends Notification
     {
         return [
             'incident_id' => $this->incident->incident_id,
-            'report_id' => $this->incident->report_id,
             'title' => $this->title,
             'message' => $this->message,
             'status' => $this->incident->status,

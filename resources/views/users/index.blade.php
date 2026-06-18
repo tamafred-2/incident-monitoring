@@ -10,6 +10,23 @@
         <div class="mx-auto flex max-w-7xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
             @include('partials.alerts')
 
+            @if (session('generated_password'))
+                <div x-data="{ copied: false }" class="flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4">
+                    <div class="text-sm text-emerald-800">
+                        <span class="font-semibold">Account created.</span> Copy the generated password and share it with the user — they will be prompted to change it on first login.
+                        <span class="ml-2 font-mono font-bold tracking-widest">{{ session('generated_password') }}</span>
+                    </div>
+                    <button
+                        type="button"
+                        x-on:click="navigator.clipboard.writeText('{{ session('generated_password') }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                        class="shrink-0 rounded-xl border border-emerald-300 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                    >
+                        <span x-show="!copied">Copy</span>
+                        <span x-show="copied" x-cloak>Copied!</span>
+                    </button>
+                </div>
+            @endif
+
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <form method="GET" action="{{ route('users.index') }}" class="grid gap-4 md:grid-cols-[1fr_160px_160px_auto]">
                     <div>
@@ -291,9 +308,7 @@
 
                             @include('users.partials.form-fields', [
                                 'user' => $user,
-                                'passwordLabel' => 'New Password',
-                                'passwordConfirmationLabel' => 'Confirm New Password',
-                                'passwordRequired' => false,
+                                'showPasswordFields' => true,
                             ])
 
                             <div class="flex flex-wrap gap-3 pt-2">

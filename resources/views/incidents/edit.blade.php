@@ -54,10 +54,6 @@
                         </select>
                     </div>
 
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-slate-700">Report ID</label>
-                        <input type="text" value="{{ $incident->report_id }}" disabled class="mt-1 w-full rounded-xl border-slate-200 bg-slate-50 text-sm text-slate-500 shadow-sm">
-                    </div>
                     @if (!$isFullEditor)
                         <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600">
                             Security mode: report details are shown for reference; saving here updates the incident status and resolved date.

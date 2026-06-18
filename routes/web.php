@@ -70,7 +70,6 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/incident-photos/{path}', [IncidentController::class, 'photo'])
         ->where('path', '.*')
         ->name('incidents.photos.show');
-    Route::get('/incidents/report/{reportId}', [IncidentController::class, 'showByReportId'])->name('incidents.show-by-report');
     Route::get('/incidents/{incidentId}', [IncidentController::class, 'show'])->name('incidents.show');
     Route::get('/incidents/{incidentId}/edit', [IncidentController::class, 'edit'])->middleware('role:admin,staff')->name('incidents.edit');
     Route::put('/incidents/{incidentId}', [IncidentController::class, 'update'])->middleware('role:admin,staff')->name('incidents.update');

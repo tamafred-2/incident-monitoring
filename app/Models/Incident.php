@@ -16,7 +16,6 @@ class Incident extends Model
     public const UPDATED_AT = null;
 
     protected $fillable = [
-        'report_id',
         'subdivision_id',
         'house_id',
         'description',
@@ -32,15 +31,6 @@ class Incident extends Model
         'verified_by_staff_id',
         'verified_on_site_at',
     ];
-
-    protected static function booted(): void
-    {
-        static::creating(function (self $incident) {
-            if (empty($incident->report_id)) {
-                $incident->report_id = strtoupper(bin2hex(random_bytes(4)));
-            }
-        });
-    }
 
     public function getRouteKeyName(): string
     {
