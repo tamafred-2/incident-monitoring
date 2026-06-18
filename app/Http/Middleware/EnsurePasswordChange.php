@@ -15,10 +15,10 @@ class EnsurePasswordChange
         if (
             $user &&
             $user->requires_password_change &&
-            !$request->routeIs('profile.edit', 'profile.update', 'password.update', 'logout')
+            !$request->routeIs('password.force-change', 'password.update', 'logout')
         ) {
             return redirect()
-                ->route('profile.edit')
+                ->route('password.force-change')
                 ->with('warning', 'Please change your password before continuing.');
         }
 

@@ -57,7 +57,7 @@ class PasswordUpdateTest extends TestCase
 
         $response = $this
             ->actingAs($user)
-            ->from('/profile')
+            ->from('/change-password')
             ->put('/password', [
                 'current_password' => '',
                 'password' => 'new-password',
@@ -66,7 +66,7 @@ class PasswordUpdateTest extends TestCase
 
         $response
             ->assertSessionHasNoErrors()
-            ->assertRedirect('/profile');
+            ->assertRedirect('/dashboard');
 
         $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
         $this->assertFalse($user->requires_password_change);

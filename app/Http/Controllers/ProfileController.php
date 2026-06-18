@@ -14,17 +14,28 @@ class ProfileController extends Controller
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): View
+    public function edit(Request $request): View|RedirectResponse
     {
-        // Users flagged for a forced password change get a locked-down screen
-        // (no navigation, only the Update Password form) until they change it.
         if ($request->user()->requires_password_change) {
-            return view('auth.force-password-change');
+            return Redirect::route('password.force-change')
+                ->with('warning', 'Please change your password before continuing.');
         }
 
         return view('profile.edit', [
             'user' => $request->user(),
         ]);
+    }
+
+    /**
+     * Display the locked-down password change screen for temporary passwords.
+     */
+    public function forcePasswordChange(Request $request): View|RedirectResponse
+    {
+        if (! $request->user()->requires_password_change) {
+            return Redirect::route('profile.edit');
+        }
+
+        return view('auth.force-password-change');
     }
 
     /**
