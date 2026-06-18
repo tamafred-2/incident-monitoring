@@ -47,7 +47,7 @@ class SqliteDemoSeeder extends Seeder
             DB::statement("DELETE FROM sqlite_sequence WHERE name IN ('incident_photos', 'incidents', 'visitor_requests', 'visitors', 'gate_visitor_logs', 'users', 'residents', 'houses', 'subdivisions')");
 
             $subdivision = Subdivision::create([
-                'subdivision_name' => 'Dona Maria Dizon',
+                'subdivision_name' => 'Doña Maria Dizon',
                 'country' => 'Philippines',
                 'street' => 'Buenlag',
                 'city' => 'Calasiao',

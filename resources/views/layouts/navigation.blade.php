@@ -114,14 +114,14 @@
         :class="open ? 'translate-x-0' : '-translate-x-full'"
         class="sidebar-panel fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col transition duration-200 ease-out lg:translate-x-0"
     >
-        <div class="flex min-h-44 items-center justify-center border-b border-white/10 px-6 py-7">
+        <div class="flex items-center justify-center border-b border-white/10 px-6 py-4">
             <a href="{{ route('dashboard') }}" class="sidebar-brand sidebar-brand-desktop">
-                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" class="h-24 w-24 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
+                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" class="h-16 w-16 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
                 <span class="sidebar-brand-text sidebar-brand-text-desktop">{{ $brandNameUpper }}</span>
             </a>
         </div>
 
-        <div class="flex-1 space-y-6 overflow-y-auto px-4 py-6">
+        <div class="flex-1 space-y-4 overflow-y-auto px-4 py-4">
             @foreach ($sections as $section)
                 @if (count($section['items']) > 0)
                     <section>
@@ -162,7 +162,7 @@
             @endforeach
         </div>
 
-        <div class="border-t border-white/10 px-5 py-5">
+        <div class="border-t border-white/10 px-4 py-4">
             <div @click.away="accountOpen = false" class="rounded-2xl bg-white/5 px-4 py-4 ring-1 ring-white/10">
                 <div class="flex items-center justify-between gap-3">
                     <p class="truncate text-sm font-semibold text-white">{{ $user->full_name }}</p>

@@ -37,6 +37,9 @@
         <style>
             .guest-page {
                 min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
                 background:
                     radial-gradient(circle at top left, rgba(127, 179, 255, 0.18), transparent 24%),
                     linear-gradient(180deg, #f5f7fb 0%, var(--shell-page) 100%);
@@ -45,8 +48,7 @@
 
             .guest-shell {
                 width: min(520px, calc(100% - 32px));
-                margin: 0 auto;
-                padding: 48px 0;
+                padding: 24px 0;
             }
 
             .guest-header {
@@ -54,12 +56,12 @@
                 flex-direction: column;
                 align-items: center;
                 text-align: center;
-                margin-bottom: 24px;
+                margin-bottom: 16px;
             }
 
             .guest-logo {
-                width: 86px;
-                height: 86px;
+                width: 70px;
+                height: 70px;
                 border-radius: 999px;
                 overflow: hidden;
                 background: #ffffff;
@@ -75,7 +77,7 @@
             }
 
             .guest-kicker {
-                margin-top: 18px;
+                margin-top: 12px;
                 color: #0369a1;
                 font-size: 0.78rem;
                 font-weight: 700;
@@ -84,8 +86,8 @@
             }
 
             .guest-title {
-                margin: 10px 0 0;
-                font-size: clamp(1.9rem, 4vw, 2.6rem);
+                margin: 8px 0 0;
+                font-size: clamp(1.6rem, 4vw, 2.2rem);
                 font-weight: 800;
                 line-height: 1.05;
                 letter-spacing: -0.03em;
@@ -93,29 +95,29 @@
             }
 
             .guest-subtitle {
-                margin: 12px 0 0;
+                margin: 8px 0 0;
                 max-width: 460px;
                 color: #64748b;
-                font-size: 0.98rem;
-                line-height: 1.7;
+                font-size: 0.92rem;
+                line-height: 1.6;
             }
 
             .guest-card {
                 border: 1px solid var(--shell-border);
-                border-radius: 40px;
+                border-radius: 32px;
                 background: rgba(255, 255, 255, 0.96);
                 box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
-                padding: 34px;
+                padding: 28px;
             }
 
             @media (max-width: 640px) {
                 .guest-shell {
-                    padding: 28px 0;
+                    padding: 16px 0;
                 }
 
                 .guest-card {
-                    padding: 24px;
-                    border-radius: 30px;
+                    padding: 20px;
+                    border-radius: 24px;
                 }
             }
         </style>
