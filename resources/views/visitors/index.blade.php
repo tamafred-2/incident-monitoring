@@ -39,7 +39,7 @@
                     class="absolute right-0 z-30 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-sky-200 bg-white p-4 shadow-xl"
                 >
                     <p class="text-sm font-semibold text-sky-800">Visitor Approval Reminder</p>
-                    <p class="mt-2 text-sm leading-6 text-sky-700">
+                    <p class="mt-2 text-sm leading-6">
                         For resident visits, Admin/Guard should contact the resident using the phone number registered in the system and record the resident response before allowing entry.
                         If automated approval is active, wait for the system response and apply the same allow or deny decision.
                     </p>
@@ -214,50 +214,6 @@
             class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
         >
             @include('partials.alerts')
-
-            <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                <form method="GET" action="{{ route('visitors.index') }}" class="grid w-full gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <input type="hidden" name="tab" :value="activeMonitoringTab">
-                    <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
-                    <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
-                    <div class="xl:col-span-2">
-                        <label class="block text-sm font-medium text-slate-700">Search</label>
-                        <input
-                            type="search"
-                            name="q"
-                            value="{{ $filterQ }}"
-                            placeholder="Name, phone, resident, house, status"
-                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
-                        >
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Start Time</label>
-                        <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">End Time</label>
-                        <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                    </div>
-                    <div class="flex flex-wrap items-end gap-3 xl:col-span-4 md:justify-end">
-                        <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
-                        <a
-                            href="{{ route('visitors.index', ['history_per_page' => $historyPerPage, 'check_out_per_page' => $checkOutPerPage]) }}"
-                            class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                        >
-                            Clear
-                        </a>
-                        @if (auth()->user()->hasRole('security'))
-                            <button
-                                type="button"
-                                x-on:click="$dispatch('open-modal', 'visitor-check-in')"
-                                class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
-                            >
-                                Register Visitor
-                            </button>
-                        @endif
-                    </div>
-                </form>
-            </div>
 
             @if (auth()->user()->hasRole('security'))
                 <x-modal name="visitor-check-in" :show="$errors->any()" maxWidth="6xl" contentOverflow="visible" focusable>
@@ -645,8 +601,43 @@
                             <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                                 <div>
                                     <h3 class="text-lg font-semibold text-slate-900">Visitor Check-out</h3>
-                                    <p class="mt-1 text-sm text-slate-500">Visitors currently inside, whether resident-approved or walk-in, can be checked out here.</p>
+                                    <p class="mt-1 text-sm text-slate-500">Visitors currently inside the subdivision.</p>
                                 </div>
+                                <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
+                                    <input type="hidden" name="tab" value="check-out">
+                                    <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                                    <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Start</label>
+                                        <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">End</label>
+                                        <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-700">Search</label>
+                                        <input
+                                            type="search"
+                                            name="q"
+                                            value="{{ $filterQ }}"
+                                            placeholder="Name, phone, house"
+                                            oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                                            class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                        >
+                                    </div>
+                                    @if (auth()->user()->hasRole('security'))
+                                        <div class="flex items-end">
+                                            <button
+                                                type="button"
+                                                x-on:click="$dispatch('open-modal', 'visitor-check-in')"
+                                                class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
+                                            >
+                                                Register Visitor
+                                            </button>
+                                        </div>
+                                    @endif
+                                </form>
                             </div>
                         </div>
                         <div class="overflow-x-auto">
@@ -800,34 +791,16 @@
                             <p class="mt-1 text-sm text-slate-500">Browse visitor check-in/check-out records with host, purpose, and status history.</p>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-2">
-                            @if ($filterQ !== '' || $filterSubdivision || $filterDateFrom || $filterDateTo)
-                                <a
-                                    href="{{ route('visitors.index', array_filter([
-                                        'tab' => 'history',
-                                        'history_per_page' => $historyPerPage,
-                                        'check_out_per_page' => $checkOutPerPage,
-                                    ])) }}"
-                                    class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                                >
-                                    Clear Filters
-                                </a>
-                            @endif
-                        </div>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm divide-y divide-slate-200">
                             <thead class="bg-slate-50">
                                 <tr>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Name</th>
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Phone</th>
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Purpose</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Resident / Host</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check In</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check Out</th>
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Duration</th>
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                                 </tr>
                             </thead>
@@ -838,14 +811,6 @@
                                             <div class="min-w-[12rem]">
                                                 <div class="font-medium text-slate-900">{{ $visitor->full_name }}</div>
                                                 <div class="mt-1 text-xs text-slate-500">{{ $visitor->phone ?: 'No phone provided' }}</div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-slate-600">
-                                            <div class="whitespace-nowrap">{{ $visitor->phone ?: '-' }}</div>
-                                        </td>
-                                        <td class="px-6 py-4 text-slate-600">
-                                            <div class="max-w-[16rem] break-words" title="{{ $visitor->purpose ?: '-' }}">
-                                                {{ \Illuminate\Support\Str::limit($visitor->purpose ?: '-', 80) }}
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
@@ -879,12 +844,6 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 text-slate-600">
-                                            <span class="whitespace-nowrap">{{ $visitor->visit_duration_label }}</span>
-                                        </td>
-                                        <td class="px-6 py-4 text-slate-600">
-                                            <x-status-badge :status="$visitor->status" class="whitespace-nowrap" />
-                                        </td>
-                                        <td class="px-6 py-4 text-slate-600">
                                             <div class="flex items-center gap-2">
                                                 <a
                                                     href="{{ route('visitors.show', ['visitor' => $visitor->visitor_id]) }}"
@@ -905,7 +864,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="10" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
+                                        <td colspan="6" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

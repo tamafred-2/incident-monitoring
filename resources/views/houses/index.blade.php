@@ -36,12 +36,13 @@
                     <div class="min-w-[200px] flex-1">
                         <label class="block text-xs font-medium text-slate-500">Search</label>
                         <input type="search" name="q" value="{{ $filterQ }}" placeholder="Street, block, or lot"
+                               oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                     </div>
                     @if ($subdivisions->count() > 1)
                         <div class="min-w-[180px]">
                             <label class="block text-xs font-medium text-slate-500">Subdivision</label>
-                            <select name="subdivision_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <select name="subdivision_id" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                                 <option value="">All</option>
                                 @foreach ($subdivisions as $subdivision)
                                     <option value="{{ $subdivision->subdivision_id }}" @selected((string) $filterSubdivision === (string) $subdivision->subdivision_id)>
@@ -52,8 +53,6 @@
                         </div>
                     @endif
                     <div class="flex items-end gap-2">
-                        <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Search</button>
-                        <a href="{{ route('houses.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Clear</a>
                         <button
                             type="button"
                             x-data
