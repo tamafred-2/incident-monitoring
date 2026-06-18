@@ -52,8 +52,7 @@ class IncidentController extends Controller
 
         if ($filterQ !== '') {
             $query->where(function (Builder $builder) use ($filterQ) {
-                $builder->where('report_id', 'like', "%{$filterQ}%")
-                    ->orWhere('description', 'like', "%{$filterQ}%")
+                $builder->where('description', 'like', "%{$filterQ}%")
                     ->orWhere('category', 'like', "%{$filterQ}%")
                     ->orWhere('location', 'like', "%{$filterQ}%")
                     ->orWhere('status', 'like', "%{$filterQ}%")
@@ -162,11 +161,10 @@ class IncidentController extends Controller
 
         return response()->streamDownload(function () use ($reportRows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Report ID', 'Category', 'Location', 'Status', 'Reporter', 'Date Reported', 'Date Resolved', 'Proof Image URL']);
+            fputcsv($handle, ['Category', 'Location', 'Status', 'Reporter', 'Date Reported', 'Date Resolved', 'Proof Image URL']);
 
             foreach ($reportRows as $row) {
                 fputcsv($handle, [
-                    $row['report_id'],
                     $row['category'],
                     $row['location'],
                     $row['status'],
@@ -190,23 +188,6 @@ class IncidentController extends Controller
             $request->boolean('autoprint'),
             true
         ));
-    }
-
-    public function showByReportId(Request $request, string $reportId): View
-    {
-        $incident = Incident::query()
-            ->with(['subdivision', 'house', 'proofPhotos', 'reporter'])
-            ->where('report_id', strtoupper(trim($reportId)))
-            ->firstOrFail();
-
-        $this->authorizeIncidentAccess($request, $incident);
-
-        return view('incidents.show', [
-            'incident' => $incident,
-            'indexContext' => [],
-            'proofPhotos' => $this->proofPhotosFor($incident),
-            'canEditIncident' => $this->canUserEditIncident($request->user(), $incident),
-        ]);
     }
 
     public function create(Request $request): RedirectResponse
@@ -855,7 +836,7 @@ class IncidentController extends Controller
         Notification::send($team, new IncidentUpdatedNotification(
             $incident,
             'New Incident Reported',
-            "New incident {$incident->report_id} requires coordination."
+            "A new incident requires coordination."
         ));
     }
 
@@ -870,7 +851,7 @@ class IncidentController extends Controller
             Notification::send($reporter, new IncidentUpdatedNotification(
                 $incident,
                 'Incident Status Updated',
-                "Your incident {$incident->report_id} is now {$incident->status}."
+                "Your incident is now {$incident->status}."
             ));
         }
     }
@@ -1032,8 +1013,7 @@ class IncidentController extends Controller
 
         if ($filterQ !== '') {
             $query->where(function (Builder $builder) use ($filterQ) {
-                $builder->where('report_id', 'like', "%{$filterQ}%")
-                    ->orWhere('description', 'like', "%{$filterQ}%")
+                $builder->where('description', 'like', "%{$filterQ}%")
                     ->orWhere('category', 'like', "%{$filterQ}%")
                     ->orWhere('location', 'like', "%{$filterQ}%")
                     ->orWhere('status', 'like', "%{$filterQ}%")
@@ -1113,7 +1093,6 @@ class IncidentController extends Controller
             }
 
             return [
-                'report_id' => $incident->report_id,
                 'category' => $incident->category ?: '-',
                 'location' => $incident->location ?: '-',
                 'status' => $incident->status,

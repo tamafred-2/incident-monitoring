@@ -47,7 +47,6 @@
                 <div class="flex flex-col gap-4 pb-5 border-b border-slate-200 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Incident</p>
-                        <h3 class="mt-2 font-mono text-2xl font-semibold text-slate-900">{{ $incident->report_id }}</h3>
                         <p class="mt-2 text-sm text-slate-500">
                             Subdivision: {{ $incident->subdivision->subdivision_name ?? '-' }}
                             @if ($incident->house)
@@ -193,12 +192,12 @@
                                 @foreach ($proofPhotos as $photo)
                                     <button
                                         type="button"
-                                        @click="openPreview('{{ $photo['url'] }}', 'Proof image {{ $loop->iteration }} for {{ $incident->report_id }}')"
+                                        @click="openPreview('{{ $photo['url'] }}', 'Proof image {{ $loop->iteration }}')"
                                         class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:-translate-y-0.5 hover:shadow-md"
                                     >
                                         <img
                                             src="{{ $photo['url'] }}"
-                                            alt="Proof image {{ $loop->iteration }} for {{ $incident->report_id }}"
+                                            alt="Proof image {{ $loop->iteration }}"
                                             class="object-cover w-full h-56"
                                         >
                                         <div class="px-4 py-3 text-sm font-medium text-slate-700">

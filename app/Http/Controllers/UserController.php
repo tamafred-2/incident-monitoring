@@ -93,7 +93,6 @@ class UserController extends Controller
             'role' => ['required', Rule::in(['admin', 'security', 'staff', 'resident'])],
             'is_active' => ['nullable', 'boolean'],
             'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
 
         if ($isResident) {
@@ -118,13 +117,17 @@ class UserController extends Controller
             $data['subdivision_id'] = null;
         }
         $data['resident_id'] = null;
-
         $data['is_active'] = $request->boolean('is_active', true);
+
+        $plainPassword = $this->generateTemporaryPassword();
+        $data['password'] = $plainPassword;
+        $data['requires_password_change'] = true;
 
         User::create($data);
 
         return redirect()->route('users.index')
-            ->with('success', 'User created successfully.');
+            ->with('success', 'User created successfully.')
+            ->with('generated_password', $plainPassword);
     }
 
     private function storeResidentAccount(Request $request, array $data): RedirectResponse
@@ -179,6 +182,8 @@ class UserController extends Controller
             $userSubdivisionId = $resident->subdivision_id;
         }
 
+        $plainPassword = $this->generateTemporaryPassword();
+
         User::create([
             'surname' => $data['surname'],
             'first_name' => $data['first_name'],
@@ -186,14 +191,16 @@ class UserController extends Controller
             'extension' => $data['extension'] ?? null,
             'email' => $data['email'],
             'role' => 'resident',
-            'password' => $data['password'],
+            'password' => $plainPassword,
+            'requires_password_change' => true,
             'subdivision_id' => $userSubdivisionId,
             'resident_id' => $residentId,
             'is_active' => $request->boolean('is_active', true),
         ]);
 
         return redirect()->route('users.index')
-            ->with('success', 'User created successfully.');
+            ->with('success', 'User created successfully.')
+            ->with('generated_password', $plainPassword);
     }
 
     public function update(Request $request, User $user)
@@ -315,6 +322,11 @@ class UserController extends Controller
         }
 
         return $context;
+    }
+
+    private function generateTemporaryPassword(): string
+    {
+        return substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes(12))), 0, 12);
     }
 
     private function resolvePerPage(mixed $value, int $default = 10): int

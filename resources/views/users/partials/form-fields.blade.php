@@ -1,8 +1,8 @@
 @props([
     'user' => null,
-    'passwordLabel' => 'Password',
-    'passwordConfirmationLabel' => 'Confirm Password',
-    'passwordRequired' => true,
+    'passwordLabel' => 'New Password',
+    'passwordConfirmationLabel' => 'Confirm New Password',
+    'showPasswordFields' => false,
 ])
 
 <div class="grid gap-4 md:grid-cols-2">
@@ -72,13 +72,15 @@
         <input type="hidden" name="subdivision_id" value="{{ $subdivisions->first()?->subdivision_id ?? '' }}">
     </div>
 </div>
+@if ($showPasswordFields)
 <div>
     <label class="block text-sm font-medium text-slate-700">{{ $passwordLabel }}</label>
-    <input type="password" name="password" {{ $passwordRequired ? 'required' : '' }}
+    <input type="password" name="password"
            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
 </div>
 <div>
     <label class="block text-sm font-medium text-slate-700">{{ $passwordConfirmationLabel }}</label>
-    <input type="password" name="password_confirmation" {{ $passwordRequired ? 'required' : '' }}
+    <input type="password" name="password_confirmation"
            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
 </div>
+@endif

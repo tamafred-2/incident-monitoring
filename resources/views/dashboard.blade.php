@@ -61,7 +61,6 @@
                                 <table class="min-w-full text-sm divide-y divide-slate-200">
                                     <thead class="bg-slate-50">
                                         <tr>
-                                            <th class="px-6 py-3 font-semibold text-left text-slate-600">Report ID</th>
                                             <th class="px-6 py-3 font-semibold text-left text-slate-600">Category</th>
                                             <th class="px-6 py-3 font-semibold text-left text-slate-600">Location</th>
                                             <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
@@ -71,15 +70,14 @@
                                     <tbody class="bg-white divide-y divide-slate-100">
                                         @forelse ($dashboardPendingIncidentList as $pendingIncident)
                                             <tr>
-                                                <td class="px-6 py-4">
+                                                <td class="px-6 py-4 text-slate-700">
                                                     <a
                                                         href="{{ route('incidents.show', ['incidentId' => $pendingIncident->incident_id]) }}"
-                                                        class="font-mono font-medium text-sky-700 hover:text-sky-900"
+                                                        class="font-medium text-sky-700 hover:text-sky-900"
                                                     >
-                                                        {{ $pendingIncident->report_id }}
+                                                        {{ $pendingIncident->category ?: '-' }}
                                                     </a>
                                                 </td>
-                                                <td class="px-6 py-4 text-slate-700">{{ $pendingIncident->category ?: '-' }}</td>
                                                 <td class="px-6 py-4 text-slate-600">{{ $pendingIncident->location ?: '-' }}</td>
                                                 <td class="px-6 py-4">
                                                     <x-status-badge :status="$pendingIncident->status" />

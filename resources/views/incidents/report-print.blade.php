@@ -33,7 +33,6 @@
         <table>
             <thead>
                 <tr>
-                    <th>Report ID</th>
                     <th>Category</th>
                     <th>Location</th>
                     <th>Status</th>
@@ -46,7 +45,6 @@
             <tbody>
                 @forelse (($reportRows ?? []) as $row)
                     <tr>
-                        <td>{{ $row['report_id'] }}</td>
                         <td>{{ $row['category'] }}</td>
                         <td>{{ $row['location'] }}</td>
                         <td>{{ $row['status'] }}</td>
@@ -55,7 +53,7 @@
                         <td>{{ $row['resolved_at'] }}</td>
                         <td>
                             @if (!empty($row['proof_data_uri']))
-                                <img src="{{ $row['proof_data_uri'] }}" alt="Proof for {{ $row['report_id'] }}" class="proof-thumb">
+                                <img src="{{ $row['proof_data_uri'] }}" alt="Incident proof" class="proof-thumb">
                             @else
                                 -
                             @endif
@@ -63,7 +61,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8">No incident records found for current filters.</td>
+                        <td colspan="7">No incident records found for current filters.</td>
                     </tr>
                 @endforelse
             </tbody>
