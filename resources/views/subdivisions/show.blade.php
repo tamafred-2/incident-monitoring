@@ -13,12 +13,14 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <a
-                    href="{{ route('dashboard') }}"
-                    class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
+                <button
+                    type="button"
+                    x-data
+                    x-on:click="$dispatch('open-modal', 'subdivision-contact-info')"
+                    class="inline-flex items-center px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
                 >
-                    Back to Dashboard
-                </a>
+                    View Subdivision Contact Info
+                </button>
                 @if (auth()->user()->isAdmin())
                     <button
                         type="button"
@@ -37,31 +39,17 @@
         <div class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
             @include('partials.alerts')
 
-            <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {{-- Houses --}}
+            <div class="bg-white border shadow-sm rounded-2xl border-slate-200">
+                <div class="flex flex-col gap-3 p-6 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">{{ $isSecurityViewer ? 'Resident Contact Overview' : 'House Registry Overview' }}</h4>
+                        <h3 class="text-base font-semibold text-slate-900">{{ $isSecurityViewer ? 'Resident Contact Records' : 'House Records' }}</h3>
                         <p class="mt-1 text-sm text-slate-500">{{ $isSecurityViewer ? 'Browse houses and resident contact details for '.$subdivision->subdivision_name.'.' : 'Manage and maintain block and lot records for '.$subdivision->subdivision_name.'.' }}</p>
                         <div class="mt-3 flex flex-wrap gap-2">
                             <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ $houseCount }} house{{ $houseCount === 1 ? '' : 's' }}</span>
                             <span class="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">{{ $residentCount }} resident{{ $residentCount === 1 ? '' : 's' }}</span>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        x-data
-                        x-on:click="$dispatch('open-modal', 'subdivision-contact-info')"
-                        class="inline-flex items-center px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                    >
-                        View Subdivision Contact Info
-                    </button>
-                </div>
-            </div>
-
-            {{-- Houses --}}
-            <div class="bg-white border shadow-sm rounded-2xl border-slate-200">
-                <div class="flex flex-col gap-3 p-6 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
-                    <h3 class="text-base font-semibold text-slate-900">House Records</h3>
                     <div class="flex flex-wrap items-end gap-3">
                         <form method="GET" action="{{ route('subdivisions.show', $subdivision) }}" class="flex items-center gap-2">
                             <input type="hidden" name="per_page" value="{{ $perPage }}">
