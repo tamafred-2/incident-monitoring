@@ -10,7 +10,7 @@ class ForcedPasswordChangeTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_forced_password_change_user_is_redirected_to_profile_after_login(): void
+    public function test_forced_password_change_user_is_redirected_to_password_change_after_login(): void
     {
         $user = User::factory()->create([
             'email' => 'resident@example.com',
@@ -23,7 +23,7 @@ class ForcedPasswordChangeTest extends TestCase
         ]);
 
         $response
-            ->assertRedirect('/profile')
+            ->assertRedirect('/change-password')
             ->assertSessionHas('warning', 'Please change your password before continuing.');
     }
 
@@ -38,7 +38,22 @@ class ForcedPasswordChangeTest extends TestCase
             ->get('/dashboard');
 
         $response
-            ->assertRedirect('/profile')
+            ->assertRedirect('/change-password')
+            ->assertSessionHas('warning', 'Please change your password before continuing.');
+    }
+
+    public function test_forced_password_change_user_is_redirected_away_from_profile(): void
+    {
+        $user = User::factory()->create([
+            'requires_password_change' => true,
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get('/profile');
+
+        $response
+            ->assertRedirect('/change-password')
             ->assertSessionHas('warning', 'Please change your password before continuing.');
     }
 }

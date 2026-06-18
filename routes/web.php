@@ -100,6 +100,7 @@ Route::middleware(['auth', 'password.change'])->group(function () {
         Route::post('/{visitorRequest}/approve', [ResidentVisitorController::class, 'approve'])->name('approve');
         Route::post('/{visitorRequest}/decline', [ResidentVisitorController::class, 'decline'])->name('decline');
     });
+    Route::get('/change-password', [ProfileController::class, 'forcePasswordChange'])->name('password.force-change');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

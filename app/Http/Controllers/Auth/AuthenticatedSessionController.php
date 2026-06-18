@@ -54,7 +54,7 @@ class AuthenticatedSessionController extends Controller
         Cookie::queue(self::QUICK_LOGIN_COOKIE, (string) $user->getKey(), self::REMEMBER_MINUTES);
 
         if ($user->requires_password_change) {
-            return redirect()->route('profile.edit')
+            return redirect()->route('password.force-change')
                 ->with('warning', 'Please change your password before continuing.');
         }
 
@@ -106,7 +106,7 @@ class AuthenticatedSessionController extends Controller
         }
 
         if ($request->user()?->requires_password_change) {
-            return redirect()->route('profile.edit')
+            return redirect()->route('password.force-change')
                 ->with('warning', 'Please change your password before continuing.');
         }
 
