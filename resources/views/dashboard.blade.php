@@ -35,13 +35,13 @@
                 @endphp
                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <x-stat-card label="Total Incidents" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
-                    <x-stat-card label="Resolution Rate" :value="$summary['resolution_rate'] . '%'" :hint="$summary['resolved_incidents'] . ' resolved'" tone="emerald" />
+                    <x-stat-card label="Resolution Rate" :value="$summary['resolution_rate'] . '%'" :hint="$summary['resolved_incidents'] . ' resolved'" />
                     <x-stat-card label="Avg. Resolution Time" :value="$summary['avg_resolution_label']" hint="reported → resolved" />
                     <x-stat-card label="Total Visitors" :value="$summary['total_visitors']" :hint="$summary['visitors_inside'] . ' currently inside'" />
                     <x-stat-card label="Total Residents" :value="$summary['total_residents']" />
                     <x-stat-card label="Total Houses" :value="$summary['total_houses']" />
                     <x-stat-card label="Avg. Residents / House" :value="$summary['avg_residents_per_house']" />
-                    <x-stat-card label="Pending Incidents" :value="$summary['pending_incidents']" tone="amber" />
+                    <x-stat-card label="Pending Incidents" :value="$summary['pending_incidents']" />
                 </div>
 
                 @php
@@ -69,19 +69,13 @@
                                     </thead>
                                     <tbody class="bg-white divide-y divide-slate-100">
                                         @forelse ($dashboardPendingIncidentList as $pendingIncident)
-                                            <tr>
-                                                <td class="px-6 py-4 text-slate-700">
-                                                    <a
-                                                        href="{{ route('incidents.show', ['incidentId' => $pendingIncident->incident_id]) }}"
-                                                        class="font-medium text-sky-700 hover:text-sky-900"
-                                                    >
-                                                        {{ $pendingIncident->category ?: '-' }}
-                                                    </a>
-                                                </td>
+                                            <tr
+                                                class="transition cursor-pointer hover:bg-slate-50"
+                                                onclick="window.location='{{ route('incidents.show', ['incidentId' => $pendingIncident->incident_id]) }}'"
+                                            >
+                                                <td class="px-6 py-4 font-medium text-slate-700">{{ $pendingIncident->category ?: '-' }}</td>
                                                 <td class="px-6 py-4 text-slate-600">{{ $pendingIncident->location ?: '-' }}</td>
-                                                <td class="px-6 py-4">
-                                                    <x-status-badge :status="$pendingIncident->status" />
-                                                </td>
+                                                <td class="px-6 py-4 text-slate-600">{{ $pendingIncident->status }}</td>
                                                 <td class="px-6 py-4 text-slate-600">
                                                     @if ($pendingIncident->reported_at)
                                                         <div class="min-w-[9rem]">
@@ -187,7 +181,7 @@
                                     </td>
                                     <td class="px-6 py-4">
                                         <div class="min-w-[12rem]">
-                                            <div class="font-medium text-sky-700">{{ $visitor->full_name }}</div>
+                                            <div class="font-medium text-slate-900">{{ $visitor->full_name }}</div>
                                             <div class="mt-1 text-xs text-slate-500">
                                                 @if ($visitor->check_in)
                                                     {{ $visitor->check_in->format('M j, Y') }} at {{ $visitor->check_in->format('h:i A') }}
