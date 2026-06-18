@@ -85,7 +85,7 @@
     <div class="sticky top-0 z-30 border-b border-white/10 bg-[var(--shell-sidebar)] text-white lg:hidden">
         <div class="flex items-center justify-between gap-3 px-4 py-4">
             <a href="{{ route('dashboard') }}" class="sidebar-brand sidebar-brand-mobile">
-                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" class="h-12 w-12 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
+                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" width="48" height="48" class="h-12 w-12 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
                 <span class="sidebar-brand-text">{{ $brandNameUpper }}</span>
             </a>
 
@@ -116,7 +116,7 @@
     >
         <div class="flex items-center justify-center border-b border-white/10 px-6 py-4">
             <a href="{{ route('dashboard') }}" class="sidebar-brand sidebar-brand-desktop">
-                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" class="h-16 w-16 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
+                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" width="64" height="64" class="h-16 w-16 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
                 <span class="sidebar-brand-text sidebar-brand-text-desktop">{{ $brandNameUpper }}</span>
             </a>
         </div>

@@ -127,7 +127,7 @@
             @if ($showHeader)
                 <div class="guest-header">
                     <a href="/" class="guest-logo">
-                        <img src="{{ $appBrandLogo }}" alt="{{ $appBrandName }} logo">
+                        <img src="{{ $appBrandLogo }}" alt="{{ $appBrandName }} logo" width="70" height="70">
                     </a>
                     <div class="guest-kicker">Monitoring Platform</div>
                     <h1 class="guest-title">{{ $appBrandName }}</h1>
