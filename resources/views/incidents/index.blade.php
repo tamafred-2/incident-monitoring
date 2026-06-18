@@ -26,7 +26,7 @@
         ]);
         $exportPreviewUrl = route('incidents.print', $reportQuery + ['view' => 'history', 'preview' => 1, 'embed' => 1]);
         $emptyStateColspan = ($isResidentViewer ? 0 : 1)
-            + ($activeIncidentTab === 'history' ? 6 : 4);
+            + ($activeIncidentTab === 'history' ? 5 : 4);
     @endphp
 
     <div class="py-10">
@@ -88,55 +88,6 @@
         >
             @include('partials.alerts')
 
-            @if (auth()->user()->hasRole(['security', 'staff']) || auth()->user()->isAdmin())
-                <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <form method="GET" action="{{ route('incidents.index') }}" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div class="xl:col-span-2">
-                            <label class="block text-sm font-medium text-slate-700">Search</label>
-                            <input
-                                type="search"
-                                name="q"
-                                value="{{ $filterQ }}"
-                                placeholder="Description, reporter, category, status"
-                                class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
-                            >
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Start Time</label>
-                            <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">End Time</label>
-                            <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
-                        </div>
-                        <div class="flex flex-wrap items-end gap-3 xl:col-span-4 md:justify-end">
-                            <input type="hidden" name="view" :value="activeIncidentTab === 'history' ? 'history' : 'active'">
-                            <input type="hidden" name="per_page" value="{{ $perPage }}">
-                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">Apply</button>
-                            <a
-                                href="{{ route('incidents.index', array_filter([
-                                    'view' => $activeIncidentTab === 'history' ? 'history' : null,
-                                    'per_page' => $perPage,
-                                ])) }}"
-                                class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                            >
-                                Clear
-                            </a>
-                            @if (auth()->user()->hasRole(['staff', 'security']) || auth()->user()->isAdmin())
-                                <button
-                                    type="button"
-                                    x-data
-                                    x-on:click="$dispatch('open-modal', 'report-incident')"
-                                    class="inline-flex items-center px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
-                                >
-                                    Report Incident
-                                </button>
-                            @endif
-                        </div>
-                    </form>
-                </div>
-            @endif
-
             <div class="p-4 bg-white border shadow-sm rounded-2xl border-slate-200">
                 <div class="flex flex-wrap items-center justify-between gap-3 px-2 pb-1 border-b border-slate-200">
                     <nav class="flex flex-wrap gap-6" aria-label="Incident monitoring sections">
@@ -180,31 +131,85 @@
 
             <div class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
                 @if ($activeIncidentTab === 'history')
-                    <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
+                    <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 2xl:flex-row 2xl:items-end 2xl:justify-between">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-900">Incident History</h3>
                             <p class="mt-1 text-sm text-slate-500">Browse resolved incident records and past cases.</p>
                         </div>
-
-                        @if ($filterQ !== '' || $filterSubdivision || !empty($sharedFilters))
-                            <a
-                                href="{{ route('incidents.index', array_filter([
-                                    'view' => 'history',
-                                    'per_page' => $perPage,
-                                ])) }}"
-                                class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                            >
-                                Clear Filters
-                            </a>
+                        @if (auth()->user()->hasRole(['security', 'staff']) || auth()->user()->isAdmin())
+                            <form method="GET" action="{{ route('incidents.index') }}" class="flex w-full flex-wrap items-end gap-2 2xl:w-auto">
+                                <input type="hidden" name="view" value="history">
+                                <input type="hidden" name="per_page" value="{{ $perPage }}">
+                                <div class="min-w-[170px] flex-1 sm:flex-none">
+                                    <label class="block text-xs font-medium text-slate-500">Start Time</label>
+                                    <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                </div>
+                                <div class="min-w-[170px] flex-1 sm:flex-none">
+                                    <label class="block text-xs font-medium text-slate-500">End Time</label>
+                                    <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                </div>
+                                <div class="min-w-[200px] flex-1 2xl:flex-none">
+                                    <label class="block text-xs font-medium text-slate-500">Search</label>
+                                    <input
+                                        type="search"
+                                        name="q"
+                                        value="{{ $filterQ }}"
+                                        placeholder="Search incidents"
+                                        oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                    >
+                                </div>
+                                <button
+                                    type="button"
+                                    x-data
+                                    x-on:click="$dispatch('open-modal', 'report-incident')"
+                                    class="inline-flex items-center px-3 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
+                                >
+                                    Report Incident
+                                </button>
+                            </form>
                         @endif
                     </div>
                 @else
                     <div class="px-6 py-4 border-b border-slate-200">
-                        <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                        <div class="flex flex-col gap-4 2xl:flex-row 2xl:items-end 2xl:justify-between">
                             <div>
                                 <h3 class="text-lg font-semibold text-slate-900">Pending Incidents</h3>
-                                <p class="mt-1 text-sm text-slate-500">Incidents that are newly reported or still being handled are shown as pending until resolved.</p>
+                                <p class="mt-1 text-sm text-slate-500">New and active reports pending resolution.</p>
                             </div>
+                            @if (auth()->user()->hasRole(['security', 'staff']) || auth()->user()->isAdmin())
+                                <form method="GET" action="{{ route('incidents.index') }}" class="flex w-full flex-wrap items-end gap-2 2xl:w-auto">
+                                    <input type="hidden" name="view" value="active">
+                                    <input type="hidden" name="per_page" value="{{ $perPage }}">
+                                    <div class="min-w-[170px] flex-1 sm:flex-none">
+                                        <label class="block text-xs font-medium text-slate-500">Start Time</label>
+                                        <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    </div>
+                                    <div class="min-w-[170px] flex-1 sm:flex-none">
+                                        <label class="block text-xs font-medium text-slate-500">End Time</label>
+                                        <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    </div>
+                                    <div class="min-w-[200px] flex-1 2xl:flex-none">
+                                        <label class="block text-xs font-medium text-slate-500">Search</label>
+                                        <input
+                                            type="search"
+                                            name="q"
+                                            value="{{ $filterQ }}"
+                                            placeholder="Search incidents"
+                                            oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                        >
+                                    </div>
+                                    <button
+                                        type="button"
+                                        x-data
+                                        x-on:click="$dispatch('open-modal', 'report-incident')"
+                                        class="inline-flex items-center px-3 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
+                                    >
+                                        Report Incident
+                                    </button>
+                                </form>
+                            @endif
                         </div>
                     </div>
                 @endif
@@ -217,9 +222,6 @@
                                 @unless ($isResidentViewer)
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Reporter</th>
                                 @endunless
-                                @if ($activeIncidentTab === 'history')
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Proof</th>
-                                @endif
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">
                                     <a
                                         href="{{ route('incidents.index', array_filter([
@@ -271,14 +273,7 @@
                                             $isResolvedIncident = in_array($incident->status, ['Resolved', 'Closed'], true);
                                             $statusLabel = $isResolvedIncident ? 'Resolved' : 'Pending';
                                         @endphp
-                                        <span class="inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold
-                                            {{ $incident->trashed()
-                                                ? 'bg-rose-100 text-rose-700'
-                                                : ($isResolvedIncident
-                                                    ? 'bg-emerald-100 text-emerald-700'
-                                                    : 'bg-amber-100 text-amber-700') }}">
-                                            {{ $incident->trashed() ? 'Archived' : $statusLabel }}
-                                        </span>
+                                        {{ $incident->trashed() ? 'Archived' : $statusLabel }}
                                     </td>
                                     @unless ($isResidentViewer)
                                         <td class="px-6 py-4 text-slate-600">
@@ -287,46 +282,6 @@
                                             </div>
                                         </td>
                                     @endunless
-                                    @if ($activeIncidentTab === 'history')
-                                        <td class="px-6 py-4 text-slate-600">
-                                            @if ($isResolvedIncident && $incident->proofPhotos->isNotEmpty())
-                                                @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proofPhotos->first()->photo_path]))
-                                                <button
-                                                    type="button"
-                                                    @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image')"
-                                                    class="relative block w-16 h-16 overflow-hidden border group rounded-xl border-slate-200 bg-slate-100"
-                                                    title="Preview proof images"
-                                                >
-                                                    <img
-                                                        src="{{ $proofPhotoUrl }}"
-                                                        alt="Proof image"
-                                                        class="object-cover w-full h-full transition duration-200 group-hover:scale-105"
-                                                    >
-                                                    @if ($incident->proofPhotos->count() > 1)
-                                                        <span class="absolute bottom-1 right-1 rounded-full bg-slate-900/80 px-2 py-0.5 text-[11px] font-semibold text-white">
-                                                            +{{ $incident->proofPhotos->count() - 1 }}
-                                                        </span>
-                                                    @endif
-                                                </button>
-                                            @elseif ($isResolvedIncident && $incident->proof_photo_path)
-                                                @php($proofPhotoUrl = route('incidents.photos.show', ['path' => $incident->proof_photo_path]))
-                                                <button
-                                                    type="button"
-                                                    @click="openPreview('{{ $proofPhotoUrl }}', 'Proof image')"
-                                                    class="relative block w-16 h-16 overflow-hidden border group rounded-xl border-slate-200 bg-slate-100"
-                                                    title="Preview proof image"
-                                                >
-                                                    <img
-                                                        src="{{ $proofPhotoUrl }}"
-                                                        alt="Proof image"
-                                                        class="object-cover w-full h-full transition duration-200 group-hover:scale-105"
-                                                    >
-                                                </button>
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                    @endif
                                     <td class="px-6 py-4 text-slate-600">
                                         @if ($incident->reported_at)
                                             <div class="min-w-[9rem]">

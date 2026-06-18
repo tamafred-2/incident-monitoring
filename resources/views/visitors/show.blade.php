@@ -7,16 +7,10 @@
             </div>
             <div class="flex flex-wrap gap-3">
                 <a
-                    href="{{ route('dashboard', $dashboardQuery) }}"
+                    href="{{ route('visitors.index', auth()->user()->isAdmin() && $visitor->subdivision_id ? ['subdivision_id' => $visitor->subdivision_id] : []) }}"
                     class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
-                    Back to Dashboard
-                </a>
-                <a
-                    href="{{ route('visitors.index', auth()->user()->isAdmin() && $visitor->subdivision_id ? ['subdivision_id' => $visitor->subdivision_id] : []) }}"
-                    class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-700"
-                >
-                    Open Visitor List
+                    Back to Visitors
                 </a>
             </div>
         </div>

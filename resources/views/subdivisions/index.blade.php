@@ -16,11 +16,12 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Search</label>
                             <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, street, contact"
+                                   oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
                                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Status</label>
-                            <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <select name="status" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                                 <option value="">All</option>
                                 <option value="Active" @selected($filterStatus === 'Active')>Active</option>
                                 <option value="Inactive" @selected($filterStatus === 'Inactive')>Inactive</option>
@@ -28,15 +29,13 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">View</label>
-                            <select name="view" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <select name="view" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                                 <option value="active" @selected($filterView === 'active')>Active</option>
                                 <option value="deleted" @selected($filterView === 'deleted')>Deleted</option>
                                 <option value="all" @selected($filterView === 'all')>All</option>
                             </select>
                         </div>
                         <div class="flex items-end gap-3">
-                            <button class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Apply</button>
-                            <a href="{{ route('subdivisions.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Clear</a>
                             <button
                                 type="button"
                                 x-data

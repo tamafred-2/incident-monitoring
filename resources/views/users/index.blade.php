@@ -79,33 +79,36 @@
                 </div>
             @endif
 
-            <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <form method="GET" action="{{ route('users.index') }}" class="grid gap-4 md:grid-cols-[1fr_160px_160px_auto]">
+            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700">Search</label>
-                        <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name or email"
-                               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                        <h3 class="text-lg font-semibold text-slate-900">User Directory</h3>
+                        <p class="mt-1 text-sm text-slate-500">Manage admin, security, and staff accounts from one table.</p>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Role</label>
-                        <select name="role" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                            <option value="">All</option>
-                            @foreach (['admin', 'security', 'staff'] as $role)
-                                <option value="{{ $role }}" @selected($filterRole === $role)>{{ ucfirst($role) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">View</label>
-                        <select name="view" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                            <option value="active" @selected($filterView === 'active')>Active</option>
-                            <option value="deleted" @selected($filterView === 'deleted')>Deleted</option>
-                            <option value="all" @selected($filterView === 'all')>All</option>
-                        </select>
-                    </div>
-                    <div class="flex items-end gap-3">
-                        <button class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Apply</button>
-                        <a href="{{ route('users.index', ['per_page' => $perPage]) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Clear</a>
+                    <form method="GET" action="{{ route('users.index') }}" class="flex flex-wrap items-end gap-3">
+                        <div class="min-w-[150px]">
+                            <label class="block text-xs font-medium text-slate-500">Role</label>
+                            <select name="role" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                <option value="">All roles</option>
+                                @foreach (['admin', 'security', 'staff'] as $role)
+                                    <option value="{{ $role }}" @selected($filterRole === $role)>{{ ucfirst($role) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="min-w-[140px]">
+                            <label class="block text-xs font-medium text-slate-500">View</label>
+                            <select name="view" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                <option value="active" @selected($filterView === 'active')>Active</option>
+                                <option value="deleted" @selected($filterView === 'deleted')>Deleted</option>
+                                <option value="all" @selected($filterView === 'all')>All</option>
+                            </select>
+                        </div>
+                        <div class="min-w-[220px] flex-1 xl:flex-none">
+                            <label class="block text-xs font-medium text-slate-500">Search</label>
+                            <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name or email"
+                                   oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                                   class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                        </div>
                         <button
                             type="button"
                             x-data
@@ -114,16 +117,7 @@
                         >
                             Add User
                         </button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
-                    <div>
-                        <h3 class="text-lg font-semibold text-slate-900">User Directory</h3>
-                        <p class="mt-1 text-sm text-slate-500">Manage admin, security, and staff accounts from one table.</p>
-                    </div>
+                    </form>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
