@@ -63,12 +63,12 @@
             role="dialog"
             aria-modal="true"
         >
-            <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" @click="confirming = false"></div>
+            <div class="absolute inset-0 bg-slate-950/80" @click="confirming = false"></div>
 
             <div
                 x-show="confirming"
                 x-transition.scale.origin.center
-                class="relative w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl"
+                class="relative w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-2xl"
             >
                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-sky-100">
                     <svg class="h-7 w-7 text-sky-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

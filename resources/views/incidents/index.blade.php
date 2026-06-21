@@ -422,7 +422,7 @@
                 style="display: none;"
             >
                 <div class="absolute inset-0" @click="closeExportPreview()"></div>
-                <div class="relative w-full max-w-6xl overflow-hidden bg-white shadow-2xl rounded-3xl">
+                <div class="relative w-full max-w-6xl overflow-hidden bg-white shadow-2xl rounded-2xl">
                     <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
                         <h3 class="text-base font-semibold text-slate-900">Incident Report Preview</h3>
                         <div class="flex flex-wrap items-center gap-2">
@@ -467,7 +467,7 @@
                 x-cloak
                 x-show="excelConfirmOpen"
                 x-on:keydown.escape.window="closeExcelConfirm()"
-                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/70"
+                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/80"
                 style="display: none;"
             >
                 <div class="absolute inset-0" @click="closeExcelConfirm()"></div>
@@ -500,7 +500,7 @@
                 x-cloak
                 x-show="pdfConfirmOpen"
                 x-on:keydown.escape.window="closePdfConfirm()"
-                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/70"
+                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/80"
                 style="display: none;"
             >
                 <div class="absolute inset-0" @click="closePdfConfirm()"></div>
@@ -536,7 +536,7 @@
                 style="display: none;"
             >
                 <div class="absolute inset-0" @click="closePreview()"></div>
-                <div class="relative w-full max-w-5xl overflow-hidden bg-white shadow-2xl rounded-3xl">
+                <div class="relative w-full max-w-5xl overflow-hidden bg-white shadow-2xl rounded-2xl">
                     <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
                         <h3 class="text-base font-semibold text-slate-900" x-text="previewLabel || 'Proof image preview'"></h3>
                         <button

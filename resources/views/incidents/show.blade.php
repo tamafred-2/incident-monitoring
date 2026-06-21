@@ -221,7 +221,7 @@
                 style="display: none;"
             >
                 <div class="absolute inset-0" @click="closePreview()"></div>
-                <div class="relative w-full max-w-5xl overflow-hidden bg-white shadow-2xl rounded-3xl">
+                <div class="relative w-full max-w-5xl overflow-hidden bg-white shadow-2xl rounded-2xl">
                     <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200">
                         <h3 class="text-base font-semibold text-slate-900" x-text="previewLabel || 'Proof image preview'"></h3>
                         <button
