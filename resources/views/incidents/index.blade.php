@@ -141,11 +141,11 @@
                                 <input type="hidden" name="view" value="history">
                                 <input type="hidden" name="per_page" value="{{ $perPage }}">
                                 <div class="min-w-[170px] flex-1 sm:flex-none">
-                                    <label class="block text-xs font-medium text-slate-500">Start Time</label>
+                                    <label class="block text-xs font-medium text-slate-500">From</label>
                                     <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                                 </div>
                                 <div class="min-w-[170px] flex-1 sm:flex-none">
-                                    <label class="block text-xs font-medium text-slate-500">End Time</label>
+                                    <label class="block text-xs font-medium text-slate-500">To</label>
                                     <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                                 </div>
                                 <div class="min-w-[200px] flex-1 2xl:flex-none">
@@ -182,11 +182,11 @@
                                     <input type="hidden" name="view" value="active">
                                     <input type="hidden" name="per_page" value="{{ $perPage }}">
                                     <div class="min-w-[170px] flex-1 sm:flex-none">
-                                        <label class="block text-xs font-medium text-slate-500">Start Time</label>
+                                        <label class="block text-xs font-medium text-slate-500">From</label>
                                         <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                                     </div>
                                     <div class="min-w-[170px] flex-1 sm:flex-none">
-                                        <label class="block text-xs font-medium text-slate-500">End Time</label>
+                                        <label class="block text-xs font-medium text-slate-500">To</label>
                                         <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                                     </div>
                                     <div class="min-w-[200px] flex-1 2xl:flex-none">
