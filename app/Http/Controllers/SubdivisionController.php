@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActiveStatus;
 use App\Models\Subdivision;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,8 +52,9 @@ class SubdivisionController extends Controller
         }
 
         $houses = $housesQuery
-            ->orderBy('block')
-            ->orderBy('lot')
+            ->orderByRaw('CAST(block AS INTEGER)')
+            ->orderByRaw('CAST(lot AS INTEGER)')
+            ->orderBy('street')
             ->paginate($perPage)
             ->withQueryString();
 
@@ -103,7 +105,7 @@ class SubdivisionController extends Controller
             'secondary_contact_person' => ['nullable', 'string', 'max:100'],
             'secondary_contact_number' => ['nullable', 'string', 'max:20'],
             'secondary_email'          => ['nullable', 'email', 'max:100'],
-            'status'                   => ['required', Rule::in(['Active', 'Inactive'])],
+            'status'                   => ['required', Rule::enum(ActiveStatus::class)],
         ]);
 
         if ($request->boolean('remove_logo') && $subdivision->logo_path) {
@@ -126,43 +128,10 @@ class SubdivisionController extends Controller
             ->with('success', 'Subdivision updated successfully.');
     }
 
-    public function destroy(Request $request, Subdivision $subdivision): RedirectResponse
-    {
-        $subdivision->delete();
-
-        return redirect()->route('subdivisions.index')
-            ->with('success', 'Subdivision archived successfully.');
-    }
-
-    public function restore(Request $request, int $subdivisionId): RedirectResponse
-    {
-        $subdivision = Subdivision::withTrashed()->findOrFail($subdivisionId);
-
-        if (!$subdivision->trashed()) {
-            return redirect()->route('subdivisions.index', ['view' => 'deleted'])
-                ->with('error', 'That subdivision is already active.');
-        }
-
-        $subdivision->restore();
-
-        return redirect()->route('subdivisions.index', ['view' => 'deleted'])
-            ->with('success', 'Subdivision restored successfully.');
-    }
-
-    public function forceDelete(Request $request, int $subdivisionId): RedirectResponse
-    {
-        $subdivision = Subdivision::withTrashed()->findOrFail($subdivisionId);
-
-        if (!$subdivision->trashed()) {
-            return redirect()->route('subdivisions.index', ['view' => 'deleted'])
-                ->with('error', 'Only archived subdivisions can be permanently deleted.');
-        }
-
-        $subdivision->forceDelete();
-
-        return redirect()->route('subdivisions.index', ['view' => 'deleted'])
-            ->with('success', 'Subdivision permanently deleted.');
-    }
+    // The subdivision is the singleton identity of this system: it is provisioned
+    // once (via seeding) and can only be viewed/edited, never created or deleted
+    // through the app. Destroy/restore/force-delete were intentionally removed so
+    // the one-and-only subdivision can't be archived out from under the system.
 
     private function resolvePerPage(mixed $value, int $default = 10): int
     {

@@ -48,9 +48,7 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/house-management/{subdivision}', [SubdivisionController::class, 'show'])->middleware('role:admin,staff,security')->name('subdivisions.show');
     Route::get('/house-management/{subdivision}/edit', [SubdivisionController::class, 'edit'])->middleware('role:admin')->name('subdivisions.edit');
     Route::put('/house-management/{subdivision}', [SubdivisionController::class, 'update'])->middleware('role:admin')->name('subdivisions.update');
-    Route::delete('/house-management/{subdivision}', [SubdivisionController::class, 'destroy'])->middleware('role:admin')->name('subdivisions.destroy');
-    Route::post('/house-management/{subdivisionId}/restore', [SubdivisionController::class, 'restore'])->middleware('role:admin')->name('subdivisions.restore');
-    Route::delete('/house-management/{subdivisionId}/force', [SubdivisionController::class, 'forceDelete'])->middleware('role:admin')->name('subdivisions.force-delete');
+    // The subdivision is a singleton system profile: editable only, never deleted.
     Route::get('/houses', [HouseController::class, 'index'])->middleware('role:admin')->name('houses.index');
     Route::get('/houses/{house}', [HouseController::class, 'show'])->middleware('role:admin,staff,security')->name('houses.show');
     Route::post('/houses', [HouseController::class, 'store'])->middleware('role:admin')->name('houses.store');
