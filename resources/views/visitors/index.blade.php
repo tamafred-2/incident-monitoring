@@ -622,7 +622,7 @@
                                             name="q"
                                             value="{{ $filterQ }}"
                                             placeholder="Name, phone, house"
-                                            oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                                            data-live-filter data-filter-target="#inside-visitors-rows" autocomplete="off"
                                             class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                                         >
                                     </div>
@@ -651,9 +651,10 @@
                                         <th class="px-6 py-3 font-semibold text-left text-slate-600">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody class="bg-white divide-y divide-slate-100">
+                                <tbody id="inside-visitors-rows" class="bg-white divide-y divide-slate-100">
                                     @forelse ($insideVisitors as $visitor)
-                                        <tr>
+                                        <tr data-row
+                                            data-search="{{ \Illuminate\Support\Str::lower(trim($visitor->full_name.' '.$visitor->phone.' '.$visitor->purpose.' '.$visitor->host_employee.' '.$visitor->house_address_or_unit)) }}">
                                             <td class="px-6 py-4">
                                                 <div class="min-w-[12rem]">
                                                     <div class="font-medium text-slate-900">{{ $visitor->full_name }}</div>
@@ -708,6 +709,9 @@
                                             <td colspan="5" class="px-6 py-10 text-center text-slate-500">No visitors are currently inside.</td>
                                         </tr>
                                     @endforelse
+                                    <tr data-empty hidden>
+                                        <td colspan="5" class="px-6 py-10 text-center text-slate-500">No inside visitors match your search. Press Enter to search all.</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1053,4 +1057,6 @@
             </div>
         </div>
     </div>
+
+    @include('partials.live-search')
 </x-app-layout>

@@ -12,15 +12,17 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Search</label>
                         <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, address, house"
-                               oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                               data-live-search="#residents-results" autocomplete="off"
                                class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                        <p class="mt-1 text-xs text-slate-400">Searches all residents as you type</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>
                         <select name="status" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                             <option value="">All</option>
-                            <option value="Active" @selected($filterStatus === 'Active')>Active</option>
-                            <option value="Inactive" @selected($filterStatus === 'Inactive')>Inactive</option>
+                            @foreach (\App\Enums\ActiveStatus::values() as $statusOption)
+                                <option value="{{ $statusOption }}" @selected($filterStatus === $statusOption)>{{ $statusOption }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="flex items-end gap-3">
@@ -38,6 +40,7 @@
                 </form>
             </div>
 
+            <div id="residents-results" class="flex flex-col gap-6">
             <div class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
                 <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
                     <div>
@@ -57,7 +60,7 @@
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-slate-100">
+                        <tbody id="residents-rows" class="bg-white divide-y divide-slate-100">
                             @forelse ($residents as $resident)
                                 <tr>
                                     <td class="px-6 py-4">
@@ -326,7 +329,10 @@
                     </x-modal>
                 @endif
             @endforeach
+            </div>{{-- /#residents-results --}}
 
         </div>
     </div>
+
+    @include('partials.live-search')
 </x-app-layout>

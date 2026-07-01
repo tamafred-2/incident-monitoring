@@ -36,7 +36,7 @@
                     <div class="min-w-[200px] flex-1">
                         <label class="block text-xs font-medium text-slate-500">Search</label>
                         <input type="search" name="q" value="{{ $filterQ }}" placeholder="Street, block, or lot"
-                               oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                               data-live-filter data-live-no-submit data-filter-target="#houses-rows" autocomplete="off"
                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                     </div>
                     @if ($subdivisions->count() > 1)
@@ -78,10 +78,12 @@
                                 <th class="px-6 py-3 text-left">Actions</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 bg-white">
+                        <tbody id="houses-rows" class="divide-y divide-slate-100 bg-white">
                             @forelse ($houses as $house)
                                 @php $ownerResident = $house->residents->firstWhere('relation_to_owner', 'Owner'); @endphp
-                                <tr class="transition hover:bg-slate-50/60">
+                                <tr data-row
+                                    data-search="{{ \Illuminate\Support\Str::lower(trim($house->display_address.' '.$house->street.' '.$house->block.' '.$house->lot.' '.($house->subdivision?->subdivision_name).' '.($ownerResident?->full_name))) }}"
+                                    class="transition hover:bg-slate-50/60">
                                     <td class="px-6 py-4">
                                         <div class="font-medium text-slate-900">{{ $house->display_address }}</div>
                                         <div class="mt-0.5 text-xs text-slate-400">{{ $house->subdivision?->subdivision_name ?? '-' }}</div>
@@ -117,6 +119,9 @@
                                     <td colspan="5" class="px-6 py-12 text-center text-sm text-slate-400">No house records found.</td>
                                 </tr>
                             @endforelse
+                            <tr data-empty hidden>
+                                <td colspan="5" class="px-6 py-12 text-center text-sm text-slate-400">No results match your search.</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -190,4 +195,6 @@
             @endforeach
         </div>
     </div>
+
+    @include('partials.live-search')
 </x-app-layout>

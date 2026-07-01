@@ -1,5 +1,5 @@
 @php
-    $isSecurityViewer = auth()->user()->role === 'security';
+    $isSecurityViewer = auth()->user()->isSecurity();
 @endphp
 
 <x-app-layout>
@@ -37,6 +37,7 @@
             @include('partials.alerts')
 
             {{-- Houses --}}
+            <div id="subdivision-houses-card">
             <div class="bg-white border shadow-sm rounded-2xl border-slate-200">
                 <div class="flex flex-col gap-3 p-6 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -49,7 +50,7 @@
                             <div class="min-w-[220px]">
                                 <label class="block text-xs font-medium text-slate-500">Search</label>
                                 <input type="search" name="q" value="{{ $filterQ }}" placeholder="Block, lot, or street"
-                                       oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                                       data-live-search="#subdivision-houses-card,#subdivision-house-modals" autocomplete="off"
                                        class="mt-1 w-full text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
                             </div>
                         </form>
@@ -77,7 +78,7 @@
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-slate-100">
+                        <tbody id="subdivision-houses-rows" class="bg-white divide-y divide-slate-100">
                             @forelse ($houses as $house)
                                 <tr>
                                     <td class="px-6 py-4 font-medium text-slate-900">
@@ -193,6 +194,7 @@
                     </div>
                 </div>
             </div>
+            </div>{{-- /#subdivision-houses-card --}}
         </div>
     </div>
 
@@ -267,6 +269,7 @@
         </x-modal>
 
         {{-- Edit/Delete House Modals --}}
+        <div id="subdivision-house-modals">
         @foreach ($houses as $house)
             <x-modal name="edit-house-{{ $house->house_id }}" :show="$errors->houseEdit->any() && (string) old('edit_house_id') === (string) $house->house_id" maxWidth="2xl" focusable>
                 <div class="p-6 bg-white sm:p-8">
@@ -320,6 +323,7 @@
                 </div>
             </x-modal>
         @endforeach
+        </div>{{-- /#subdivision-house-modals --}}
     @endif
 
     <x-modal name="subdivision-contact-info" maxWidth="4xl" focusable>
@@ -369,4 +373,5 @@
         </div>
     </x-modal>
 
+    @include('partials.live-search')
 </x-app-layout>

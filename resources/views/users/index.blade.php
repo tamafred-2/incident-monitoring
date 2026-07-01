@@ -79,6 +79,7 @@
                 </div>
             @endif
 
+            <div id="users-results" class="flex flex-col gap-6">
             <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
                     <div>
@@ -106,7 +107,7 @@
                         <div class="min-w-[220px] flex-1 xl:flex-none">
                             <label class="block text-xs font-medium text-slate-500">Search</label>
                             <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name or email"
-                                   oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                                   data-live-search="#users-results" autocomplete="off"
                                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
                         </div>
                         <button
@@ -139,14 +140,14 @@
                                     <td class="px-6 py-4">
                                         <div class="min-w-[12rem]">
                                             <div class="font-medium text-slate-900">{{ $user->full_name }}</div>
-                                            <div class="mt-1 text-xs text-slate-500">{{ $user->subdivision?->subdivision_name ?? ($user->role === 'admin' ? 'All subdivisions' : 'Unassigned subdivision') }}</div>
+                                            <div class="mt-1 text-xs text-slate-500">{{ $user->subdivision?->subdivision_name ?? ($user->isAdmin() ? 'All subdivisions' : 'Unassigned subdivision') }}</div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-slate-600">
                                         <div class="max-w-[16rem] truncate" title="{{ $user->email }}">{{ $user->email }}</div>
                                     </td>
                                     <td class="px-6 py-4 text-slate-600">
-                                        <span class="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ ucfirst($user->role) }}</span>
+                                        <span class="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{{ $user->role?->label() }}</span>
                                     </td>
                                     <td class="px-6 py-4">
                                         <span class="rounded-full px-2.5 py-1 text-xs font-semibold {{ $user->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
@@ -455,6 +456,9 @@
                     </x-modal>
                 @endif
             @endforeach
+            </div>{{-- /#users-results --}}
         </div>
     </div>
+
+    @include('partials.live-search')
 </x-app-layout>

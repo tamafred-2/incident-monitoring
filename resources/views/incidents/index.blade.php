@@ -155,7 +155,7 @@
                                         name="q"
                                         value="{{ $filterQ }}"
                                         placeholder="Search incidents"
-                                        oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                                        data-live-search="#incidents-results" autocomplete="off"
                                         class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                                     >
                                 </div>
@@ -196,7 +196,7 @@
                                             name="q"
                                             value="{{ $filterQ }}"
                                             placeholder="Search incidents"
-                                            oninput="clearTimeout(this._filterTimer); this._filterTimer = setTimeout(() => this.form.requestSubmit(), 350)"
+                                            data-live-search="#incidents-results" autocomplete="off"
                                             class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
                                         >
                                     </div>
@@ -213,6 +213,7 @@
                         </div>
                     </div>
                 @endif
+                <div id="incidents-results">
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm divide-y divide-slate-200">
                         <thead class="bg-slate-50">
@@ -245,7 +246,7 @@
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-slate-100">
+                        <tbody id="incidents-rows" class="bg-white divide-y divide-slate-100">
                             @forelse ($incidents as $incident)
                                 <tr>
                                     <td class="px-6 py-4 text-slate-600">
@@ -270,7 +271,7 @@
                                     </td>
                                     <td class="px-6 py-4 text-slate-600">
                                         @php
-                                            $isResolvedIncident = in_array($incident->status, ['Resolved', 'Closed'], true);
+                                            $isResolvedIncident = in_array($incident->status, \App\Enums\IncidentStatus::resolvedValues(), true);
                                             $statusLabel = $isResolvedIncident ? 'Resolved' : 'Pending';
                                         @endphp
                                         {{ $incident->trashed() ? 'Archived' : $statusLabel }}
@@ -408,6 +409,7 @@
                         @endif
                     </div>
                 </div>
+                </div>{{-- /#incidents-results --}}
             </div>
 
             @if (auth()->user()->hasRole(['staff', 'security']) || auth()->user()->isAdmin())
@@ -554,4 +556,6 @@
             </div>
         </div>
     </div>
+
+    @include('partials.live-search')
 </x-app-layout>
