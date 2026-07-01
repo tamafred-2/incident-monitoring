@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\VisitorRequestStatus;
+use App\Enums\VisitorStatus;
 use App\Models\Visitor;
 use App\Models\VisitorRequest;
 use Illuminate\Support\Facades\Storage;
@@ -58,11 +60,11 @@ class ResidentVisitorController extends Controller
             'house_address_or_unit' => $visitorRequest->house_address_or_unit,
             'check_in'              => now(),
             'check_out'             => null,
-            'status'                => 'Inside',
+            'status'                => VisitorStatus::Inside->value,
         ]);
 
         $visitorRequest->update([
-            'status'       => 'Approved',
+            'status'       => VisitorRequestStatus::Approved->value,
             'responded_at' => now(),
             'visitor_id'   => $visitor->visitor_id,
         ]);
@@ -74,7 +76,7 @@ class ResidentVisitorController extends Controller
     {
         $this->authorizeRequest($request, $visitorRequest);
 
-        $visitorRequest->update(['status' => 'Declined', 'responded_at' => now()]);
+        $visitorRequest->update(['status' => VisitorRequestStatus::Declined->value, 'responded_at' => now()]);
 
         return back()->with('success', 'Visitor request declined. Admin/Guard should deny entry.');
     }
@@ -84,6 +86,6 @@ class ResidentVisitorController extends Controller
         $resident = $request->user()->resident;
 
         abort_if(!$resident || $visitorRequest->resident_id !== $resident->resident_id, 403);
-        abort_if($visitorRequest->status !== 'Pending', 422, 'This request has already been responded to.');
+        abort_if($visitorRequest->status !== VisitorRequestStatus::Pending, 422, 'This request has already been responded to.');
     }
 }

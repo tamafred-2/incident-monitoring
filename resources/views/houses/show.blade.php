@@ -1,5 +1,5 @@
 <x-app-layout>
-    @php $isSecurityViewer = auth()->user()->role === 'security'; @endphp
+    @php $isSecurityViewer = auth()->user()->isSecurity(); @endphp
 
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

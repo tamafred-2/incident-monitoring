@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\VisitorStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -61,6 +62,7 @@ class Visitor extends Model
         return [
             'check_in' => 'datetime',
             'check_out' => 'datetime',
+            'status' => VisitorStatus::class,
         ];
     }
 

@@ -13,7 +13,7 @@
                     : null;
 
                 $brandingSubdivision ??= Subdivision::query()
-                    ->where('status', 'Active')
+                    ->where('status', \App\Enums\ActiveStatus::Active)
                     ->orderBy('subdivision_name')
                     ->first()
                     ?? Subdivision::query()->orderBy('subdivision_name')->first();

@@ -43,8 +43,8 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>
                         <select name="status" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                            <option value="Inside" @selected(old('status', $visitor->status) === 'Inside')>Inside</option>
-                            <option value="Checked Out" @selected(old('status', $visitor->status) === 'Checked Out')>Checked Out</option>
+                            <option value="Inside" @selected(old('status', $visitor->status?->value) === 'Inside')>Inside</option>
+                            <option value="Checked Out" @selected(old('status', $visitor->status?->value) === 'Checked Out')>Checked Out</option>
                         </select>
                     </div>
                     <div class="md:col-span-2">

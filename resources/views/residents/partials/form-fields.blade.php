@@ -84,8 +84,8 @@
                     required
                     class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
                 >
-                    @foreach (['Active', 'Inactive'] as $status)
-                        <option value="{{ $status }}" @selected(old('status', $resident->status ?? 'Active') === $status)>{{ $status }}</option>
+                    @foreach (\App\Enums\ActiveStatus::values() as $status)
+                        <option value="{{ $status }}" @selected(old('status', $resident->status?->value ?? 'Active') === $status)>{{ $status }}</option>
                     @endforeach
                 </select>
             </div>

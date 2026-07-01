@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use App\Models\Resident;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -89,8 +90,10 @@ class User extends Authenticatable
             return;
         }
 
+        $roleName = $this->role instanceof UserRole ? $this->role->value : $this->role;
+
         try {
-            $role = SpatieRole::findOrCreate($this->role, $this->guard_name);
+            $role = SpatieRole::findOrCreate($roleName, $this->guard_name);
 
             if (!$this->roles()->where($role->getKeyName(), $role->getKey())->exists()) {
                 $this->syncRoles([$role->name]);
@@ -141,6 +144,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'role' => UserRole::class,
             'password' => 'hashed',
             'requires_password_change' => 'boolean',
             'is_active' => 'boolean',
@@ -167,12 +171,22 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === UserRole::Admin;
     }
 
     public function isResident(): bool
     {
-        return $this->role === 'resident';
+        return $this->role === UserRole::Resident;
+    }
+
+    public function isStaff(): bool
+    {
+        return $this->role === UserRole::Staff;
+    }
+
+    public function isSecurity(): bool
+    {
+        return $this->role === UserRole::Security;
     }
 
     /**
@@ -188,17 +202,23 @@ class User extends Authenticatable
             return true;
         }
 
-        if (!is_string($roles) && !is_array($roles)) {
+        if (!is_string($roles) && !is_array($roles) && !$roles instanceof UserRole) {
             return $this->spatieHasRole($roles, $guard);
         }
 
         $list = is_array($roles) ? $roles : [$roles];
 
-        if (collect($list)->contains(fn ($role) => !is_string($role))) {
+        // Defer to Spatie when the list carries Role models/collections rather
+        // than plain role names or UserRole enums.
+        if (collect($list)->contains(fn ($role) => !is_string($role) && !$role instanceof UserRole)) {
             return $this->spatieHasRole($roles, $guard);
         }
 
-        return in_array($this->role, $list, true);
+        $current = $this->role instanceof UserRole ? $this->role->value : $this->role;
+
+        return collect($list)
+            ->map(fn ($role) => $role instanceof UserRole ? $role->value : $role)
+            ->contains($current);
     }
 
     public function allowedSubdivisionId(): ?int

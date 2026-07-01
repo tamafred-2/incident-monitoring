@@ -3,7 +3,8 @@
 ])
 
 @php
-    $key = strtolower(trim((string) $status));
+    $statusValue = $status instanceof \BackedEnum ? $status->value : (string) $status;
+    $key = strtolower(trim($statusValue));
     $map = [
         // pending / in-progress
         'open' => 'bg-amber-100 text-amber-700',

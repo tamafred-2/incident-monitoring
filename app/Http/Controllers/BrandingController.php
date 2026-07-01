@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActiveStatus;
 use App\Models\Subdivision;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -20,7 +21,7 @@ class BrandingController extends Controller
                 : null;
 
             $subdivision ??= Subdivision::query()
-                ->where('status', 'Active')
+                ->where('status', ActiveStatus::Active)
                 ->orderBy('subdivision_name')
                 ->first()
                 ?? Subdivision::query()->orderBy('subdivision_name')->first();
@@ -57,7 +58,7 @@ SVG;
                 : null;
 
             $subdivision ??= Subdivision::query()
-                ->where('status', 'Active')
+                ->where('status', ActiveStatus::Active)
                 ->orderBy('subdivision_name')
                 ->first()
                 ?? Subdivision::query()->orderBy('subdivision_name')->first();

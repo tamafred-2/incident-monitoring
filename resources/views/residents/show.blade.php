@@ -1,3 +1,4 @@
+@use('App\Enums\ActiveStatus')
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -22,7 +23,7 @@
                         <h3 class="mt-2 text-2xl font-semibold text-slate-900">{{ $resident->full_name }}</h3>
                         <p class="mt-2 text-sm text-slate-500">{{ $resident->subdivision?->subdivision_name ?? '-' }}</p>
                     </div>
-                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $resident->status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
+                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $resident->status === ActiveStatus::Active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
                         {{ $resident->status }}
                     </span>
                 </div>

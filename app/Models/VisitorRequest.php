@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\VisitorRequestStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -40,6 +41,7 @@ class VisitorRequest extends Model
             'requested_at' => 'datetime',
             'responded_at' => 'datetime',
             'passenger_count' => 'integer',
+            'status' => VisitorRequestStatus::class,
         ];
     }
 

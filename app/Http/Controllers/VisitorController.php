@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActiveStatus;
+use App\Enums\VisitorRequestStatus;
+use App\Enums\VisitorStatus;
 use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
@@ -43,7 +46,7 @@ class VisitorController extends Controller
             ->paginate($historyPerPage, ['*'], 'history_page')
             ->withQueryString();
         $subdivisions = $user->isAdmin()
-            ? Subdivision::where('status', 'Active')->orderBy('subdivision_name')->get()
+            ? Subdivision::where('status', ActiveStatus::Active)->orderBy('subdivision_name')->get()
             : collect();
         $housesBySubdivision = House::query()
             ->select('house_id', 'subdivision_id', 'street', 'block', 'lot')
@@ -61,7 +64,7 @@ class VisitorController extends Controller
             ])->values()->all());
 
         $residentsByHouse = House::query()
-            ->with(['residents' => fn ($q) => $q->where('status', 'Active')
+            ->with(['residents' => fn ($q) => $q->where('status', ActiveStatus::Active)
                 ->select('house_id', 'resident_id', 'full_name', 'phone')])
             ->get()
             ->mapWithKeys(fn (House $house) => [
@@ -99,7 +102,7 @@ class VisitorController extends Controller
                 $user->isAdmin() && $filterSubdivision,
                 fn ($builder) => $builder->where('subdivision_id', $filterSubdivision)
             )
-            ->where('status', 'Inside');
+            ->where('status', VisitorStatus::Inside);
         $this->applyDateTimeFilters(
             $insideVisitorQuery,
             'check_in',
@@ -249,10 +252,10 @@ class VisitorController extends Controller
             'house_address_or_unit' => ['nullable', 'string', 'max:120'],
             'check_in' => ['required', 'date'],
             'check_out' => ['nullable', 'date', 'after_or_equal:check_in'],
-            'status' => ['required', Rule::in(['Inside', 'Checked Out'])],
+            'status' => ['required', Rule::enum(VisitorStatus::class)],
         ]);
 
-        if ($data['status'] === 'Inside') {
+        if ($data['status'] === VisitorStatus::Inside->value) {
             $data['check_out'] = null;
         }
 
@@ -348,7 +351,7 @@ class VisitorController extends Controller
                 'house_address_or_unit' => trim((string) ($data['house_address_or_unit'] ?? '')) ?: null,
                 'check_in'              => now(),
                 'check_out'             => null,
-                'status'                => 'Inside',
+                'status'                => VisitorStatus::Inside->value,
             ]);
 
             return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
@@ -389,7 +392,7 @@ class VisitorController extends Controller
             ->whereKey((int) $data['resident_id'])
             ->where('subdivision_id', $subdivisionId)
             ->where('house_id', $house->house_id)
-            ->where('status', 'Active')
+            ->where('status', ActiveStatus::Active)
             ->first();
 
         if (!$resident) {
@@ -429,7 +432,7 @@ class VisitorController extends Controller
             'house_address_or_unit' => $house->display_address,
             'check_in'              => now(),
             'check_out'             => null,
-            'status'                => 'Inside',
+            'status'                => VisitorStatus::Inside->value,
         ]);
 
         VisitorRequest::create([
@@ -454,7 +457,7 @@ class VisitorController extends Controller
             'id_photo_path'         => $idPhotoPath,
             'purpose'               => $data['purpose'] ?? null,
             'house_address_or_unit' => $house->display_address,
-            'status'                => 'Approved',
+            'status'                => VisitorRequestStatus::Approved->value,
             'requested_at'          => now(),
             'responded_at'          => now(),
         ]);
@@ -469,14 +472,14 @@ class VisitorController extends Controller
             return redirect()->route('visitors.index')->with('error', 'You cannot access that visitor record.');
         }
 
-        if ($visitor->status !== 'Inside') {
+        if ($visitor->status !== VisitorStatus::Inside) {
             return redirect()->route('visitors.index', $this->visitorRouteContext($request, $visitor->subdivision_id))
                 ->with('error', 'That visitor is already checked out.');
         }
 
         $visitor->update([
             'check_out' => now(),
-            'status' => 'Checked Out',
+            'status' => VisitorStatus::CheckedOut->value,
         ]);
 
         return redirect()->route('visitors.index', $this->visitorRouteContext($request, $visitor->subdivision_id))
@@ -538,7 +541,7 @@ class VisitorController extends Controller
             return $requested;
         }
 
-        return Subdivision::where('status', 'Active')
+        return Subdivision::where('status', ActiveStatus::Active)
             ->orderBy('subdivision_name')
             ->value('subdivision_id');
     }
@@ -651,7 +654,7 @@ class VisitorController extends Controller
 
         $query = Visitor::query()
             ->with('subdivision')
-            ->where('status', 'Checked Out')
+            ->where('status', VisitorStatus::CheckedOut)
             ->orderByDesc('check_in');
 
         if ($filterQ !== '') {

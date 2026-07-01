@@ -63,8 +63,8 @@
             <div>
                 <label class="block text-sm font-medium text-slate-700">Status</label>
                 <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                    <option value="Active" @selected(old('status', $subdivision?->status ?? 'Active') === 'Active')>Active</option>
-                    <option value="Inactive" @selected(old('status', $subdivision?->status ?? '') === 'Inactive')>Inactive</option>
+                    <option value="Active" @selected(old('status', $subdivision?->status?->value ?? 'Active') === 'Active')>Active</option>
+                    <option value="Inactive" @selected(old('status', $subdivision?->status?->value ?? '') === 'Inactive')>Inactive</option>
                 </select>
             </div>
         </div>

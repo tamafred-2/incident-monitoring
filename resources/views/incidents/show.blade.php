@@ -39,7 +39,7 @@
         >
             @include('partials.alerts')
             @php
-                $isResolvedIncident = in_array($incident->status, ['Resolved', 'Closed'], true);
+                $isResolvedIncident = in_array($incident->status, \App\Enums\IncidentStatus::resolvedValues(), true);
                 $statusLabel = $isResolvedIncident ? 'Resolved' : 'Pending';
             @endphp
 

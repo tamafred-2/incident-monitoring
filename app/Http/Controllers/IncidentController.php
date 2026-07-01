@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActiveStatus;
+use App\Enums\IncidentStatus;
+use App\Enums\UserRole;
 use App\Models\House;
 use App\Models\Incident;
 use App\Models\IncidentPhoto;
@@ -28,6 +31,9 @@ class IncidentController extends Controller
 {
     private ?bool $statusSchemaIsLegacy = null;
 
+    /**
+     * Display a listing of the resource.
+     */
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -87,7 +93,7 @@ class IncidentController extends Controller
             ? Subdivision::orderBy('subdivision_name')->get()
             : collect();
         $reportSubdivisions = $user->isAdmin()
-            ? Subdivision::where('status', 'Active')->orderBy('subdivision_name')->get()
+            ? Subdivision::where('status', ActiveStatus::Active)->orderBy('subdivision_name')->get()
             : collect();
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
         $openReportModal = $request->boolean('report');
@@ -96,21 +102,10 @@ class IncidentController extends Controller
         $houses = $this->housesForUser($user, $effectiveSubdivision);
 
         return view('incidents.index', compact(
-            'incidents',
-            'subdivisions',
-            'filterQ',
-            'filterSubdivision',
-            'reportSubdivisions',
-            'effectiveSubdivision',
-            'openReportModal',
-            'historyView',
-            'reportedSort',
-            'incidentCategories',
-            'residentReporter',
-            'houses',
-            'perPage',
-            'filterDateFrom',
-            'filterDateTo',
+            'incidents', 'subdivisions', 'filterQ', 'filterSubdivision',
+            'reportSubdivisions', 'effectiveSubdivision', 'openReportModal',
+            'historyView', 'reportedSort', 'incidentCategories',
+            'residentReporter', 'houses', 'perPage', 'filterDateFrom', 'filterDateTo'
         ));
     }
 
@@ -478,7 +473,7 @@ class IncidentController extends Controller
 
         $isAssignable = User::query()
             ->whereKey($assignedId)
-            ->where('role', 'staff')
+            ->where('role', UserRole::Staff)
             ->where('subdivision_id', $subdivisionId)
             ->exists();
 
@@ -519,7 +514,7 @@ class IncidentController extends Controller
             return $requested;
         }
 
-        return Subdivision::where('status', 'Active')
+        return Subdivision::where('status', ActiveStatus::Active)
             ->orderBy('subdivision_name')
             ->value('subdivision_id');
     }
@@ -761,7 +756,7 @@ class IncidentController extends Controller
             return true;
         }
 
-        if (!$user->hasRole(['staff']) || !$user->canAccessSubdivision($incident->subdivision_id)) {
+        if (!$user->hasRole([UserRole::Staff]) || !$user->canAccessSubdivision($incident->subdivision_id)) {
             return false;
         }
 
@@ -825,7 +820,7 @@ class IncidentController extends Controller
     {
         $team = User::query()
             ->where('subdivision_id', $incident->subdivision_id)
-            ->whereIn('role', ['security', 'staff'])
+            ->whereIn('role', [UserRole::Security, UserRole::Staff])
             ->where('is_active', true)
             ->get();
 
@@ -902,12 +897,7 @@ class IncidentController extends Controller
 
     private function allowedIncidentStatusesForInput(): array
     {
-        return [
-            'Open',
-            'Under Investigation',
-            'Resolved',
-            'Closed',
-        ];
+        return IncidentStatus::values();
     }
 
     private function mapIncidentStatusForStorage(string $status): string
@@ -965,7 +955,7 @@ class IncidentController extends Controller
 
     private function resolvedStatuses(): array
     {
-        return ['Resolved', 'Closed'];
+        return IncidentStatus::resolvedValues();
     }
 
     private function requiresProofPhotoForStatus(?string $status): bool

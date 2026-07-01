@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActiveStatus;
+use App\Enums\UserRole;
 use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
@@ -43,7 +45,7 @@ class UserController extends Controller
             });
         }
 
-        if (in_array($filterRole, ['admin', 'security', 'staff'], true)) {
+        if (in_array($filterRole, UserRole::manageableValues(), true)) {
             $query->where('role', $filterRole);
         }
 
@@ -82,7 +84,7 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $isResident = $request->input('role') === 'resident';
+        $isResident = $request->input('role') === UserRole::Resident->value;
 
         $rules = [
             'surname' => ['required', 'string', 'max:100'],
@@ -90,7 +92,7 @@ class UserController extends Controller
             'middle_name' => ['nullable', 'string', 'max:100'],
             'extension' => ['nullable', 'string', 'max:20'],
             'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
-            'role' => ['required', Rule::in(['admin', 'security', 'staff', 'resident'])],
+            'role' => ['required', Rule::enum(UserRole::class)],
             'is_active' => ['nullable', 'boolean'],
             'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
         ];
@@ -109,11 +111,11 @@ class UserController extends Controller
             return $this->storeResidentAccount($request, $data);
         }
 
-        if ($data['role'] !== 'admin' && empty($data['subdivision_id'])) {
+        if ($data['role'] !== UserRole::Admin->value && empty($data['subdivision_id'])) {
             return back()->withErrors(['subdivision_id' => 'Please select a subdivision for non-admin users.'])->withInput();
         }
 
-        if ($data['role'] === 'admin') {
+        if ($data['role'] === UserRole::Admin->value) {
             $data['subdivision_id'] = null;
         }
         $data['resident_id'] = null;
@@ -155,7 +157,7 @@ class UserController extends Controller
                 'phone' => $request->input('new_resident_phone'),
                 'email' => $data['email'],
                 'address_or_unit' => $house->display_address,
-                'status' => 'Active',
+                'status' => ActiveStatus::Active->value,
             ]);
 
             $residentId = $resident->resident_id;
@@ -190,7 +192,7 @@ class UserController extends Controller
             'middle_name' => $data['middle_name'] ?? null,
             'extension' => $data['extension'] ?? null,
             'email' => $data['email'],
-            'role' => 'resident',
+            'role' => UserRole::Resident->value,
             'password' => $plainPassword,
             'requires_password_change' => true,
             'subdivision_id' => $userSubdivisionId,
@@ -212,22 +214,22 @@ class UserController extends Controller
                 'middle_name' => ['nullable', 'string', 'max:100'],
                 'extension' => ['nullable', 'string', 'max:20'],
                 'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->user_id, 'user_id')],
-                'role' => ['required', Rule::in(['admin', 'security', 'staff'])],
+                'role' => ['required', Rule::in(UserRole::manageableValues())],
                 'is_active' => ['nullable', 'boolean'],
                 'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
                 'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             ]
         );
 
-        if ($user->role === 'admin' && $data['role'] !== 'admin' && User::where('role', 'admin')->count() <= 1) {
+        if ($user->role === UserRole::Admin && $data['role'] !== UserRole::Admin->value && User::where('role', UserRole::Admin)->count() <= 1) {
             return back()->withErrors(['role' => 'Cannot remove the last administrator.'])->withInput();
         }
 
-        if ($data['role'] !== 'admin' && empty($data['subdivision_id'])) {
+        if ($data['role'] !== UserRole::Admin->value && empty($data['subdivision_id'])) {
             return back()->withErrors(['subdivision_id' => 'Please select a subdivision for non-admin users.'])->withInput();
         }
 
-        if ($data['role'] === 'admin') {
+        if ($data['role'] === UserRole::Admin->value) {
             $data['subdivision_id'] = null;
             $data['resident_id'] = null;
         } else {
@@ -255,7 +257,7 @@ class UserController extends Controller
             return redirect()->route('users.index')->with('error', 'You cannot delete your own account.');
         }
 
-        if ($user->role === 'admin' && User::where('role', 'admin')->count() <= 1) {
+        if ($user->role === UserRole::Admin && User::where('role', UserRole::Admin)->count() <= 1) {
             return redirect()->route('users.index')->with('error', 'You cannot delete the last administrator.');
         }
 

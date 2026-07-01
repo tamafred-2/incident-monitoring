@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActiveStatus;
 use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
@@ -43,7 +44,7 @@ class ResidentController extends Controller
             });
         }
 
-        if (in_array($filterStatus, ['Active', 'Inactive'], true)) {
+        if (in_array($filterStatus, ActiveStatus::values(), true)) {
             $query->where('status', $filterStatus);
         }
 
@@ -208,7 +209,7 @@ class ResidentController extends Controller
             'address_or_unit' => ['nullable', 'string', 'max:150'],
             'relation_to_owner' => ['nullable', 'string', 'max:50'],
             'relation_to_owner_other' => ['nullable', 'string', 'max:50'],
-            'status' => ['nullable', Rule::in(['Active', 'Inactive'])],
+            'status' => ['nullable', Rule::enum(ActiveStatus::class)],
         ]);
 
         $relation = trim((string) ($data['relation_to_owner'] ?? ''));
@@ -287,7 +288,7 @@ class ResidentController extends Controller
             'email' => $data['email'],
             'address_or_unit' => $house?->display_address ?? ($data['address_or_unit'] ?: null),
             'relation_to_owner' => $relation !== '' ? $relation : null,
-            'status' => $data['status'] ?? $resident?->status ?? 'Active',
+            'status' => $data['status'] ?? $resident?->status ?? ActiveStatus::Active->value,
         ];
     }
 

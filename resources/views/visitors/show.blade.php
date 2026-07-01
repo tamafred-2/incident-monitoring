@@ -1,3 +1,4 @@
+@use('App\Enums\VisitorStatus')
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -45,11 +46,11 @@
                     </div>
 
                     <div class="flex items-center gap-3">
-                        <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $visitor->status === 'Inside' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
+                        <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $visitor->status === VisitorStatus::Inside ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
                             {{ $visitor->status }}
                         </span>
 
-                        @if (auth()->user()->hasRole('security') && $visitor->status === 'Inside')
+                        @if (auth()->user()->hasRole('security') && $visitor->status === VisitorStatus::Inside)
                             <form method="POST" action="{{ route('visitors.checkout', $visitor) }}">
                                 @csrf
                                 <button class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">
@@ -175,7 +176,7 @@
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Status</dt>
                                 <dd>
-                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $visitor->status === 'Inside' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
+                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $visitor->status === VisitorStatus::Inside ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
                                         {{ $visitor->status }}
                                     </span>
                                 </dd>

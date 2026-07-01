@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActiveStatus;
 use App\Models\House;
 use App\Models\Subdivision;
 use Illuminate\Http\RedirectResponse;
@@ -24,8 +25,9 @@ class HouseController extends Controller
                 'residents' => fn ($residentQuery) => $residentQuery->select('resident_id', 'house_id', 'full_name', 'relation_to_owner', 'status')->orderBy('full_name'),
             ])
             ->orderBy('subdivision_id')
-            ->orderBy('block')
-            ->orderBy('lot');
+            ->orderByRaw('CAST(block AS INTEGER)')
+            ->orderByRaw('CAST(lot AS INTEGER)')
+            ->orderBy('street');
 
         if ($filterQ !== '') {
             $query->where(function ($builder) use ($filterQ) {
@@ -42,7 +44,7 @@ class HouseController extends Controller
 
         $houses = $query->get();
         $subdivisions = Subdivision::query()
-            ->where('status', 'Active')
+            ->where('status', ActiveStatus::Active)
             ->orderBy('subdivision_name')
             ->get();
 
@@ -77,7 +79,7 @@ class HouseController extends Controller
                 ? route('subdivisions.show', $subdivisionContext)
                 : route('houses.index', $this->indexContext($request)),
             'backLabel' => $showSubdivisionBackLink
-                ? ($user->role === 'security' ? 'Back to Contacts' : 'Back to House Management')
+                ? ($user->isSecurity() ? 'Back to Contacts' : 'Back to House Management')
                 : 'Back to Houses',
         ]);
     }

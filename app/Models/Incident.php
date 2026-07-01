@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\IncidentStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -82,6 +83,8 @@ class Incident extends Model
 
     public function isResolvedOrDone(): bool
     {
-        return in_array($this->status, ['Resolved', 'Closed', 'Done'], true);
+        // 'Done' is a legacy value still possible on older databases; the
+        // canonical resolved statuses come from the IncidentStatus enum.
+        return in_array($this->status, [...IncidentStatus::resolvedValues(), 'Done'], true);
     }
 }

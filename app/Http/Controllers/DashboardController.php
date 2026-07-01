@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\IncidentStatus;
+use App\Enums\VisitorStatus;
 use App\Models\Incident;
 use App\Models\House;
 use App\Models\Resident;
@@ -31,7 +33,7 @@ class DashboardController extends Controller
             10
         );
         $isResidentDashboard = $user->isResident();
-        $isStaffDashboard = !$isResidentDashboard && $user->role === 'staff';
+        $isStaffDashboard = !$isResidentDashboard && $user->isStaff();
         $showPendingIncidentList = !$isResidentDashboard && ($isStaffDashboard || $user->isAdmin());
 
         $scope = fn (Builder $query): Builder => $query->when(
@@ -80,7 +82,7 @@ class DashboardController extends Controller
             : Visitor::when(
                 !$user->isAdmin(),
                 fn ($query) => $query->where('subdivision_id', $allowedId)
-            )->where('status', 'Inside')->count();
+            )->where('status', VisitorStatus::Inside)->count();
 
         $insideVisitors = $isResidentDashboard
             ? Visitor::query()->whereRaw('1 = 0')->paginate($insidePerPage)
@@ -90,7 +92,7 @@ class DashboardController extends Controller
                     !$user->isAdmin(),
                     fn ($query) => $query->where('subdivision_id', $allowedId)
                 )
-                ->where('status', 'Inside')
+                ->where('status', VisitorStatus::Inside)
                 ->orderByDesc('check_in')
                 ->paginate($insidePerPage)
                 ->withQueryString();
@@ -194,7 +196,7 @@ class DashboardController extends Controller
             'resolution_rate' => $resolutionRate,
             'avg_resolution_label' => $this->averageResolutionLabel($scope),
             'total_visitors' => $scope(Visitor::query())->count(),
-            'visitors_inside' => $scope(Visitor::query())->where('status', 'Inside')->count(),
+            'visitors_inside' => $scope(Visitor::query())->where('status', VisitorStatus::Inside)->count(),
             'total_residents' => $totalResidents,
             'total_houses' => $totalHouses,
             'avg_residents_per_house' => $totalHouses > 0
@@ -269,12 +271,14 @@ class DashboardController extends Controller
     {
         return $this->usesLegacyIncidentStatusSchema()
             ? ['Reported', 'Investigating']
-            : ['Open', 'Under Investigation'];
+            : IncidentStatus::pendingValues();
     }
 
     private function resolvedIncidentStatuses(): array
     {
-        return ['Resolved', 'Closed', 'Completed'];
+        // 'Completed' is a legacy value still possible on older databases; the
+        // canonical resolved statuses come from the IncidentStatus enum.
+        return [...IncidentStatus::resolvedValues(), 'Completed'];
     }
 
     private function usesLegacyIncidentStatusSchema(): bool

@@ -23,7 +23,7 @@
             : null;
 
         $brandingSubdivision ??= Subdivision::query()
-            ->where('status', 'Active')
+            ->where('status', \App\Enums\ActiveStatus::Active)
             ->orderBy('subdivision_name')
             ->first()
             ?? Subdivision::query()->orderBy('subdivision_name')->first();
@@ -32,8 +32,8 @@
     $brandName = $brandingSubdivision?->subdivision_name ?? 'Doña Maria Dizon';
     $brandNameUpper = Str::upper($brandName);
     $brandLogo = $brandingSubdivision?->logo_url ?? asset('imgsrc/logo.png');
-    $isStaffUser = $user?->role === 'staff';
-    $isSecurityUser = $user?->role === 'security';
+    $isStaffUser = $user?->isStaff() ?? false;
+    $isSecurityUser = $user?->isSecurity() ?? false;
     $isAdminUser = $user?->isAdmin() ?? false;
 
     $sections = [
@@ -183,7 +183,7 @@
 
                 <div x-cloak x-show="accountOpen" x-transition.origin.bottom.duration.200ms class="mt-4 space-y-4">
                     <div>
-                        <p class="text-sm text-[var(--shell-sidebar-muted)]">{{ ucfirst($user->role) }}</p>
+                        <p class="text-sm text-[var(--shell-sidebar-muted)]">{{ $user->role?->label() }}</p>
                         <p class="mt-1 truncate text-xs text-[var(--shell-sidebar-muted)]">{{ $user->email }}</p>
                     </div>
 

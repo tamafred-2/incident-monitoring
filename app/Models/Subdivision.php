@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ActiveStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -37,6 +38,7 @@ class Subdivision extends Model
     protected $casts = [
         'latitude'  => 'float',
         'longitude' => 'float',
+        'status'    => ActiveStatus::class,
     ];
 
     public function getFullAddressAttribute(): string

@@ -1,3 +1,4 @@
+@use('App\Enums\VisitorRequestStatus')
 <x-app-layout>
     <x-slot name="header">
         <x-page-header title="My Visitors" subtitle="Respond to visitor requests so Admin/Guard can allow or deny entry using your confirmed resident response." />
@@ -49,12 +50,12 @@
                                         <td class="px-4 py-3 text-slate-500">{{ $req->requested_at->format('M j, Y h:i A') }}</td>
                                         <td class="px-4 py-3">
                                             <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold
-                                                {{ $req->status === 'Approved' ? 'bg-emerald-100 text-emerald-700' : ($req->status === 'Declined' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700') }}">
+                                                {{ $req->status === VisitorRequestStatus::Approved ? 'bg-emerald-100 text-emerald-700' : ($req->status === VisitorRequestStatus::Declined ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700') }}">
                                                 {{ $req->status }}
                                             </span>
                                         </td>
                                         <td class="px-4 py-3">
-                                            @if ($req->status === 'Pending')
+                                            @if ($req->status === VisitorRequestStatus::Pending)
                                                 <div class="flex gap-2">
                                                     <button
                                                         type="button"
@@ -96,7 +97,7 @@
                 </div>
             </x-modal>
         @endif
-        @if ($req->status === 'Pending')
+        @if ($req->status === VisitorRequestStatus::Pending)
             <x-modal name="approve-visitor-{{ $req->request_id }}" maxWidth="md" focusable>
                 <div class="p-6 bg-white sm:p-8">
                     <div class="flex items-start gap-4">

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ActiveStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -41,6 +42,13 @@ class Resident extends Model
     public function getRouteKeyName(): string
     {
         return $this->getKeyName();
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'status' => ActiveStatus::class,
+        ];
     }
 
     public function subdivision(): BelongsTo

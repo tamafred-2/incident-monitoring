@@ -31,7 +31,7 @@
                 </div>
             @else
                 @php
-                    $canViewVisitorMonitoring = auth()->user()->isAdmin() || auth()->user()->role === 'security';
+                    $canViewVisitorMonitoring = auth()->user()->isAdmin() || auth()->user()->isSecurity();
                 @endphp
                 <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <x-stat-card label="Total Incidents" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />

@@ -26,7 +26,7 @@
                         <p class="mt-2 text-sm text-slate-500">{{ $managedUser->email }}</p>
                     </div>
                     <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $managedUser->trashed() ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700' }}">
-                        {{ $managedUser->trashed() ? 'Archived' : ucfirst($managedUser->role) }}
+                        {{ $managedUser->trashed() ? 'Archived' : $managedUser->role?->label() }}
                     </span>
                 </div>
 
@@ -58,7 +58,7 @@
                         <dl class="mt-4 space-y-3 text-sm">
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Role</dt>
-                                <dd class="text-right font-medium text-slate-900">{{ ucfirst($managedUser->role) }}</dd>
+                                <dd class="text-right font-medium text-slate-900">{{ $managedUser->role?->label() }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Linked Resident</dt>
@@ -66,7 +66,7 @@
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Subdivision</dt>
-                                <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $managedUser->role === 'admin' ? 'All' : ($managedUser->subdivision?->subdivision_name ?? 'Unassigned') }}</dd>
+                                <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $managedUser->isAdmin() ? 'All' : ($managedUser->subdivision?->subdivision_name ?? 'Unassigned') }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Availability</dt>
