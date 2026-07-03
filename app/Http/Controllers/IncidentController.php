@@ -53,7 +53,7 @@ class IncidentController extends Controller
         );
 
         $query = Incident::query()
-            ->with(['subdivision', 'house', 'proofPhotos', 'reporter'])
+            ->with('reporter')
             ->orderByRaw('COALESCE(reported_at, incident_date, created_at) ' . strtoupper($reportedSort));
 
         if ($filterQ !== '') {
@@ -99,7 +99,7 @@ class IncidentController extends Controller
         $openReportModal = $request->boolean('report');
         $incidentCategories = $this->incidentCategories();
         $residentReporter = null;
-        $houses = $this->housesForUser($user, $effectiveSubdivision);
+        $houses = $this->housesForSubdivision($effectiveSubdivision);
 
         return view('incidents.index', compact(
             'incidents', 'subdivisions', 'filterQ', 'filterSubdivision',
@@ -489,7 +489,7 @@ class IncidentController extends Controller
         return trim((string) ($data['location'] ?? '')) ?: null;
     }
 
-    private function housesForUser($user, ?int $subdivisionId): \Illuminate\Support\Collection
+    private function housesForSubdivision(?int $subdivisionId): \Illuminate\Support\Collection
     {
         if (!$subdivisionId) {
             return collect();
@@ -665,12 +665,14 @@ class IncidentController extends Controller
 
         IncidentPhoto::query()->where('incident_id', $incident->incident_id)->delete();
 
-        foreach ($allPaths as $index => $photoPath) {
-            IncidentPhoto::create([
+        if ($allPaths !== []) {
+            $now = now();
+            IncidentPhoto::insert(collect($allPaths)->map(fn (string $photoPath, int $index) => [
                 'incident_id' => $incident->incident_id,
                 'photo_path' => $photoPath,
                 'sort_order' => $index,
-            ]);
+                'created_at' => $now,
+            ])->all());
         }
 
         $incident->forceFill([
@@ -998,7 +1000,7 @@ class IncidentController extends Controller
         }
 
         $query = Incident::query()
-            ->with(['subdivision', 'house', 'reporter', 'proofPhotos'])
+            ->with(['reporter', 'proofPhotos'])
             ->orderByRaw('COALESCE(reported_at, incident_date, created_at) ' . strtoupper($reportedSort));
 
         if ($filterQ !== '') {

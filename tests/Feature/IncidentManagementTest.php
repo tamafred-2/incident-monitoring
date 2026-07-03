@@ -600,7 +600,7 @@ class IncidentManagementTest extends TestCase
         ]);
     }
 
-    public function test_incident_can_be_viewed_by_report_id_route(): void
+    public function test_incident_can_be_viewed_by_id_route(): void
     {
         $subdivision = Subdivision::create([
             'subdivision_name' => 'Birch Square',
@@ -628,9 +628,8 @@ class IncidentManagementTest extends TestCase
         ]);
 
         $this->actingAs($staff)
-            ->get(route('incidents.show-by-report', $incident->report_id))
+            ->get(route('incidents.show', ['incidentId' => $incident->incident_id]))
             ->assertOk()
-            ->assertSee($incident->report_id)
             ->assertSee('Perimeter light is flickering.');
     }
 
@@ -726,10 +725,6 @@ class IncidentManagementTest extends TestCase
 
         $this->actingAs($residentUser)
             ->get(route('incidents.show', ['incidentId' => $otherIncident->incident_id]))
-            ->assertForbidden();
-
-        $this->actingAs($residentUser)
-            ->get(route('incidents.show-by-report', $otherIncident->report_id))
             ->assertForbidden();
     }
 

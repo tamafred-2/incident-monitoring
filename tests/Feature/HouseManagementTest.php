@@ -66,7 +66,7 @@ class HouseManagementTest extends TestCase
         $this->actingAs($admin)
             ->get(route('houses.show', $house))
             ->assertOk()
-            ->assertSee('House Details')
+            ->assertSee('Record Details')
             ->assertSee('Block 7 Lot 4');
     }
 
@@ -99,7 +99,7 @@ class HouseManagementTest extends TestCase
         $this->actingAs($admin)
             ->get(route('houses.show', $house))
             ->assertOk()
-            ->assertSee('Assigned Residents')
+            ->assertSee('Residents')
             ->assertSee('Lina Cruz');
     }
 

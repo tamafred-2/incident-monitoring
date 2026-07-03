@@ -160,7 +160,7 @@ class VisitorDashboardTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Active Incidents')
+            ->assertSee('Total Incidents')
             ->assertSee('Total Residents')
             ->assertSee('Pending Incidents')
             ->assertSee('Total Houses')
@@ -169,7 +169,7 @@ class VisitorDashboardTest extends TestCase
             ->assertDontSee('Visitors Currently Checked In');
     }
 
-    public function test_staff_dashboard_active_incident_count_excludes_resolved_and_closed(): void
+    public function test_staff_dashboard_pending_incident_count_excludes_resolved_and_closed(): void
     {
         $subdivision = Subdivision::create([
             'subdivision_name' => 'Lakewood',
@@ -241,9 +241,8 @@ class VisitorDashboardTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Active Incidents')
+            ->assertSee('Total Incidents')
             ->assertSee('Pending Incidents')
-            ->assertSeeInOrder(['Active Incidents', '2'])
             ->assertSeeInOrder(['Pending Incidents', '2']);
     }
 
@@ -266,7 +265,6 @@ class VisitorDashboardTest extends TestCase
         ]);
 
         Incident::create([
-            'report_id' => 'PEND0001',
             'subdivision_id' => $subdivision->subdivision_id,
             'house_id' => $house->house_id,
             'description' => 'Gate latch issue',
@@ -279,7 +277,6 @@ class VisitorDashboardTest extends TestCase
         ]);
 
         Incident::create([
-            'report_id' => 'DONE0001',
             'subdivision_id' => $subdivision->subdivision_id,
             'house_id' => $house->house_id,
             'description' => 'Issue resolved',
@@ -298,8 +295,8 @@ class VisitorDashboardTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Pending Incidents')
-            ->assertSee('PEND0001')
-            ->assertDontSee('DONE0001');
+            ->assertSee('East gate')
+            ->assertDontSee('Pool side');
     }
 
     public function test_admin_dashboard_pending_incident_list_shows_only_active_cases(): void
@@ -321,7 +318,6 @@ class VisitorDashboardTest extends TestCase
         ]);
 
         Incident::create([
-            'report_id' => 'ADMP0001',
             'subdivision_id' => $subdivision->subdivision_id,
             'house_id' => $house->house_id,
             'description' => 'Main entrance alarm issue',
@@ -334,7 +330,6 @@ class VisitorDashboardTest extends TestCase
         ]);
 
         Incident::create([
-            'report_id' => 'ADMC0001',
             'subdivision_id' => $subdivision->subdivision_id,
             'house_id' => $house->house_id,
             'description' => 'Issue closed',
@@ -353,7 +348,7 @@ class VisitorDashboardTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Pending Incidents')
-            ->assertSee('ADMP0001')
-            ->assertDontSee('ADMC0001');
+            ->assertSee('Main entrance')
+            ->assertDontSee('Clubhouse');
     }
 }
