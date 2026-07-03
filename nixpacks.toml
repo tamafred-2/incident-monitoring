@@ -1,0 +1,24 @@
+# Railway / Nixpacks build config for this Laravel 12 + Vite app.
+#
+# Nixpacks auto-detects PHP and (because package.json exists) Node, then
+# generates an nginx + php-fpm setup that serves ./public on $PORT. We only
+# override the pieces that need to be explicit:
+#   - pin PHP 8.2+ and Node
+#   - run the Vite asset build (npm run build) so compiled CSS/JS exist
+#   - install composer deps without dev packages
+#
+# PHP extensions (pdo_pgsql for Postgres, gd for DomPDF image export) are
+# enabled via the NIXPACKS_PHP_EXTENSIONS variable in the Railway dashboard,
+# NOT here — see the deploy notes. Check the first build log to confirm they
+# loaded.
+
+providers = ["node", "php"]
+
+[phases.install]
+cmds = [
+  "composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist",
+  "npm ci",
+]
+
+[phases.build]
+cmds = ["npm run build"]
