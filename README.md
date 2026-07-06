@@ -7,7 +7,12 @@
 ![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?logo=laravel)
 ![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/UI-Tailwind%20CSS-06B6D4?logo=tailwindcss&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-green)
+![Alpine.js](https://img.shields.io/badge/Alpine.js-3.x-77C1D2?logo=alpine.js&logoColor=white)
+![Chart.js](https://img.shields.io/badge/Chart.js-4.x-FF6384?logo=chart.js&logoColor=white)
+![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Laravel Breeze](https://img.shields.io/badge/Auth-Laravel%20Breeze-FF2D20?logo=laravel&logoColor=white)
+![License](https://img.shields.io/badge/license-portfolio-lightgrey)
 
 ---
 
@@ -78,7 +83,7 @@ Business Domain
 Data Access & Infrastructure
 ├── Spatie Laravel Permission (RBAC Engine)
 ├── Laravel Eloquent ORM
-└── SQLite Database / Local Storage (File management)
+└── SQLite Database (Local) / PostgreSQL (Production) / Local Storage (File management)
 ```
 
 ---
@@ -87,9 +92,9 @@ Data Access & Infrastructure
 
 - **PHP 8.2+**
 - **Laravel 12.x** (Modern framework backend)
-- **Tailwind CSS & Laravel Breeze** (Elegant, responsive styling & authentication scaffolding)
+- **Tailwind CSS & Laravel Breeze** (Elegant, responsive styling, lightweight Alpine.js reactivity, and authentication scaffolding)
 - **Vite** (Fast asset bundling and hot module replacement)
-- **SQLite** (Zero-configuration local database storage)
+- **SQLite & PostgreSQL** (SQLite for simple local development, PostgreSQL configured for secure production/Docker environments)
 - **Spatie Laravel Permission** (Role-Based Access Control)
 - **Barryvdh Laravel DomPDF** (Dynamic PDF export for incidents and visitor logs)
 - **Laravel Pail & Tinker** (Interactive debugging and logging)
