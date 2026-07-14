@@ -472,10 +472,30 @@ class SqliteDemoSeeder extends Seeder
         $allHouses    = array_merge($houses, $bulkHouses);
         $houseCount   = count($allHouses);
 
-        // 100 residents
+        // Residents: every bulk house gets 1-10, weighted toward small households
+        // (mean ≈ 2.7) so the total lands at 500+ and Avg. Residents / House ≈ 2.7.
+        $householdSize = static function (): int {
+            $r = mt_rand(1, 100);
+            return match (true) {
+                $r <= 30 => 1,
+                $r <= 58 => 2,
+                $r <= 76 => 3,
+                $r <= 86 => 4,
+                $r <= 92 => 5,
+                $r <= 95 => 6,
+                $r <= 97 => 7,
+                $r <= 98 => 8,
+                $r <= 99 => 9,
+                default  => 10,
+            };
+        };
+
         $bulkResidents = [];
-        for ($i = 0; $i < 100; $i++) {
-            $house    = $allHouses[mt_rand(0, $houseCount - 1)];
+        $residentSeq = 0;
+        $makeResident = function (House $house, bool $isOwner) use (
+            &$residentSeq, $subdivision, $firstNames, $surnames, $middleInits, $relations, $hasRelationCol, $rand, $phone
+        ): Resident {
+            $residentSeq++;
             $fn       = $rand($firstNames);
             $sn       = $rand($surnames);
             $mi       = mt_rand(0, 1) ? $rand($middleInits) : null;
@@ -484,32 +504,55 @@ class SqliteDemoSeeder extends Seeder
                 'subdivision_id'  => $subdivision->subdivision_id,
                 'house_id'        => $house->house_id,
                 'full_name'       => $fullName,
-                'phone'           => $phone(100000 + $i * 13),
-                'email'           => 'resident.bulk.' . ($i + 1) . '@example.com',
+                'phone'           => $phone(100000 + $residentSeq * 13),
+                'email'           => 'resident.bulk.' . $residentSeq . '@example.com',
                 'address_or_unit' => $house->display_address,
-                'status'          => mt_rand(0, 9) > 0 ? ActiveStatus::Active->value : ActiveStatus::Inactive->value,
+                // The first resident of a house stays Active so no house looks vacant.
+                'status'          => ($isOwner || mt_rand(0, 9) > 0) ? ActiveStatus::Active->value : ActiveStatus::Inactive->value,
             ];
             if ($hasRelationCol) {
-                $payload['relation_to_owner'] = $rand($relations);
+                $payload['relation_to_owner'] = $isOwner ? 'Owner' : $rand(array_values(array_diff($relations, ['Owner'])));
             }
-            $bulkResidents[] = Resident::create($payload);
+
+            return Resident::create($payload);
+        };
+
+        foreach ($bulkHouses as $house) {
+            $size = $householdSize();
+            for ($j = 0; $j < $size; $j++) {
+                $bulkResidents[] = $makeResident($house, $j === 0);
+            }
+        }
+
+        // Top up to guarantee 500+ residents overall.
+        while (count($bulkResidents) + count($residents) < 500) {
+            $bulkResidents[] = $makeResident($allHouses[mt_rand(0, $houseCount - 1)], false);
         }
 
         $allResidents  = array_merge($residents, $bulkResidents);
         $residentCount = count($allResidents);
 
-        // 100 incidents
-        for ($i = 0; $i < 100; $i++) {
+        // 426 bulk incidents (430 with the 4 handcrafted ones above):
+        // 11 Open + 21 Under Investigation pending (12 Open / 34 pending overall)
+        // and 394 resolved, giving a 396/430 ≈ 92% resolution rate.
+        for ($i = 0; $i < 426; $i++) {
             $house      = $allHouses[mt_rand(0, $houseCount - 1)];
             $category   = $rand($incCategories);
-            $status     = mt_rand(1, 10) === 1
-                ? $rand([$incidentStatuses['pending_primary'], $incidentStatuses['pending_secondary']])
-                : $rand([$incidentStatuses['resolved_primary'], $incidentStatuses['resolved_secondary']]);
+            $status     = match (true) {
+                $i < 11 => $incidentStatuses['pending_primary'],
+                $i < 32 => $incidentStatuses['pending_secondary'],
+                default => $rand([$incidentStatuses['resolved_primary'], $incidentStatuses['resolved_secondary']]),
+            };
             $reporter   = $users[mt_rand(0, count($users) - 1)];
-            $isResolved = in_array($status, [$incidentStatuses['resolved_primary'], $incidentStatuses['resolved_secondary']], true);
-            $incidentTs = $randTs();
+            $isResolved = $i >= 32;
+            // Pending incidents cluster in the last 30 days; resolved ones spread
+            // from Jan 1 and leave 36h of headroom so resolution isn't clipped by "now".
+            $incidentTs = $isResolved
+                ? mt_rand($startTs, max($startTs, $nowTs - 133200))
+                : mt_rand($nowTs - 2592000, $nowTs - 3600);
             $reportedTs = min($incidentTs + mt_rand(600, 7200), $nowTs);
-            $resolvedTs = $isResolved ? min($reportedTs + mt_rand(3600, 172800), $nowTs) : null;
+            // 12-36h to resolve → averages out to ~1 day.
+            $resolvedTs = $isResolved ? min($reportedTs + mt_rand(43200, 129600), $nowTs) : null;
 
             Incident::create([
                 'subdivision_id' => $subdivision->subdivision_id,
@@ -566,15 +609,16 @@ class SqliteDemoSeeder extends Seeder
             VisitorRequest::create($payload);
         }
 
-        // 100 visitors
-        for ($i = 0; $i < 100; $i++) {
+        // 1,198 bulk visitors (1,200 with the 2 handcrafted ones above);
+        // the first 49 stay Inside (50 overall) with recent check-ins.
+        for ($i = 0; $i < 1198; $i++) {
             $resident  = $allResidents[mt_rand(0, $residentCount - 1)];
             $house     = $allHouses[mt_rand(0, $houseCount - 1)];
             $fn        = $rand($firstNames);
             $sn        = $rand($surnames);
             $mi        = mt_rand(0, 2) === 0 ? $rand($middleInits) : null;
-            $isInside  = mt_rand(1, 10) === 1;
-            $checkInTs = $randTs();
+            $isInside  = $i < 49;
+            $checkInTs = $isInside ? mt_rand($nowTs - 172800, $nowTs - 900) : $randTs();
             $checkOutTs = $isInside ? null : min($checkInTs + mt_rand(1800, 14400), $nowTs);
             $hasPlate  = mt_rand(0, 1);
 
