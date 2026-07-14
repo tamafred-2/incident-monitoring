@@ -48,12 +48,19 @@
                     'href' => route('subdivisions.index'),
                     'active' => 'subdivisions.*',
                 ] : null,
-                $user->isAdmin() ? ['label' => 'Users', 'href' => route('users.index'), 'active' => 'users.*'] : null,
                 $user->isAdmin() ? [
-                    'label' => 'Password Resets',
-                    'href' => route('admin.password-resets.index'),
-                    'active' => 'admin.password-resets.*',
+                    'label' => 'Users',
+                    'href' => route('users.index'),
+                    'active' => 'users.*',
                     'badge' => $pendingPasswordResets,
+                    'children' => [
+                        [
+                            'label' => 'Password Resets',
+                            'href' => route('admin.password-resets.index'),
+                            'active' => 'admin.password-resets.*',
+                            'badge' => $pendingPasswordResets,
+                        ],
+                    ],
                 ] : null,
             ])),
         ],
@@ -75,6 +82,9 @@
         $sectionOpenState[$section['key']] = $section['key'] === 'monitoring'
             || collect($section['items'])->contains(
                 fn (array $item): bool => request()->routeIs($item['active'])
+                    || collect($item['children'] ?? [])->contains(
+                        fn (array $child): bool => request()->routeIs($child['active'])
+                    )
             );
     }
 @endphp
@@ -143,18 +153,47 @@
                         </button>
                         <div x-cloak x-show="sections['{{ $section['key'] }}']" x-transition.origin.top.duration.200ms class="mt-3 space-y-1.5">
                             @foreach ($section['items'] as $item)
+                                @php
+                                    $itemChildren = $item['children'] ?? [];
+                                    $itemActive = request()->routeIs($item['active']);
+                                    $childActive = collect($itemChildren)->contains(
+                                        fn (array $child): bool => request()->routeIs($child['active'])
+                                    );
+                                @endphp
                                 <a
                                     href="{{ $item['href'] }}"
                                     @click="open = false"
-                                    class="sidebar-link {{ request()->routeIs($item['active']) ? 'sidebar-link-active' : '' }}"
+                                    class="sidebar-link {{ $itemActive ? 'sidebar-link-active' : '' }}"
                                 >
                                     <span>{{ $item['label'] }}</span>
-                                    @if (($item['badge'] ?? 0) > 0)
-                                        <span class="ml-auto inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[11px] font-semibold text-white">
+                                    @php
+                                        // When the submenu is expanded the child shows its own badge, so skip the parent's to avoid a double count.
+                                        $submenuExpanded = count($itemChildren) > 0 && ($itemActive || $childActive);
+                                    @endphp
+                                    @if (($item['badge'] ?? 0) > 0 && !$submenuExpanded)
+                                        <span class="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-semibold leading-none text-white">
                                             {{ $item['badge'] > 99 ? '99+' : $item['badge'] }}
                                         </span>
                                     @endif
                                 </a>
+                                @if ($submenuExpanded)
+                                    <div class="ml-4 space-y-1 border-l border-white/10 pl-3">
+                                        @foreach ($itemChildren as $child)
+                                            <a
+                                                href="{{ $child['href'] }}"
+                                                @click="open = false"
+                                                class="sidebar-link py-2 text-[13px] {{ request()->routeIs($child['active']) ? 'sidebar-link-active' : '' }}"
+                                            >
+                                                <span>{{ $child['label'] }}</span>
+                                                @if (($child['badge'] ?? 0) > 0)
+                                                    <span class="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1 text-[11px] font-semibold leading-none text-white">
+                                                        {{ $child['badge'] > 99 ? '99+' : $child['badge'] }}
+                                                    </span>
+                                                @endif
+                                            </a>
+                                        @endforeach
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     </section>
