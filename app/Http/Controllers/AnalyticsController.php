@@ -31,34 +31,32 @@ class AnalyticsController extends Controller
 
         $granularity = $this->resolveGranularity($request->query('granularity'));
 
-        // A custom From/To range scopes every incident & visitor chart (trend,
-        // By Status, By Category). Without it the trend uses a sensible default
-        // window for the granularity and the breakdowns stay all-time.
+        // The From/To range scopes every incident & visitor chart (trend,
+        // By Status, By Category). It defaults to month-to-date so the pickers
+        // always start filled (e.g. Jul 1 – today).
         $hasRange = filled($request->query('from')) || filled($request->query('to'));
         $trendEnd = filled($request->query('to'))
             ? Carbon::parse($request->query('to'))->endOfDay()
             : now()->endOfDay();
         $trendStart = filled($request->query('from'))
             ? Carbon::parse($request->query('from'))->startOfDay()
-            : $this->defaultStart($trendEnd, $granularity);
+            : now()->startOfMonth()->startOfDay();
 
         if ($trendStart->greaterThan($trendEnd)) {
             [$trendStart, $trendEnd] = [$trendEnd->copy()->startOfDay(), $trendStart->copy()->endOfDay()];
         }
 
-        $filterStart = $hasRange ? $trendStart : null;
-        $filterEnd = $hasRange ? $trendEnd : null;
+        $filterStart = $trendStart;
+        $filterEnd = $trendEnd;
 
         return view('analytics.index', [
             'scopeLabel' => $isAdmin ? 'All subdivisions' : ($user->subdivision?->subdivision_name ?? 'Your subdivision'),
             'granularity' => $granularity,
             'granularities' => self::GRANULARITIES,
-            'filterFrom' => (string) $request->query('from', ''),
-            'filterTo' => (string) $request->query('to', ''),
+            'filterFrom' => $trendStart->toDateString(),
+            'filterTo' => $trendEnd->toDateString(),
             'hasRange' => $hasRange,
-            'rangeLabel' => $hasRange
-                ? $trendStart->format('M j, Y') . ' – ' . $trendEnd->format('M j, Y')
-                : 'All time',
+            'rangeLabel' => $trendStart->format('M j, Y') . ' – ' . $trendEnd->format('M j, Y'),
             'incidents' => $this->buildIncidentAnalytics($scope, $granularity, $trendStart, $trendEnd, $filterStart, $filterEnd),
             'visitors' => $this->buildVisitorAnalytics($scope, $granularity, $trendStart, $trendEnd, $filterStart, $filterEnd),
             'community' => $this->buildCommunityAnalytics($scope),
@@ -206,20 +204,7 @@ class AnalyticsController extends Controller
     {
         $value = is_string($value) ? strtolower($value) : '';
 
-        return in_array($value, self::GRANULARITIES, true) ? $value : 'monthly';
-    }
-
-    /**
-     * Default window start for a granularity when no custom From date is given.
-     */
-    private function defaultStart(Carbon $end, string $granularity): Carbon
-    {
-        return match ($granularity) {
-            'daily' => $end->copy()->startOfDay()->subDays(29),       // 30 days
-            'weekly' => $end->copy()->startOfWeek()->subWeeks(11),    // 12 weeks
-            'yearly' => $end->copy()->startOfYear()->subYears(4),     // 5 years
-            default => $end->copy()->startOfMonth()->subMonths(11),   // 12 months
-        };
+        return in_array($value, self::GRANULARITIES, true) ? $value : 'daily';
     }
 
     private function granularityUnit(string $granularity): string
