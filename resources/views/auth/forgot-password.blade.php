@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-6">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Password Recovery</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-700">Password Recovery</p>
         <p class="mt-3 text-sm leading-6 text-slate-500">
         {{ __('Forgot your password? Enter your email address to send a reset request. The administrator will reset your password and give you a new one.') }}
         </p>
@@ -70,8 +70,8 @@
                 x-transition.scale.origin.center
                 class="relative w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-2xl"
             >
-                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-sky-100">
-                    <svg class="h-7 w-7 text-sky-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-100">
+                    <svg class="h-7 w-7 text-brand-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
                     </svg>
                 </div>
@@ -92,7 +92,7 @@
                     <button
                         type="button"
                         @click="$root.submit()"
-                        class="flex-1 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+                        class="flex-1 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
                     >
                         {{ __('Yes, request reset') }}
                     </button>

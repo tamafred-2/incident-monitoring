@@ -24,7 +24,7 @@
                     @click="reminderOpen = !reminderOpen"
                     @focus="reminderOpen = true"
                     @blur="reminderOpen = false"
-                    class="inline-flex items-center justify-center transition border rounded-full w-9 h-9 border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                    class="inline-flex items-center justify-center transition border rounded-full w-9 h-9 border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                     aria-label="Visitor approval reminder"
                 >
                     <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -36,9 +36,9 @@
                     x-cloak
                     x-show="reminderOpen"
                     x-transition.origin.top.right.duration.150ms
-                    class="absolute right-0 z-30 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-sky-200 bg-white p-4 shadow-xl"
+                    class="absolute right-0 z-30 mt-2 w-96 max-w-[calc(100vw-2rem)] rounded-2xl border border-brand-200 bg-white p-4 shadow-xl"
                 >
-                    <p class="text-sm font-semibold text-sky-800">Visitor Approval Reminder</p>
+                    <p class="text-sm font-semibold text-brand-800">Visitor Approval Reminder</p>
                     <p class="mt-2 text-sm leading-6">
                         For resident visits, Admin/Guard should contact the resident using the phone number registered in the system and record the resident response before allowing entry.
                         If automated approval is active, wait for the system response and apply the same allow or deny decision.
@@ -253,7 +253,7 @@
                                 <button
                                     type="button"
                                     x-on:click="setVisitType('resident')"
-                                    :class="visitType === 'resident' ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
+                                    :class="visitType === 'resident' ? 'bg-brand-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
                                     class="px-3 py-2 text-sm font-semibold transition rounded-lg"
                                 >
                                     Resident Visit
@@ -261,7 +261,7 @@
                                 <button
                                     type="button"
                                     x-on:click="setVisitType('walk_in')"
-                                    :class="visitType === 'walk_in' ? 'bg-sky-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
+                                    :class="visitType === 'walk_in' ? 'bg-brand-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
                                     class="px-3 py-2 text-sm font-semibold transition rounded-lg"
                                 >
                                     Walk-in
@@ -269,9 +269,9 @@
                             </div>
                         </div>
 
-                        <div x-show="visitType === 'resident'" x-cloak class="p-5 border rounded-2xl border-sky-200 bg-sky-50/60">
-                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-800">Approval Step</h4>
-                            <p class="mt-2 text-sm leading-6 text-sky-700">
+                        <div x-show="visitType === 'resident'" x-cloak class="p-5 border rounded-2xl border-brand-200 bg-brand-50/60">
+                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-800">Approval Step</h4>
+                            <p class="mt-2 text-sm leading-6 text-brand-700">
                                 Use this after confirming resident approval through registered contact. Submission will check the visitor in immediately.
                             </p>
                         </div>
@@ -292,19 +292,19 @@
                             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">Surname</label>
-                                    <input type="text" name="surname" value="{{ old('surname') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    <input type="text" name="surname" value="{{ old('surname') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">First Name</label>
-                                    <input type="text" name="first_name" value="{{ old('first_name') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    <input type="text" name="first_name" value="{{ old('first_name') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">Middle Initials</label>
-                                    <input type="text" name="middle_initials" value="{{ old('middle_initials') }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" placeholder="M.I.">
+                                    <input type="text" name="middle_initials" value="{{ old('middle_initials') }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500" placeholder="M.I.">
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">Extension</label>
-                                    <input type="text" name="extension" value="{{ old('extension') }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500" placeholder="Jr.">
+                                    <input type="text" name="extension" value="{{ old('extension') }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500" placeholder="Jr.">
                                 </div>
                             </div>
                         </div>
@@ -327,12 +327,12 @@
                                         pattern="[0-9]*"
                                         maxlength="40"
                                         oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
                                     >
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-slate-700">Purpose</label>
-                                    <textarea name="purpose" rows="2" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">{{ old('purpose') }}</textarea>
+                                    <textarea name="purpose" rows="2" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">{{ old('purpose') }}</textarea>
                                 </div>
                             </div>
                         </div>
@@ -351,7 +351,7 @@
                                         name="id_photo"
                                         accept="image/*"
                                         required
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
                                     >
                                 </div>
                             </div>
@@ -366,7 +366,7 @@
                             <input type="hidden" name="on_vehicle" :value="isVehicle ? 1 : 0">
 
                             <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
-                                <input type="checkbox" x-model="isVehicle" class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                                <input type="checkbox" x-model="isVehicle" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
                                 Visitor is on vehicle
                             </label>
 
@@ -380,7 +380,7 @@
                                         :required="isVehicle"
                                         :disabled="!isVehicle"
                                         placeholder="e.g., ABC 1234"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                 </div>
                                 <div>
@@ -395,7 +395,7 @@
                                         max="20"
                                         step="1"
                                         placeholder="e.g., 2"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                 </div>
                                 <div>
@@ -407,7 +407,7 @@
                                         :required="isVehicle"
                                         :disabled="!isVehicle"
                                         placeholder="e.g., Sedan, SUV, Motorcycle"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                 </div>
                                 <div>
@@ -419,7 +419,7 @@
                                         :required="isVehicle"
                                         :disabled="!isVehicle"
                                         placeholder="e.g., White, Black, Blue"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                 </div>
                             </div>
@@ -448,7 +448,7 @@
                                         :disabled="visitType !== 'resident'"
                                         :required="visitType === 'resident'"
                                         autocomplete="off"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                     <p class="mt-2 text-xs text-slate-500">Select a resident from the suggestion list so the request reaches the correct registered phone number.</p>
                                     <ul
@@ -459,7 +459,7 @@
                                         <template x-for="resident in availableResidents" :key="resident.id + '-' + resident.house_id">
                                             <li
                                                 x-on:mousedown.prevent="selectResident(resident)"
-                                                class="cursor-pointer px-4 py-2.5 hover:bg-sky-50"
+                                                class="cursor-pointer px-4 py-2.5 hover:bg-brand-50"
                                             >
                                                 <p class="font-medium text-slate-800" x-text="resident.name"></p>
                                                 <p class="text-xs text-slate-500" x-text="resident.display_address"></p>
@@ -478,7 +478,7 @@
                                             readonly
                                             :required="visitType === 'resident'"
                                             placeholder="Auto-filled from resident"
-                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-sky-500 focus:ring-sky-500"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-brand-500 focus:ring-brand-500"
                                         >
                                     </div>
                                     <div>
@@ -489,7 +489,7 @@
                                             readonly
                                             :required="visitType === 'resident'"
                                             placeholder="Auto-filled from resident"
-                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-sky-500 focus:ring-sky-500"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-brand-500 focus:ring-brand-500"
                                         >
                                     </div>
                                     <div>
@@ -500,7 +500,7 @@
                                             readonly
                                             :required="visitType === 'resident'"
                                             placeholder="Auto-filled from resident"
-                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-sky-500 focus:ring-sky-500"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-brand-500 focus:ring-brand-500"
                                         >
                                     </div>
                                     <div>
@@ -511,7 +511,7 @@
                                             readonly
                                             :required="visitType === 'resident'"
                                             placeholder="Auto-filled from resident"
-                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-sky-500 focus:ring-sky-500"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 bg-slate-50 text-slate-700 focus:border-brand-500 focus:ring-brand-500"
                                         >
                                     </div>
                                 </div>
@@ -533,7 +533,7 @@
                                         :required="visitType === 'walk_in'"
                                         :disabled="visitType !== 'walk_in'"
                                         placeholder="e.g., Basketball Court, Gate Drop-off, Admin Office, Delivery"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                 </div>
                             </div>
@@ -547,7 +547,7 @@
                             >
                                 Cancel
                             </button>
-                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-sky-600 hover:bg-sky-700">
+                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-brand-600 hover:bg-brand-700">
                                 <span x-show="visitType === 'resident'" x-cloak>Check In Visitor</span>
                                 <span x-show="visitType === 'walk_in'" x-cloak>Check In Visitor</span>
                             </button>
@@ -563,7 +563,7 @@
                         <a
                             href="#visitor-check-out"
                             @click.prevent="activeMonitoringTab = 'check-out'"
-                            :class="activeMonitoringTab === 'check-out' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                            :class="activeMonitoringTab === 'check-out' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
                             class="px-1 pb-3 text-sm font-semibold transition border-b-2"
                         >
                             Visitor Check-out
@@ -571,7 +571,7 @@
                         <a
                             href="#visitor-history"
                             @click.prevent="activeMonitoringTab = 'history'"
-                            :class="activeMonitoringTab === 'history' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                            :class="activeMonitoringTab === 'history' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
                             class="px-1 pb-3 text-sm font-semibold transition border-b-2"
                         >
                             Visitor History
@@ -609,11 +609,11 @@
                                     <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700">Start</label>
-                                        <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                        <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700">End</label>
-                                        <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                        <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                                     </div>
                                     <div>
                                         <label class="block text-sm font-medium text-slate-700">Search</label>
@@ -623,7 +623,7 @@
                                             value="{{ $filterQ }}"
                                             placeholder="Name, phone, house"
                                             data-live-filter data-filter-target="#inside-visitors-rows" autocomplete="off"
-                                            class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                            class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
                                         >
                                     </div>
                                     @if (auth()->user()->hasRole('security'))
@@ -747,7 +747,7 @@
                                         list="check-out-row-size-options"
                                         value=""
                                         placeholder="{{ $checkOutPerPage }}"
-                                        class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                        class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
                                         aria-label="Rows per page"
                                         inputmode="numeric"
                                         autocomplete="off"
@@ -858,7 +858,7 @@
                                                 @if (auth()->user()->isAdmin())
                                                     <a
                                                         href="{{ route('visitors.edit', array_merge(['visitor' => $visitor->visitor_id], request()->only(['tab', 'q', 'subdivision_id', 'history_per_page', 'check_out_per_page']))) }}"
-                                                        class="px-3 py-2 text-xs font-semibold border rounded-lg border-sky-300 text-sky-700 hover:bg-sky-50"
+                                                        class="px-3 py-2 text-xs font-semibold border rounded-lg border-brand-300 text-brand-700 hover:bg-brand-50"
                                                     >
                                                         Edit
                                                     </a>
@@ -906,7 +906,7 @@
                                     list="history-row-size-options"
                                     value=""
                                     placeholder="{{ $historyPerPage }}"
-                                    class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                    class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
                                     aria-label="Rows per page"
                                     inputmode="numeric"
                                     autocomplete="off"

@@ -69,7 +69,7 @@
         </div>
         <div class="flex shrink-0 gap-2">
             <button type="button" @click="locate()" :disabled="searching"
-                class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50">
+                class="rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700 hover:bg-brand-100 disabled:opacity-50">
                 <span x-show="!searching">Locate from Address</span>
                 <span x-show="searching" x-cloak>Searching…</span>
             </button>
@@ -97,7 +97,7 @@
 
     <p class="mt-2 text-xs text-slate-400">
         Tip: Find your location on
-        <a href="https://www.openstreetmap.org" target="_blank" class="text-sky-600 hover:underline">openstreetmap.org</a>,
+        <a href="https://www.openstreetmap.org" target="_blank" class="text-brand-600 hover:underline">openstreetmap.org</a>,
         right-click → "Show address" to get coordinates, then paste them in the Latitude and Longitude fields above.
     </p>
 </section>

@@ -4,7 +4,7 @@
 
 <x-guest-layout>
     <div class="mb-8">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Account Access</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-700">Account Access</p>
         <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900">Login</h2>
         <p class="mt-3 text-sm leading-6 text-slate-500">
             Sign in to continue to your monitoring dashboard.
@@ -14,8 +14,8 @@
     <x-popup-alert type="success" title="Request Sent" :message="session('status')" />
 
     @isset($quickLoginUser)
-        <div class="mb-6 rounded-xl border border-sky-100 bg-sky-50/60 p-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700">Welcome back</p>
+        <div class="mb-6 rounded-xl border border-brand-100 bg-brand-50/60 p-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Welcome back</p>
 
             <form method="POST" action="{{ route('quick-login') }}" class="mt-4">
                 @csrf
@@ -28,7 +28,7 @@
                 @csrf
                 <button
                     type="submit"
-                    class="text-sm font-medium text-slate-500 transition hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 rounded-md"
+                    class="text-sm font-medium text-slate-500 transition hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 rounded-md"
                 >
                     {{ __('Use a different account') }}
                 </button>
@@ -62,7 +62,7 @@
                     <a
                         id="forgot-password-link"
                         data-base-url="{{ route('password.request') }}"
-                        class="text-sm font-medium text-sky-700 transition hover:text-sky-800 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 rounded-md"
+                        class="text-sm font-medium text-brand-700 transition hover:text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 rounded-md"
                         href="{{ route('password.request') }}"
                     >
                         {{ __('Forgot password?') }}
@@ -87,7 +87,7 @@
                 <input
                     id="remember_me"
                     type="checkbox"
-                    class="rounded border-slate-300 text-sky-600 shadow-sm focus:ring-sky-500"
+                    class="rounded border-slate-300 text-brand-600 shadow-sm focus:ring-brand-500"
                     name="remember"
                     @checked(old('remember', filled(request()->cookie('remembered_email'))))
                 >

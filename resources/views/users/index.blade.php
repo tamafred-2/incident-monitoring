@@ -89,7 +89,7 @@
                     <form method="GET" action="{{ route('users.index') }}" class="flex flex-wrap items-end gap-3">
                         <div class="min-w-[150px]">
                             <label class="block text-xs font-medium text-slate-500">Role</label>
-                            <select name="role" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <select name="role" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                                 <option value="">All roles</option>
                                 @foreach (['admin', 'security', 'staff'] as $role)
                                     <option value="{{ $role }}" @selected($filterRole === $role)>{{ ucfirst($role) }}</option>
@@ -98,7 +98,7 @@
                         </div>
                         <div class="min-w-[140px]">
                             <label class="block text-xs font-medium text-slate-500">View</label>
-                            <select name="view" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <select name="view" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                                 <option value="active" @selected($filterView === 'active')>Active</option>
                                 <option value="deleted" @selected($filterView === 'deleted')>Deleted</option>
                                 <option value="all" @selected($filterView === 'all')>All</option>
@@ -108,7 +108,7 @@
                             <label class="block text-xs font-medium text-slate-500">Search</label>
                             <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name or email"
                                    data-live-search="#users-results" autocomplete="off"
-                                   class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                   class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                         </div>
                         <button
                             type="button"
@@ -179,7 +179,7 @@
                                                     type="button"
                                                     x-data
                                                     x-on:click="$dispatch('open-modal', 'edit-user-{{ $user->user_id }}')"
-                                                    class="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100 hover:text-sky-800"
+                                                    class="inline-flex items-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-100 hover:text-brand-800"
                                                 >
                                                     Edit
                                                 </button>
@@ -256,7 +256,7 @@
                                 list="users-row-size-options"
                                 value=""
                                 placeholder="{{ $perPage }}"
-                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                                 aria-label="Rows per page"
                                 inputmode="numeric"
                                 autocomplete="off"

@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-6">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Create Account</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-700">Create Account</p>
         <p class="mt-3 text-sm leading-6 text-slate-500">
             Set up an account for subdivision monitoring with the same interface styling used across the platform.
         </p>
@@ -66,7 +66,7 @@
         </div>
 
         <div class="mt-5 flex items-center justify-end">
-            <a class="rounded-md text-sm font-medium text-slate-600 underline transition hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2" href="{{ route('login') }}">
+            <a class="rounded-md text-sm font-medium text-slate-600 underline transition hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2" href="{{ route('login') }}">
                 {{ __('Already registered?') }}
             </a>
 

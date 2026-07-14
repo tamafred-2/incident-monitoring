@@ -3,8 +3,8 @@
     'subtitle' => null,
 ])
 
-<div {{ $attributes->merge(['class' => 'rounded-lg border border-slate-200 bg-white p-4 shadow-none']) }}>
-    <div class="mb-2 flex items-start justify-between gap-3">
+<div {{ $attributes->merge(['class' => 'rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm']) }}>
+    <div class="mb-3 flex items-start justify-between gap-3">
         <div>
             <h4 class="text-sm font-semibold text-slate-900">{{ $title }}</h4>
             @if ($subtitle)

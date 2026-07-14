@@ -12,7 +12,7 @@
                 @if ($canEditIncident)
                     <a
                         href="{{ route('incidents.edit', array_merge(['incidentId' => $incident->incident_id], $indexContext)) }}"
-                        class="px-4 py-2 text-sm font-semibold text-white transition rounded-xl bg-sky-600 hover:bg-sky-700"
+                        class="px-4 py-2 text-sm font-semibold text-white transition rounded-xl bg-brand-600 hover:bg-brand-700"
                     >
                         Edit Incident
                     </a>

@@ -35,7 +35,7 @@
 
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">Description</label>
-                        <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description') }}</textarea>
+                        <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">{{ old('description') }}</textarea>
                     </div>
                     @php
                         $selectedCategory = old('category');
@@ -47,7 +47,7 @@
                     @endphp
                     <div data-category-root>
                         <label class="block text-sm font-medium text-slate-700">Category</label>
-                        <select name="category" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-category-select>
+                        <select name="category" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500" data-category-select>
                             <option value="">Select category</option>
                             @foreach ($incidentCategories as $category)
                                 <option value="{{ $category }}" @selected($selectedCategory === $category)>{{ $category }}</option>
@@ -59,26 +59,26 @@
                                 name="category_other"
                                 value="{{ $customCategory }}"
                                 placeholder="Enter custom category"
-                                class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                                 data-category-other
                             >
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Location</label>
-                        <input type="text" name="location" value="{{ old('location') }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                        <input type="text" name="location" value="{{ old('location') }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Incident Date & Time</label>
-                        <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                        <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Date Reported</label>
-                        <input type="datetime-local" name="reported_at" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                        <input type="datetime-local" name="reported_at" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>
-                        <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-status-select>
+                        <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500" data-status-select>
                             @foreach ($incidentStatusOptions as $statusValue => $statusLabel)
                                 <option value="{{ $statusValue }}" @selected(old('status', 'Open') === $statusValue)>{{ $statusLabel }}</option>
                             @endforeach
@@ -87,7 +87,7 @@
 
                     <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
                         <a href="{{ route('incidents.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</a>
-                        <button class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Submit Report</button>
+                        <button class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Submit Report</button>
                     </div>
                 </form>
             </div>

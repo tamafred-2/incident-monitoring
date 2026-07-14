@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-6">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Set New Password</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-700">Set New Password</p>
         <p class="mt-3 text-sm leading-6 text-slate-500">
             Choose a new password to restore access to your monitoring account.
         </p>

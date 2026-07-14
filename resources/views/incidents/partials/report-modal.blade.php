@@ -59,7 +59,7 @@
             @endphp
             <div class="md:col-span-2" data-category-root>
                 <label class="block text-sm font-medium text-slate-700">Category <span class="text-rose-500">*</span></label>
-                <select name="category" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500" data-category-select>
+                <select name="category" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500" data-category-select>
                     <option value="">Select category</option>
                     @foreach ($incidentCategories as $category)
                         <option value="{{ $category }}" @selected($selectedCategory === $category)>{{ $category }}</option>
@@ -71,14 +71,14 @@
                         name="category_other"
                         value="{{ $customCategory }}"
                         placeholder="Enter custom category"
-                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                        class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                         data-category-other
                     >
                 </div>
             </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-slate-700">Description <span class="text-rose-500">*</span></label>
-                <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('description') }}</textarea>
+                <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">{{ old('description') }}</textarea>
             </div>
             <div
                 class="md:col-span-2"
@@ -97,7 +97,7 @@
                         <select
                             name="location_street"
                             required
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                             data-location-street
                         >
                             <option value="">Select street</option>
@@ -108,7 +108,7 @@
                         <select
                             name="location_block"
                             required
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                             data-location-block
                             disabled
                         >
@@ -120,7 +120,7 @@
                         <select
                             name="location_lot"
                             required
-                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+                            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                             data-location-lot
                             disabled
                         >
@@ -131,12 +131,12 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700">Incident Date & Time</label>
-                <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
             </div>
             @if (!$residentUser)
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Date Reported</label>
-                    <input type="datetime-local" name="reported_at" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                    <input type="datetime-local" name="reported_at" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 </div>
             @endif
             <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
@@ -147,7 +147,7 @@
                 >
                     Cancel
                 </button>
-                <button class="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700">Submit Report</button>
+                <button class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Submit Report</button>
             </div>
         </form>
     </div>

@@ -14,7 +14,7 @@
         <select
             x-model="streetSelection"
             required
-            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+            class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
         >
             <option value="">Select Street</option>
             @foreach ($streetOptions as $option)
@@ -31,7 +31,7 @@
                 maxlength="120"
                 value="{{ $streetSelection === 'others' ? $streetValue : '' }}"
                 placeholder="Type street name"
-                class="mt-3 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                class="mt-3 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
             >
         </template>
 
@@ -52,7 +52,7 @@
             required
             maxlength="30"
             placeholder="e.g. 3"
-            class="mt-1 w-full rounded-xl border-slate-300 text-sm uppercase shadow-sm focus:border-sky-500 focus:ring-sky-500"
+            class="mt-1 w-full rounded-xl border-slate-300 text-sm uppercase shadow-sm focus:border-brand-500 focus:ring-brand-500"
         >
         @if ($errorsForForm->has('block'))
             <p class="mt-1 text-xs text-rose-600">{{ $errorsForForm->first('block') }}</p>
@@ -67,7 +67,7 @@
             required
             maxlength="30"
             placeholder="e.g. 12"
-            class="mt-1 w-full rounded-xl border-slate-300 text-sm uppercase shadow-sm focus:border-sky-500 focus:ring-sky-500"
+            class="mt-1 w-full rounded-xl border-slate-300 text-sm uppercase shadow-sm focus:border-brand-500 focus:ring-brand-500"
         >
         @if ($errorsForForm->has('lot'))
             <p class="mt-1 text-xs text-rose-600">{{ $errorsForForm->first('lot') }}</p>

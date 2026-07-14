@@ -40,7 +40,7 @@
                     name="surname"
                     required
                     value="{{ old('surname', $nameParts['surname']) }}"
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 >
             </div>
             <div>
@@ -50,7 +50,7 @@
                     name="first_name"
                     required
                     value="{{ old('first_name', $nameParts['first_name']) }}"
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 >
             </div>
         </div>
@@ -62,7 +62,7 @@
                     type="text"
                     name="middle_name"
                     value="{{ old('middle_name', $nameParts['middle_name']) }}"
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 >
             </div>
             <div>
@@ -71,7 +71,7 @@
                     type="text"
                     name="extension"
                     value="{{ old('extension', $nameParts['extension']) }}"
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 >
             </div>
         </div>
@@ -82,7 +82,7 @@
                 <select
                     name="status"
                     required
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 >
                     @foreach (\App\Enums\ActiveStatus::values() as $status)
                         <option value="{{ $status }}" @selected(old('status', $resident->status?->value ?? 'Active') === $status)>{{ $status }}</option>
@@ -112,7 +112,7 @@
                     pattern="[0-9]*"
                     maxlength="20"
                     oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 >
             </div>
             <div>
@@ -122,7 +122,7 @@
                     name="email"
                     required
                     value="{{ old('email', $resident?->email ?? '') }}"
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 >
             </div>
         </div>
@@ -142,7 +142,7 @@
                     x-ref="houseSelect"
                     name="house_id"
                     x-model="houseId"
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 >
                     <option value="">No assigned house</option>
                     @foreach ($houses as $house)
@@ -167,7 +167,7 @@
                 :disabled="houseId !== ''"
                 value="{{ old('address_or_unit', $resident?->address_or_unit ?? '') }}"
                 placeholder="Optional if no house is assigned"
-                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500 disabled:cursor-not-allowed disabled:bg-slate-100"
+                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500 disabled:cursor-not-allowed disabled:bg-slate-100"
             >
         </div>
 
@@ -184,7 +184,7 @@
                 <select
                     name="relation_to_owner"
                     x-model="relation"
-                    class="mt-1 w-full rounded-xl text-sm shadow-sm focus:ring-sky-500 @error('relation_to_owner') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-sky-500 @enderror"
+                    class="mt-1 w-full rounded-xl text-sm shadow-sm focus:ring-brand-500 @error('relation_to_owner') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-brand-500 @enderror"
                 >
                     <option value="">Select relation</option>
                     @foreach ($relationOptions as $option)
@@ -199,7 +199,7 @@
                     x-show="relation === 'Other'"
                     value="{{ $customRelation }}"
                     placeholder="Specify relation"
-                    class="w-full rounded-xl text-sm shadow-sm focus:ring-sky-500 @error('relation_to_owner_other') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-sky-500 @enderror"
+                    class="w-full rounded-xl text-sm shadow-sm focus:ring-brand-500 @error('relation_to_owner_other') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-brand-500 @enderror"
                 >
             </div>
             @error('relation_to_owner')
@@ -229,7 +229,7 @@
                     class="space-y-4"
                 >
                     <label class="flex cursor-pointer items-center gap-3">
-                        <input type="checkbox" x-model="createAccount" class="rounded border-slate-300 text-sky-600 shadow-sm focus:ring-sky-500">
+                        <input type="checkbox" x-model="createAccount" class="rounded border-slate-300 text-brand-600 shadow-sm focus:ring-brand-500">
                         <span class="text-sm font-medium text-slate-700">Create login account</span>
                     </label>
 
@@ -241,7 +241,7 @@
                                 name="account_email"
                                 value="{{ old('account_email') }}"
                                 :required="createAccount"
-                                class="mt-1 w-full rounded-xl text-sm shadow-sm focus:ring-sky-500 @error('account_email') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-sky-500 @enderror"
+                                class="mt-1 w-full rounded-xl text-sm shadow-sm focus:ring-brand-500 @error('account_email') border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-brand-500 @enderror"
                             >
                             @error('account_email')
                                 <p data-validation-error class="mt-1 text-xs text-rose-600">{{ $message }}</p>
@@ -253,7 +253,7 @@
                                 type="password"
                                 name="account_password"
                                 :required="createAccount"
-                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                             >
                         </div>
                     </div>

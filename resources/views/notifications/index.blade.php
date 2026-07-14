@@ -28,7 +28,7 @@
                 @else
                     <div class="space-y-4">
                         @foreach ($notifications as $notification)
-                            <article class="rounded-2xl border border-slate-200 p-4 {{ $notification->read_at ? 'bg-white' : 'bg-sky-50' }}">
+                            <article class="rounded-2xl border border-slate-200 p-4 {{ $notification->read_at ? 'bg-white' : 'bg-brand-50' }}">
                                 <div class="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <p class="text-sm font-semibold text-slate-900">{{ $notification->data['title'] ?? 'Notification' }}</p>
@@ -40,7 +40,7 @@
                                 </div>
                                 @if (isset($notification->data['url']))
                                     <div class="mt-4">
-                                        <a href="{{ $notification->data['url'] }}" class="text-sky-600 hover:text-sky-700 text-sm font-semibold">View incident</a>
+                                        <a href="{{ $notification->data['url'] }}" class="text-brand-600 hover:text-brand-700 text-sm font-semibold">View incident</a>
                                     </div>
                                 @endif
                             </article>

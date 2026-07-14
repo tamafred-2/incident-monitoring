@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-6">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Account Security</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-700">Account Security</p>
 
         <div class="mt-3 flex items-center gap-2">
             <h2 class="text-2xl font-bold tracking-tight text-slate-900">{{ __('Update Password') }}</h2>
@@ -13,7 +13,7 @@
                     @mouseleave="show = false"
                     @focus="show = true"
                     @blur="show = false"
-                    class="flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition hover:text-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+                    class="flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition hover:text-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1"
                     aria-label="{{ __('Why am I seeing this?') }}"
                 >
                     <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

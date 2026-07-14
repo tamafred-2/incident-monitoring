@@ -13,25 +13,25 @@
                         <label class="block text-sm font-medium text-slate-700">Search</label>
                         <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, address, house"
                                data-live-search="#residents-results" autocomplete="off"
-                               class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                               class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                         <p class="mt-1 text-xs text-slate-400">Searches all residents as you type</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>
-                        <select name="status" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                        <select name="status" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                             <option value="">All</option>
                             @foreach (\App\Enums\ActiveStatus::values() as $statusOption)
                                 <option value="{{ $statusOption }}" @selected($filterStatus === $statusOption)>{{ $statusOption }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="flex items-end gap-3">
+                    <div class="flex items-start gap-3 md:pt-6">
                         @if (auth()->user()->isAdmin())
                             <button
                                 type="button"
                                 x-data
                                 x-on:click="$dispatch('open-modal', 'create-resident')"
-                                class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
+                                class="whitespace-nowrap rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
                             >
                                 Add Resident
                             </button>
@@ -100,7 +100,7 @@
                                                     type="button"
                                                     x-data
                                                     x-on:click="$dispatch('open-modal', 'edit-resident-{{ $resident->resident_id }}')"
-                                                    class="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700 transition hover:border-sky-300 hover:bg-sky-100 hover:text-sky-800"
+                                                    class="inline-flex items-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-100 hover:text-brand-800"
                                                 >
                                                     Edit
                                                 </button>
@@ -153,7 +153,7 @@
                                 list="residents-row-size-options"
                                 value=""
                                 placeholder="{{ $perPage }}"
-                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                                 aria-label="Rows per page"
                                 inputmode="numeric"
                                 autocomplete="off"
@@ -244,7 +244,7 @@
                                         $el.querySelectorAll('[data-validation-error]').forEach(node => node.remove());
                                         $el.querySelectorAll('.border-rose-300').forEach(node => {
                                             node.classList.remove('border-rose-300', 'focus:border-rose-500');
-                                            node.classList.add('border-slate-300', 'focus:border-sky-500');
+                                            node.classList.add('border-slate-300', 'focus:border-brand-500');
                                         });
                                     });
                                 }

@@ -98,7 +98,7 @@
                                 'per_page' => $perPage,
                                 ...$sharedFilters,
                             ])) }}"
-                            :class="activeIncidentTab === 'incident' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                            :class="activeIncidentTab === 'incident' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
                             class="px-1 pb-3 text-sm font-semibold transition border-b-2"
                         >
                             Incident
@@ -111,7 +111,7 @@
                                 'per_page' => $perPage,
                                 ...$sharedFilters,
                             ])) }}"
-                            :class="activeIncidentTab === 'history' ? 'border-sky-600 text-sky-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
+                            :class="activeIncidentTab === 'history' ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-700'"
                             class="px-1 pb-3 text-sm font-semibold transition border-b-2"
                         >
                             Incident History
@@ -142,11 +142,11 @@
                                 <input type="hidden" name="per_page" value="{{ $perPage }}">
                                 <div class="min-w-[170px] flex-1 sm:flex-none">
                                     <label class="block text-xs font-medium text-slate-500">From</label>
-                                    <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                                 </div>
                                 <div class="min-w-[170px] flex-1 sm:flex-none">
                                     <label class="block text-xs font-medium text-slate-500">To</label>
-                                    <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                    <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                                 </div>
                                 <div class="min-w-[200px] flex-1 2xl:flex-none">
                                     <label class="block text-xs font-medium text-slate-500">Search</label>
@@ -156,7 +156,7 @@
                                         value="{{ $filterQ }}"
                                         placeholder="Search incidents"
                                         data-live-search="#incidents-results" autocomplete="off"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
                                     >
                                 </div>
                                 <button
@@ -183,11 +183,11 @@
                                     <input type="hidden" name="per_page" value="{{ $perPage }}">
                                     <div class="min-w-[170px] flex-1 sm:flex-none">
                                         <label class="block text-xs font-medium text-slate-500">From</label>
-                                        <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                        <input type="datetime-local" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                                     </div>
                                     <div class="min-w-[170px] flex-1 sm:flex-none">
                                         <label class="block text-xs font-medium text-slate-500">To</label>
-                                        <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                        <input type="datetime-local" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                                     </div>
                                     <div class="min-w-[200px] flex-1 2xl:flex-none">
                                         <label class="block text-xs font-medium text-slate-500">Search</label>
@@ -197,7 +197,7 @@
                                             value="{{ $filterQ }}"
                                             placeholder="Search incidents"
                                             data-live-search="#incidents-results" autocomplete="off"
-                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500"
+                                            class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
                                         >
                                     </div>
                                     <button
@@ -233,7 +233,7 @@
                                             'per_page' => $perPage,
                                             ...$sharedFilters,
                                         ])) }}"
-                                        class="inline-flex items-center gap-1 hover:text-sky-700"
+                                        class="inline-flex items-center gap-1 hover:text-brand-700"
                                         title="{{ $reportedSort === 'desc' ? 'Sort oldest first' : 'Sort newest first' }}"
                                     >
                                         <span>Date Reported</span>
@@ -260,7 +260,7 @@
                                                     'per_page' => $perPage,
                                                     ...$sharedFilters,
                                                 ])) }}"
-                                                class="font-medium text-slate-900 hover:text-sky-700"
+                                                class="font-medium text-slate-900 hover:text-brand-700"
                                             >
                                                 {{ $incident->category ?: 'Uncategorized' }}
                                             </a>
@@ -331,7 +331,7 @@
                                                         'per_page' => $perPage,
                                                         ...$sharedFilters,
                                                     ])) }}"
-                                                    class="px-3 py-2 text-xs font-semibold border rounded-lg border-sky-200 text-sky-700 hover:bg-sky-50"
+                                                    class="px-3 py-2 text-xs font-semibold border rounded-lg border-brand-200 text-brand-700 hover:bg-brand-50"
                                                 >
                                                     Edit
                                                 </a>
@@ -378,7 +378,7 @@
                                 list="incidents-row-size-options"
                                 value=""
                                 placeholder="{{ $perPage }}"
-                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                                 aria-label="Rows per page"
                                 inputmode="numeric"
                                 autocomplete="off"

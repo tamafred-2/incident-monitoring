@@ -9,28 +9,28 @@
     <div>
         <label class="block text-sm font-medium text-slate-700">Surname</label>
         <input type="text" name="surname" required autocomplete="new-password" value="{{ old('surname', $user?->surname ?? '') }}"
-               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
     </div>
     <div>
         <label class="block text-sm font-medium text-slate-700">First Name</label>
         <input type="text" name="first_name" required autocomplete="new-password" value="{{ old('first_name', $user?->first_name ?? '') }}"
-               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
     </div>
     <div>
         <label class="block text-sm font-medium text-slate-700">Middle Name</label>
         <input type="text" name="middle_name" autocomplete="new-password" value="{{ old('middle_name', $user?->middle_name ?? '') }}"
-               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
     </div>
     <div>
         <label class="block text-sm font-medium text-slate-700">Extension</label>
         <input type="text" name="extension" autocomplete="new-password" value="{{ old('extension', $user?->extension ?? '') }}"
-               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
     </div>
 </div>
 <div>
     <label class="block text-sm font-medium text-slate-700">Email</label>
     <input type="email" name="email" required autocomplete="new-password" value="{{ old('email', $user?->email ?? '') }}"
-           class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+           class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
 </div>
 @php
     $activeValue = old('is_active', $user?->is_active ?? true);
@@ -61,7 +61,7 @@
 
 <div x-data="{ role: '{{ old('role', $user?->role?->value ?? '') }}' }">
     <label class="block text-sm font-medium text-slate-700">Role</label>
-    <select name="role" x-model="role" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+    <select name="role" x-model="role" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
         <option value="">Select Role</option>
         @foreach (\App\Enums\UserRole::manageableValues() as $role)
             <option value="{{ $role }}" @selected(old('role', $user?->role?->value ?? '') === $role)>{{ ucfirst($role) }}</option>
@@ -76,11 +76,11 @@
 <div>
     <label class="block text-sm font-medium text-slate-700">{{ $passwordLabel }}</label>
     <input type="password" name="password"
-           class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+           class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
 </div>
 <div>
     <label class="block text-sm font-medium text-slate-700">{{ $passwordConfirmationLabel }}</label>
     <input type="password" name="password_confirmation"
-           class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+           class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
 </div>
 @endif

@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-6">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Confirm Identity</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-700">Confirm Identity</p>
         <p class="mt-3 text-sm leading-6 text-slate-500">
             {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
         </p>

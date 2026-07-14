@@ -25,7 +25,7 @@
                         <h3 class="mt-2 text-2xl font-semibold text-slate-900">{{ $managedUser->full_name }}</h3>
                         <p class="mt-2 text-sm text-slate-500">{{ $managedUser->email }}</p>
                     </div>
-                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $managedUser->trashed() ? 'bg-rose-100 text-rose-700' : 'bg-sky-100 text-sky-700' }}">
+                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $managedUser->trashed() ? 'bg-rose-100 text-rose-700' : 'bg-brand-100 text-brand-700' }}">
                         {{ $managedUser->trashed() ? 'Archived' : $managedUser->role?->label() }}
                     </span>
                 </div>

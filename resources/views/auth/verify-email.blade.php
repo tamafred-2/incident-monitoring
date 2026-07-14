@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-6">
-        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">Verify Email</p>
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-700">Verify Email</p>
         <p class="mt-3 text-sm leading-6 text-slate-500">
             {{ __('Thanks for signing up! Before getting started, could you verify your email address by clicking on the link we just emailed to you? If you didn\'t receive the email, we will gladly send you another.') }}
         </p>
@@ -26,7 +26,7 @@
         <form method="POST" action="{{ route('logout') }}">
             @csrf
 
-            <button type="submit" class="rounded-md text-sm font-medium text-slate-600 underline transition hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2">
+            <button type="submit" class="rounded-md text-sm font-medium text-slate-600 underline transition hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2">
                 {{ __('Log Out') }}
             </button>
         </form>

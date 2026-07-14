@@ -50,7 +50,7 @@
                                         <td class="px-4 py-3 text-slate-500">{{ $req->requested_at->format('M j, Y h:i A') }}</td>
                                         <td class="px-4 py-3">
                                             <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold
-                                                {{ $req->status === VisitorRequestStatus::Approved ? 'bg-emerald-100 text-emerald-700' : ($req->status === VisitorRequestStatus::Declined ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700') }}">
+                                                {{ $req->status === VisitorRequestStatus::Approved ? 'bg-emerald-100 text-emerald-700' : ($req->status === VisitorRequestStatus::Declined ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700') }}">
                                                 {{ $req->status }}
                                             </span>
                                         </td>

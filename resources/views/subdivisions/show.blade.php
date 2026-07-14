@@ -23,7 +23,7 @@
                         type="button"
                         x-data
                         x-on:click="$dispatch('open-modal', 'edit-subdivision')"
-                        class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                        class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100"
                     >
                         Edit Subdivision Profile
                     </button>
@@ -51,7 +51,7 @@
                                 <label class="block text-xs font-medium text-slate-500">Search</label>
                                 <input type="search" name="q" value="{{ $filterQ }}" placeholder="Block, lot, or street"
                                        data-live-search="#subdivision-houses-card,#subdivision-house-modals" autocomplete="off"
-                                       class="mt-1 w-full text-sm shadow-sm rounded-xl border-slate-300 focus:border-sky-500 focus:ring-sky-500">
+                                       class="mt-1 w-full text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                             </div>
                         </form>
                         @if (auth()->user()->isAdmin())
@@ -117,7 +117,7 @@
                                                     type="button"
                                                     x-data
                                                     x-on:click="$dispatch('open-modal', 'edit-house-{{ $house->house_id }}')"
-                                                    class="inline-flex items-center rounded-xl border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-100"
+                                                    class="inline-flex items-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
                                                 >
                                                     Edit
                                                 </button>
@@ -162,7 +162,7 @@
                                 list="house-row-size-options"
                                 value=""
                                 placeholder="{{ $perPage }}"
-                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                                 aria-label="Rows per page"
                                 inputmode="numeric"
                                 autocomplete="off"
@@ -336,7 +336,7 @@
                 <button
                     type="button"
                     x-on:click="$dispatch('close')"
-                    class="p-2 transition border rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                    class="p-2 transition border rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                     aria-label="Close"
                 >
                     <svg class="w-5 h-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">

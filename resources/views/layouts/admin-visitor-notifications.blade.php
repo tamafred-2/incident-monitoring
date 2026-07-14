@@ -13,7 +13,7 @@
     <button
         type="button"
         @click="toggleDropdown()"
-        class="relative inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-3 text-slate-700 shadow-sm transition hover:border-sky-200 hover:text-sky-700"
+        class="relative inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-3 text-slate-700 shadow-sm transition hover:border-brand-200 hover:text-brand-700"
         aria-label="Open visitor notifications"
     >
         <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -81,7 +81,7 @@
                                 <p class="truncate text-sm font-semibold text-slate-900" x-text="notification.visitor_name"></p>
                                 <span
                                     x-show="notification.is_unread"
-                                    class="inline-flex h-2.5 w-2.5 rounded-full bg-sky-500"
+                                    class="inline-flex h-2.5 w-2.5 rounded-full bg-brand-500"
                                 ></span>
                             </div>
                             <p class="mt-1 text-xs leading-5 text-slate-500" x-text="notification.message"></p>

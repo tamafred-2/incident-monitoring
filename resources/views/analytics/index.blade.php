@@ -8,10 +8,10 @@
             @include('partials.alerts')
 
             {{-- Granularity + date range. Scopes the trend, By Status, and By Category. --}}
-            <form method="GET" action="{{ route('analytics.index') }}" class="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-3">
+            <form method="GET" action="{{ route('analytics.index') }}" class="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
                 <div>
                     <label class="block text-xs font-medium text-slate-500">View by</label>
-                    <select name="granularity" onchange="this.form.requestSubmit()" class="mt-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                    <select name="granularity" onchange="this.form.requestSubmit()" class="mt-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                         @foreach ($granularities as $g)
                             <option value="{{ $g }}" @selected($granularity === $g)>{{ ucfirst($g) }}</option>
                         @endforeach
@@ -20,16 +20,16 @@
                 <div>
                     <label class="block text-xs font-medium text-slate-500">From</label>
                     <input type="date" name="from" value="{{ $filterFrom }}" max="{{ $filterTo }}" onchange="this.form.requestSubmit()"
-                           class="mt-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                           class="mt-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-500">To</label>
                     <input type="date" name="to" value="{{ $filterTo }}" min="{{ $filterFrom }}" onchange="this.form.requestSubmit()"
-                           class="mt-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                           class="mt-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 </div>
                 @if ($hasRange)
                     <a href="{{ route('analytics.index', ['granularity' => $granularity]) }}"
-                       class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50">Clear range</a>
+                       class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">Reset to this month</a>
                 @endif
                 <p class="ml-auto self-center text-xs text-slate-500">Showing: <span class="font-semibold text-slate-700">{{ $rangeLabel }}</span></p>
             </form>
@@ -108,12 +108,32 @@
             }
 
             const data = window.__analyticsData || {};
-            const palette = ['#0ea5e9', '#6366f1', '#f43f5e', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#14b8a6', '#eab308', '#64748b'];
-            const gridColor = 'rgba(148, 163, 184, 0.12)';
+            // CVD-validated categorical palette — fixed slot order, never cycled.
+            const palette = ['#2a78d6', '#1baf7a', '#eda100', '#008300', '#4a3aa7', '#e34948', '#e87ba4', '#eb6834'];
+            const brand = '#2a78d6';
+            const brandFill = 'rgba(42, 120, 214, 0.10)';
+            const aqua = '#1baf7a';
+            const aquaFill = 'rgba(27, 175, 122, 0.10)';
+            const gridColor = 'rgba(148, 163, 184, 0.16)';
+
+            // Status slices reuse the same hues as the status badges so meaning stays consistent.
+            const statusColors = (labels) => labels.map((label) => {
+                const key = String(label).toLowerCase();
+                if (/resolve|close|done|complete|approve|active/.test(key)) return '#10b981';
+                if (/investigat|inside/.test(key)) return brand;
+                if (/declin|reject/.test(key)) return '#e34948';
+                if (/pend|open|report/.test(key)) return '#f59e0b';
+                return '#94a3b8';
+            });
 
             Chart.defaults.font.family = "'Figtree', system-ui, sans-serif";
             Chart.defaults.font.size = 11;
             Chart.defaults.color = '#64748b';
+            Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(15, 23, 42, 0.92)';
+            Chart.defaults.plugins.tooltip.padding = 10;
+            Chart.defaults.plugins.tooltip.cornerRadius = 8;
+            Chart.defaults.plugins.tooltip.titleFont = { weight: '600' };
+            Chart.defaults.plugins.tooltip.displayColors = false;
 
             const render = (key, builder) => {
                 const canvas = document.querySelector(`canvas[data-chart="${key}"]`);
@@ -149,10 +169,19 @@
                 plugins: {
                     legend: {
                         position: 'right',
-                        labels: { boxHeight: 8, boxWidth: 8, padding: 10, font: { size: 10 } },
+                        labels: { boxHeight: 8, boxWidth: 8, padding: 10, font: { size: 10 }, usePointStyle: true, pointStyle: 'circle' },
                     },
                 },
             };
+
+            // 2px white spacer between doughnut segments so adjacent fills never touch.
+            const doughnutDataset = (values, colors) => ({
+                data: values,
+                backgroundColor: colors,
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                hoverOffset: 4,
+            });
 
             // Time-series trend charts. Each point is a visible dot; hovering a dot
             // shows the total for that period (the granularity/range come from the filter).
@@ -187,13 +216,13 @@
                 },
             });
 
-            render('incidentsTrend', (set) => lineTrend(set, '#0ea5e9', 'rgba(14, 165, 233, 0.12)'));
+            render('incidentsTrend', (set) => lineTrend(set, brand, brandFill));
 
             render('incidentsStatus', (set) => ({
                 type: 'doughnut',
                 data: {
                     labels: set.labels,
-                    datasets: [{ data: set.values, backgroundColor: palette }],
+                    datasets: [doughnutDataset(set.values, statusColors(set.labels))],
                 },
                 options: doughnutOptions,
             }));
@@ -202,18 +231,18 @@
                 type: 'bar',
                 data: {
                     labels: set.labels,
-                    datasets: [{ data: set.values, backgroundColor: '#6366f1', borderRadius: 4, maxBarThickness: 60 }],
+                    datasets: [{ data: set.values, backgroundColor: brand, borderRadius: { topLeft: 4, topRight: 4 }, maxBarThickness: 40 }],
                 },
                 options: verticalBarOptions,
             }));
 
-            render('visitorsTrend', (set) => lineTrend(set, '#10b981', 'rgba(16, 185, 129, 0.12)'));
+            render('visitorsTrend', (set) => lineTrend(set, aqua, aquaFill));
 
             render('visitorsWeekday', (set) => ({
                 type: 'bar',
                 data: {
                     labels: set.labels,
-                    datasets: [{ data: set.values, backgroundColor: '#0ea5e9', borderRadius: 4, maxBarThickness: 40 }],
+                    datasets: [{ data: set.values, backgroundColor: aqua, borderRadius: { topLeft: 4, topRight: 4 }, maxBarThickness: 40 }],
                 },
                 options: verticalBarOptions,
             }));
@@ -222,7 +251,7 @@
                 type: 'doughnut',
                 data: {
                     labels: set.labels,
-                    datasets: [{ data: set.values, backgroundColor: palette }],
+                    datasets: [doughnutDataset(set.values, palette)],
                 },
                 options: doughnutOptions,
             }));
@@ -231,7 +260,7 @@
                 type: 'bar',
                 data: {
                     labels: set.labels,
-                    datasets: [{ data: set.values, backgroundColor: '#f43f5e', borderRadius: 4, barThickness: 22 }],
+                    datasets: [{ data: set.values, backgroundColor: brand, borderRadius: { topRight: 4, bottomRight: 4 }, barThickness: 18 }],
                 },
                 options: {
                     ...axisOptions,

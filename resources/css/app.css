@@ -17,21 +17,19 @@
     :root {
         --shell-sidebar: #0d1726;
         --shell-sidebar-strong: #0a1321;
-        --shell-sidebar-active: #1f2a3d;
+        --shell-sidebar-active: rgba(42, 120, 214, 0.22);
         --shell-sidebar-hover: #172235;
         --shell-sidebar-text: #c7d2e2;
         --shell-sidebar-muted: #8a9aaf;
-        --shell-page: #eef2f6;
+        --shell-page: #eef2f7;
         --shell-card: #ffffff;
         --shell-border: #dbe3ec;
-        --shell-accent: #7fb3ff;
+        --shell-accent: #64a4ee;
     }
 
     body {
-        background:
-            radial-gradient(circle at top left, rgba(127, 179, 255, 0.16), transparent 26%),
-            linear-gradient(180deg, #f5f7fb 0%, var(--shell-page) 100%);
-        color: #111827;
+        background: linear-gradient(180deg, #f7f9fc 0%, var(--shell-page) 100%);
+        color: #0f172a;
     }
 }
 
@@ -52,9 +50,9 @@
     }
 
     .sidebar-link-active {
-        background-color: var(--shell-sidebar-active);
+        background: linear-gradient(90deg, var(--shell-sidebar-active), rgba(42, 120, 214, 0.08));
         color: #f8fafc;
-        box-shadow: inset 0 0 0 1px rgba(127, 179, 255, 0.12);
+        box-shadow: inset 3px 0 0 0 var(--shell-accent), inset 0 0 0 1px rgba(100, 164, 238, 0.16);
     }
 
     .sidebar-ghost-button {

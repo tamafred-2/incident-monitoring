@@ -37,12 +37,12 @@
                         <label class="block text-xs font-medium text-slate-500">Search</label>
                         <input type="search" name="q" value="{{ $filterQ }}" placeholder="Street, block, or lot"
                                data-live-filter data-live-no-submit data-filter-target="#houses-rows" autocomplete="off"
-                               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     </div>
                     @if ($subdivisions->count() > 1)
                         <div class="min-w-[180px]">
                             <label class="block text-xs font-medium text-slate-500">Subdivision</label>
-                            <select name="subdivision_id" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                            <select name="subdivision_id" onchange="this.form.requestSubmit()" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                                 <option value="">All</option>
                                 @foreach ($subdivisions as $subdivision)
                                     <option value="{{ $subdivision->subdivision_id }}" @selected((string) $filterSubdivision === (string) $subdivision->subdivision_id)>

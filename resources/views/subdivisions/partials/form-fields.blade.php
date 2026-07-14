@@ -30,7 +30,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Subdivision Logo</label>
                     <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp"
-                           class="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                           class="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     <p class="mt-1 text-xs text-slate-500">JPG, PNG, or WEBP. Max 2 MB.</p>
                     @error('logo') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                 </div>
@@ -55,14 +55,14 @@
                 <label class="block text-sm font-medium text-slate-700">Subdivision Name <span class="text-rose-500">*</span></label>
                 <input type="text" name="subdivision_name" required
                        value="{{ old('subdivision_name', $subdivision?->subdivision_name ?? '') }}"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 @error('subdivision_name')
                     <p class="mt-1 text-xs text-rose-600">{{ $message }}</p>
                 @enderror
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700">Status</label>
-                <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     <option value="Active" @selected(old('status', $subdivision?->status?->value ?? 'Active') === 'Active')>Active</option>
                     <option value="Inactive" @selected(old('status', $subdivision?->status?->value ?? '') === 'Inactive')>Inactive</option>
                 </select>
@@ -80,14 +80,14 @@
                 <label class="block text-sm font-medium text-slate-700">Country <span class="text-rose-500">*</span></label>
                 <input type="text" name="country" required
                        value="{{ old('country', $subdivision?->country ?? 'Philippines') }}"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 @error('country') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
             </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-slate-700">Street <span class="text-rose-500">*</span></label>
                 <select
                     x-model="streetSelection"
-                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                    class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                 >
                     <option value="">Select Street</option>
                     @foreach ($streetOptions as $option)
@@ -104,7 +104,7 @@
                         required
                         value="{{ $streetSelection === 'others' ? $streetValue : '' }}"
                         placeholder="Type street name"
-                        class="mt-3 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500"
+                        class="mt-3 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
                     >
                 </template>
 
@@ -119,7 +119,7 @@
                 <input type="text" name="city" id="edit-city" required
                        value="{{ old('city', $subdivision?->city ?? '') }}"
                        placeholder="e.g. Caloocan City"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 @error('city') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
             </div>
             <div>
@@ -127,7 +127,7 @@
                 <input type="text" name="province" id="edit-province" required
                        value="{{ old('province', $subdivision?->province ?? '') }}"
                        placeholder="e.g. Metro Manila"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 @error('province') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
             </div>
             <div>
@@ -135,7 +135,7 @@
                 <input type="text" name="zip" id="edit-zip" required
                        value="{{ old('zip', $subdivision?->zip ?? '') }}"
                        placeholder="e.g. 1400"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 @error('zip') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
             </div>
         </div>
@@ -151,21 +151,21 @@
                 <label class="block text-sm font-medium text-slate-700">Contact Person <span class="text-rose-500">*</span></label>
                 <input type="text" name="contact_person" required
                        value="{{ old('contact_person', $subdivision?->contact_person ?? '') }}"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 @error('contact_person') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700">Contact Number <span class="text-rose-500">*</span></label>
                 <input type="text" name="contact_number" required
                        value="{{ old('contact_number', $subdivision?->contact_number ?? '') }}"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 @error('contact_number') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
             </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-slate-700">Email <span class="text-rose-500">*</span></label>
                 <input type="email" name="email" required
                        value="{{ old('email', $subdivision?->email ?? '') }}"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 @error('email') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
             </div>
         </div>
@@ -190,19 +190,19 @@
                 <label class="block text-sm font-medium text-slate-700">Contact Person</label>
                 <input type="text" name="secondary_contact_person"
                        value="{{ old('secondary_contact_person', $subdivision?->secondary_contact_person ?? '') }}"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700">Contact Number</label>
                 <input type="text" name="secondary_contact_number"
                        value="{{ old('secondary_contact_number', $subdivision?->secondary_contact_number ?? '') }}"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
             </div>
             <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-slate-700">Email</label>
                 <input type="email" name="secondary_email"
                        value="{{ old('secondary_email', $subdivision?->secondary_email ?? '') }}"
-                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                       class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
             </div>
         </div>
     </section>
