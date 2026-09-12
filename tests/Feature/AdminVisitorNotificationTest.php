@@ -132,6 +132,45 @@ class AdminVisitorNotificationTest extends TestCase
         $this->assertNotNull($admin->fresh()->visitor_notifications_read_at);
     }
 
+    public function test_new_activity_is_unread_after_previous_notifications_were_read(): void
+    {
+        $this->freezeTime();
+
+        $admin = User::factory()->create([
+            'role' => 'admin',
+            'subdivision_id' => null,
+        ]);
+
+        $subdivision = Subdivision::create([
+            'subdivision_name' => 'West Ridge',
+            'status' => 'Active',
+        ]);
+
+        $visitor = Visitor::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'surname' => 'Rivera',
+            'first_name' => 'Ana',
+            'check_in' => now()->subMinutes(5),
+            'status' => 'Inside',
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.visitor-notifications.read-all'))
+            ->assertOk()
+            ->assertJsonPath('unread_count', 0);
+
+        $this->travel(1)->minutes();
+        $visitor->update(['check_out' => now(), 'status' => 'Checked Out']);
+
+        $this->actingAs($admin->fresh())
+            ->getJson(route('admin.visitor-notifications.index'))
+            ->assertOk()
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonPath('notifications.0.type', 'checked_out')
+            ->assertJsonPath('notifications.0.is_unread', true)
+            ->assertJsonPath('notifications.1.is_unread', false);
+    }
+
     public function test_admin_can_mark_a_single_notification_as_read(): void
     {
         $admin = User::factory()->create([

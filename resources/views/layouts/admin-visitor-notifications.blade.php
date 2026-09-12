@@ -15,16 +15,18 @@
         @click="toggleDropdown()"
         class="relative inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-3 text-slate-700 shadow-sm transition hover:border-brand-200 hover:text-brand-700"
         aria-label="Open visitor notifications"
+        :aria-label="unreadCount > 0 ? `Visitor notifications, ${unreadCount} unread` : 'Open visitor notifications'"
     >
         <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
             <path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1.382a2 2 0 01-.553 1.382L4.293 10.01A1 1 0 005 11.707h10a1 1 0 00.707-1.697l-1.154-1.246A2 2 0 0114 8.382V7a4 4 0 00-4-4zM8.5 15a1.5 1.5 0 003 0h-3z" clip-rule="evenodd" />
         </svg>
         <span
-            x-cloak
             x-show="unreadCount > 0"
             x-text="unreadCount > 9 ? '9+' : unreadCount"
-            class="absolute -right-1.5 -top-1.5 inline-flex min-w-[1.35rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white"
-        ></span>
+            @if (($adminVisitorUnreadCount ?? 0) === 0) style="display: none;" @endif
+            aria-live="polite"
+            class="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white"
+        >{{ ($adminVisitorUnreadCount ?? 0) > 9 ? '9+' : ($adminVisitorUnreadCount ?? 0) }}</span>
     </button>
 
     <div

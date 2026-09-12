@@ -50,7 +50,7 @@ window.adminVisitorNotifications = ({
     clearAllEndpoint,
     init() {
         this.fetchNotifications();
-        window.setInterval(() => this.fetchNotifications(), 30000);
+        window.setInterval(() => this.fetchNotifications(), 5000);
     },
     csrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
@@ -83,8 +83,8 @@ window.adminVisitorNotifications = ({
     async toggleDropdown() {
         this.open = !this.open;
 
-        if (this.open && this.unreadCount > 0) {
-            await this.markAllAsRead();
+        if (this.open) {
+            await this.fetchNotifications();
         }
     },
     async markAllAsRead() {

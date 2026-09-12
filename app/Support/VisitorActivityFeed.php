@@ -15,9 +15,9 @@ class VisitorActivityFeed
             ->take($limit)
             ->values()
             ->map(function (array $activity) use ($user): array {
-                unset($activity['sort_at']);
-
                 $activity['is_unread'] = self::isUnreadForUser($activity, $user);
+
+                unset($activity['sort_at']);
 
                 return $activity;
             })
