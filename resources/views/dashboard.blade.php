@@ -33,15 +33,13 @@
                 @php
                     $canViewVisitorMonitoring = auth()->user()->isAdmin() || auth()->user()->isSecurity();
                 @endphp
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    <x-stat-card label="Total Incidents" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
-                    <x-stat-card label="Resolution Rate" :value="$summary['resolution_rate'] . '%'" :hint="$summary['resolved_incidents'] . ' resolved'" />
-                    <x-stat-card label="Avg. Resolution Time" :value="$summary['avg_resolution_label']" hint="reported → resolved" />
-                    <x-stat-card label="Total Visitors" :value="$summary['total_visitors']" :hint="$summary['visitors_inside'] . ' currently inside'" />
-                    <x-stat-card label="Total Residents" :value="$summary['total_residents']" />
-                    <x-stat-card label="Total Houses" :value="$summary['total_houses']" />
-                    <x-stat-card label="Avg. Residents / House" :value="$summary['avg_residents_per_house']" />
-                    <x-stat-card label="Pending Incidents" :value="$summary['pending_incidents']" />
+                <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+                    <x-stat-card :href="route('incidents.index', ['view' => 'all'])" label="Total Incidents" tone="rose" :tinted="true" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
+                    <x-stat-card :href="route('incidents.index', ['view' => 'history'])" label="Resolution Rate" tone="emerald" :tinted="true" :value="$summary['resolution_rate'] . '%'" :hint="$summary['resolved_incidents'] . ' resolved'" />
+                    <x-stat-card :href="route('incidents.index', ['view' => 'history'])" label="Avg. Resolution Time" tone="amber" :tinted="true" :value="$summary['avg_resolution_label']" hint="reported → resolved" />
+                    <x-stat-card :href="route('visitors.index', ['tab' => 'history', 'chart_filter' => 1])" label="Total Visitors" tone="brand" :tinted="true" :value="$summary['total_visitors']" :hint="$summary['visitors_inside'] . ' currently inside'" />
+                    <x-stat-card :href="route('residents.index')" label="Total Residents" tone="violet" :tinted="true" :value="$summary['total_residents']" />
+                    <x-stat-card :href="auth()->user()->isAdmin() ? route('houses.index') : route('residents.index')" label="Total Houses" tone="teal" :tinted="true" :value="$summary['total_houses']" />
                 </div>
 
                 @php
@@ -75,7 +73,7 @@
                                             >
                                                 <td class="px-6 py-4 font-medium text-slate-700">{{ $pendingIncident->category ?: '-' }}</td>
                                                 <td class="px-6 py-4 text-slate-600">{{ $pendingIncident->location ?: '-' }}</td>
-                                                <td class="px-6 py-4 text-slate-600">{{ $pendingIncident->status }}</td>
+                                                <td class="px-6 py-4 text-slate-600">{{ \App\Enums\IncidentStatus::displayLabel($pendingIncident->status) }}</td>
                                                 <td class="px-6 py-4 text-slate-600">
                                                     @if ($pendingIncident->reported_at)
                                                         <div class="min-w-[9rem]">
@@ -161,27 +159,16 @@
                         <table class="min-w-full text-sm divide-y divide-slate-200">
                             <thead class="bg-slate-50">
                                 <tr>
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Subdivision</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Visitor</th>
+                                    <th class="px-6 py-3 font-semibold text-right text-slate-600">Action</th>
                                 </tr>
                             </thead>
                         <tbody class="bg-white divide-y divide-slate-100">
                             @forelse ($insideVisitors as $visitor)
-                                <tr
-                                    class="transition cursor-pointer hover:bg-slate-50 focus-within:bg-slate-50"
-                                    role="link"
-                                    tabindex="0"
-                                    onclick="window.location='{{ route('visitors.show', array_merge(['visitor' => $visitor], request()->only(['inside_per_page', 'page']))) }}'"
-                                    onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.location='{{ route('visitors.show', array_merge(['visitor' => $visitor], request()->only(['inside_per_page', 'page']))) }}'; }"
-                                >
-                                    <td class="px-6 py-4 text-slate-600">
-                                        <div class="max-w-[14rem] truncate" title="{{ $visitor->subdivision->subdivision_name ?? '-' }}">
-                                            {{ $visitor->subdivision->subdivision_name ?? '-' }}
-                                        </div>
-                                    </td>
+                                <tr class="transition hover:bg-slate-50 focus-within:bg-slate-50">
                                     <td class="px-6 py-4">
                                         <div class="min-w-[12rem]">
-                                            <div class="font-medium text-slate-900">{{ $visitor->full_name }}</div>
+                                            <a href="{{ route('visitors.show', $visitor) }}" class="font-medium text-slate-900 hover:text-brand-700 hover:underline">{{ $visitor->full_name }}</a>
                                             <div class="mt-1 text-xs text-slate-500">
                                                 @if ($visitor->check_in)
                                                     {{ $visitor->check_in->format('M j, Y') }} at {{ $visitor->check_in->format('h:i A') }}
@@ -190,6 +177,13 @@
                                                 @endif
                                             </div>
                                         </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <form method="POST" action="{{ route('visitors.checkout', $visitor) }}">
+                                            @csrf
+                                            <input type="hidden" name="return_to" value="dashboard">
+                                            <button type="submit" class="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700" aria-label="Check out {{ $visitor->full_name }}">Check Out</button>
+                                        </form>
                                     </td>
                                 </tr>
                             @empty

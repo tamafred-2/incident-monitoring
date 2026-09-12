@@ -15,6 +15,18 @@ class VisitorDashboardTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_dashboard_checkout_returns_to_dashboard_and_removes_visitor(): void
+    {
+        $subdivision = Subdivision::create(['subdivision_name' => 'North Gate', 'status' => 'Active']);
+        $security = User::factory()->create(['role' => 'security', 'subdivision_id' => $subdivision->subdivision_id]);
+        $visitor = Visitor::create(['subdivision_id' => $subdivision->subdivision_id, 'first_name' => 'Maria', 'surname' => 'Cruz', 'check_in' => now(), 'status' => 'Inside']);
+        $this->actingAs($security)->get(route('dashboard'))->assertOk()->assertSee('Check Out')->assertSee(route('visitors.checkout', $visitor), false);
+        $this->post(route('visitors.checkout', $visitor), ['return_to' => 'dashboard'])
+            ->assertRedirect(route('dashboard'))->assertSessionHas('success', 'Visitor checked out successfully.');
+        $this->assertNotNull($visitor->fresh()->check_out);
+        $this->get(route('dashboard'))->assertOk()->assertDontSee('Maria Cruz');
+    }
+
     public function test_dashboard_checked_in_widget_links_to_visitor_details(): void
     {
         $admin = User::factory()->create([
