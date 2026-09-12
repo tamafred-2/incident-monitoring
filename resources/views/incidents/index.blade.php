@@ -13,10 +13,12 @@
     @php
         $activeIncidentTab = $historyView === 'history' ? 'history' : 'incident';
         $sharedFilters = array_filter([
+            ...request()->only(['chart_filter', 'category', 'status', 'house_id']),
             'date_from' => $filterDateFrom ?: null,
             'date_to' => $filterDateTo ?: null,
         ]);
         $reportQuery = array_filter([
+            ...request()->only(['chart_filter', 'category', 'status', 'house_id']),
             'q' => $filterQ ?: null,
             'subdivision_id' => $filterSubdivision ?: null,
             'view' => $historyView !== 'active' ? $historyView : null,
@@ -138,6 +140,7 @@
                         </div>
                         @if (auth()->user()->hasRole(['security', 'staff']) || auth()->user()->isAdmin())
                             <form method="GET" action="{{ route('incidents.index') }}" class="flex w-full flex-wrap items-end gap-2 2xl:w-auto">
+                                @include('incidents.partials.chart-filters')
                                 <input type="hidden" name="view" value="history">
                                 <input type="hidden" name="per_page" value="{{ $perPage }}">
                                 <div class="min-w-[170px] flex-1 sm:flex-none">
@@ -174,11 +177,12 @@
                     <div class="px-6 py-4 border-b border-slate-200">
                         <div class="flex flex-col gap-4 2xl:flex-row 2xl:items-end 2xl:justify-between">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900">Pending Incidents</h3>
+                                <h3 class="text-lg font-semibold text-slate-900">{{ $historyView === 'all' ? 'Matching Incidents' : 'Pending Incidents' }}</h3>
                                 <p class="mt-1 text-sm text-slate-500">New and active reports pending resolution.</p>
                             </div>
                             @if (auth()->user()->hasRole(['security', 'staff']) || auth()->user()->isAdmin())
                                 <form method="GET" action="{{ route('incidents.index') }}" class="flex w-full flex-wrap items-end gap-2 2xl:w-auto">
+                                @include('incidents.partials.chart-filters')
                                     <input type="hidden" name="view" value="active">
                                     <input type="hidden" name="per_page" value="{{ $perPage }}">
                                     <div class="min-w-[170px] flex-1 sm:flex-none">
@@ -272,7 +276,7 @@
                                     <td class="px-6 py-4 text-slate-600">
                                         @php
                                             $isResolvedIncident = in_array($incident->status, \App\Enums\IncidentStatus::resolvedValues(), true);
-                                            $statusLabel = $isResolvedIncident ? 'Resolved' : 'Pending';
+                                            $statusLabel = \App\Enums\IncidentStatus::displayLabel($incident->status);
                                         @endphp
                                         {{ $incident->trashed() ? 'Archived' : $statusLabel }}
                                     </td>
@@ -357,6 +361,7 @@
                     </p>
                     <div class="flex flex-wrap items-center gap-2">
                         <form method="GET" action="{{ route('incidents.index') }}" class="flex items-center gap-2">
+                                @include('incidents.partials.chart-filters')
                             @if ($filterQ !== '')
                                 <input type="hidden" name="q" value="{{ $filterQ }}">
                             @endif
@@ -369,7 +374,7 @@
                             @if ($filterDateTo)
                                 <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
                             @endif
-                            <input type="hidden" name="view" value="{{ $activeIncidentTab === 'history' ? 'history' : 'active' }}">
+                            <input type="hidden" name="view" value="{{ $historyView }}">
                             <label for="incidents-rows-per-page" class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
                             <input
                                 id="incidents-rows-per-page"

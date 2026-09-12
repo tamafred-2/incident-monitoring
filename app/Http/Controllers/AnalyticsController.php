@@ -18,6 +18,67 @@ class AnalyticsController extends Controller
     /** Selectable trend granularities. */
     private const GRANULARITIES = ['daily', 'weekly', 'monthly', 'yearly'];
 
+    public function records(Request $request): View
+    {
+        $data = $request->validate([
+            'chart' => ['required', 'in:incidentsTrend,incidentsStatus,incidentsCategory,visitorsTrend,visitorsWeekday,residentsRelation,topHouses'],
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'value' => ['nullable', 'string', 'max:255'],
+        ]);
+        $chart = $data['chart'];
+        $value = $data['value'] ?? '';
+        $kind = str_starts_with($chart, 'visitors') ? 'visitors' : ($chart === 'residentsRelation' ? 'residents' : 'incidents');
+        $query = match ($kind) {
+            'visitors' => Visitor::query()->orderByDesc('check_in'),
+            'residents' => Resident::query()->orderBy('full_name'),
+            default => Incident::query()->orderByDesc('reported_at'),
+        };
+        if (!$request->user()->isAdmin()) {
+            $query->where('subdivision_id', $request->user()->allowedSubdivisionId());
+            if ($kind === 'residents') {
+                $query->where('status', 'Active');
+            }
+        }
+        if ($kind !== 'residents') {
+            $query->whereBetween($kind === 'visitors' ? 'check_in' : 'reported_at', [Carbon::parse($data['from'])->startOfDay(), Carbon::parse($data['to'])->endOfDay()]);
+        }
+        if (in_array($chart, ['incidentsCategory', 'incidentsStatus', 'residentsRelation'], true)) {
+            $column = match ($chart) { 'incidentsCategory' => 'category', 'incidentsStatus' => 'status', default => 'relation_to_owner' };
+            $fallback = match ($chart) { 'incidentsCategory' => 'Uncategorized', 'incidentsStatus' => 'Unknown', default => 'Unspecified' };
+            $query->where(function ($q) use ($column, $value, $fallback) {
+                if ($column === 'status') {
+                    $q->whereIn($column, \App\Enums\IncidentStatus::valuesForLabel($value));
+                } else {
+                    $q->where($column, $value);
+                }
+                if ($value === $fallback) {
+                    $q->orWhereNull($column)->orWhere($column, '');
+                }
+            });
+        }
+        if ($chart === 'topHouses') {
+            $query->where('house_id', $value);
+        }
+        if ($chart === 'visitorsWeekday') {
+            abort_unless(in_array($value, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], true), 422);
+            $dates = [];
+            for ($day = Carbon::parse($data['from']); $day->lte(Carbon::parse($data['to'])); $day->addDay()) {
+                if ($day->format('D') === $value) {
+                    $dates[] = $day->toDateString();
+                }
+            }
+            $query->whereIn(DB::raw('DATE(check_in)'), $dates);
+        }
+        return view('analytics.records', [
+            'records' => $query->paginate(20)->withQueryString(),
+            'kind' => $kind,
+            'selection' => $value,
+            'from' => $data['from'],
+            'to' => $data['to'],
+        ]);
+    }
+
     public function index(Request $request): View
     {
         $user = $request->user();
@@ -59,7 +120,7 @@ class AnalyticsController extends Controller
             'rangeLabel' => $trendStart->format('M j, Y') . ' – ' . $trendEnd->format('M j, Y'),
             'incidents' => $this->buildIncidentAnalytics($scope, $granularity, $trendStart, $trendEnd, $filterStart, $filterEnd),
             'visitors' => $this->buildVisitorAnalytics($scope, $granularity, $trendStart, $trendEnd, $filterStart, $filterEnd),
-            'community' => $this->buildCommunityAnalytics($scope),
+            'community' => $this->buildCommunityAnalytics($scope, $trendStart, $trendEnd),
         ]);
     }
 
@@ -99,7 +160,8 @@ class AnalyticsController extends Controller
             ->groupBy('status')
             ->orderByDesc('aggregate')
             ->get()
-            ->mapWithKeys(fn ($row) => [($row->status ?: 'Unknown') => (int) $row->aggregate])
+            ->groupBy(fn ($row) => \App\Enums\IncidentStatus::displayLabel($row->status))
+            ->map(fn ($rows) => (int) $rows->sum('aggregate'))
             ->all();
 
         return [
@@ -155,12 +217,13 @@ class AnalyticsController extends Controller
     /**
      * @param  callable(Builder): Builder  $scope
      */
-    private function buildCommunityAnalytics(callable $scope): array
+    private function buildCommunityAnalytics(callable $scope, Carbon $start, Carbon $end): array
     {
         $byRelation = [];
 
         if (Schema::hasColumn('residents', 'relation_to_owner')) {
             $byRelation = $scope(Resident::query())
+                ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('status', 'Active'))
                 ->select('relation_to_owner', DB::raw('COUNT(*) as aggregate'))
                 ->groupBy('relation_to_owner')
                 ->orderByDesc('aggregate')
@@ -170,6 +233,7 @@ class AnalyticsController extends Controller
         }
 
         $topHouses = $scope(Incident::query())
+            ->whereBetween('reported_at', [$start, $end])
             ->select('house_id', DB::raw('COUNT(*) as aggregate'))
             ->whereNotNull('house_id')
             ->groupBy('house_id')
@@ -194,6 +258,7 @@ class AnalyticsController extends Controller
             'relation_values' => array_values($byRelation),
             'top_house_labels' => $houseLabels,
             'top_house_values' => $houseValues,
+            'top_house_ids' => $topHouses->pluck('house_id')->all(),
             'avg_residents_per_house' => $totalHouses > 0
                 ? round($totalResidents / $totalHouses, 1)
                 : 0,
@@ -264,12 +329,17 @@ class AnalyticsController extends Controller
 
         $labels = [];
         $counts = [];
+        $ranges = [];
         $guard = 0;
 
         while ($cursor->lessThanOrEqualTo($last) && $guard < 2000) {
             $iso = $cursor->format('Y-m-d');
             $labels[$iso] = $cursor->format($format);
             $counts[$iso] = 0;
+            $ranges[] = [
+                'from' => $cursor->copy()->max($start)->toDateString(),
+                'to' => $this->stepUnit($cursor, $unit, 1)->subDay()->min($end)->toDateString(),
+            ];
             $cursor = $this->stepUnit($cursor, $unit, 1);
             $guard++;
         }
@@ -288,6 +358,7 @@ class AnalyticsController extends Controller
         return [
             'labels' => array_values($labels),
             'values' => array_values($counts),
+            'ranges' => $ranges,
         ];
     }
 }

@@ -94,7 +94,7 @@
             'visitorsTrend' => $visitors['trend'],
             'visitorsWeekday' => ['labels' => $visitors['weekday_labels'], 'values' => $visitors['weekday_values']],
             'residentsRelation' => ['labels' => $community['relation_labels'], 'values' => $community['relation_values']],
-            'topHouses' => ['labels' => $community['top_house_labels'], 'values' => $community['top_house_values']],
+            'topHouses' => ['labels' => $community['top_house_labels'], 'values' => $community['top_house_values'], 'ids' => $community['top_house_ids']],
         ];
     @endphp
 
@@ -108,6 +108,39 @@
             }
 
             const data = window.__analyticsData || {};
+            const recordUrl = @json(route('analytics.records'));
+            const selectedFrom = @json($filterFrom);
+            const selectedTo = @json($filterTo);
+            const granularity = @json($granularity);
+            const drilldownUrl = (key, set, index) => {
+                const range = set.ranges?.[index] || { from: selectedFrom, to: selectedTo };
+                if (key === 'residentsRelation') {
+                    const url = new URL(@json(route('residents.index')), window.location.origin);
+                    url.searchParams.set('relation_to_owner', set.labels[index]);
+                    return url.href;
+                }
+                if (key.startsWith('incidents') || key === 'topHouses') {
+                    const url = new URL(@json(route('incidents.index')), window.location.origin);
+                    const params = { view: 'all', chart_filter: '1', date_from: range.from + 'T00:00:00', date_to: range.to + 'T23:59:59' };
+                    if (key === 'incidentsCategory') params.category = set.labels[index];
+                    if (key === 'incidentsStatus') params.status = set.labels[index];
+                    if (key === 'topHouses') params.house_id = set.ids[index];
+                    Object.entries(params).forEach(([name, value]) => url.searchParams.set(name, value));
+                    return url.href;
+                }
+                if (key.startsWith('visitors')) {
+                    const url = new URL(@json(route('visitors.index')), window.location.origin);
+                    const params = { tab: 'history', chart_filter: '1', date_from: range.from + 'T00:00:00', date_to: range.to + 'T23:59:59' };
+                    if (key === 'visitorsWeekday') params.weekday = set.labels[index];
+                    Object.entries(params).forEach(([name, value]) => url.searchParams.set(name, value));
+                    return url.href;
+                }
+                const url = new URL(recordUrl, window.location.origin);
+                const params = { chart: key, ...range, analytics_from: selectedFrom, analytics_to: selectedTo, granularity };
+                if (!set.ranges) params.value = String(set.ids?.[index] ?? set.labels[index]);
+                Object.entries(params).forEach(([name, value]) => url.searchParams.set(name, value));
+                return url.href;
+            };
             // CVD-validated categorical palette — fixed slot order, never cycled.
             const palette = ['#2a78d6', '#1baf7a', '#eda100', '#008300', '#4a3aa7', '#e34948', '#e87ba4', '#eb6834'];
             const brand = '#2a78d6';
@@ -141,7 +174,17 @@
                 if (!canvas || !set) {
                     return;
                 }
-                new Chart(canvas.getContext('2d'), builder(set));
+                const config = builder(set);
+                config.options = {
+                    ...config.options,
+                    onClick: (event, elements) => {
+                        if (elements.length) window.location.assign(drilldownUrl(key, set, elements[0].index));
+                    },
+                    onHover: (event, elements) => {
+                        canvas.style.cursor = elements.length ? 'pointer' : 'default';
+                    },
+                };
+                new Chart(canvas.getContext('2d'), config);
             };
 
             const axisOptions = {

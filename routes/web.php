@@ -28,6 +28,7 @@ Route::get('/subdivision-logo/{subdivision}', [SubdivisionController::class, 'lo
 Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('role:admin,staff')->name('analytics.index');
+    Route::get('/analytics/records', [AnalyticsController::class, 'records'])->middleware('role:admin,staff')->name('analytics.records');
 
     Route::prefix('/admin/visitor-notifications')->middleware('role:admin')->name('admin.visitor-notifications.')->group(function () {
         Route::get('/', [AdminVisitorNotificationController::class, 'index'])->name('index');
@@ -82,11 +83,11 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::post('/residents', [ResidentController::class, 'store'])->middleware('role:admin')->name('residents.store');
     Route::put('/residents/{resident}', [ResidentController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('residents.update');
     Route::delete('/residents/{resident}', [ResidentController::class, 'destroy'])->middleware(['role:admin', 'subdivision'])->name('residents.destroy');
-    Route::get('/visitors', [VisitorController::class, 'index'])->middleware('role:security')->name('visitors.index');
+    Route::get('/visitors', [VisitorController::class, 'index'])->middleware('role:security,staff')->name('visitors.index');
     Route::get('/visitors/export', [VisitorController::class, 'export'])->middleware('role:security')->name('visitors.export');
     Route::get('/visitors/print', [VisitorController::class, 'print'])->middleware('role:security')->name('visitors.print');
     Route::get('/visitors/{visitor}/id-photo', [VisitorController::class, 'idPhoto'])->middleware(['role:security', 'subdivision'])->name('visitors.photo');
-    Route::get('/visitors/{visitor}', [VisitorController::class, 'show'])->middleware(['role:security', 'subdivision'])->name('visitors.show');
+    Route::get('/visitors/{visitor}', [VisitorController::class, 'show'])->middleware(['role:security,staff', 'subdivision'])->name('visitors.show');
     Route::get('/visitors/{visitor}/edit', [VisitorController::class, 'edit'])->middleware(['role:admin', 'subdivision'])->name('visitors.edit');
     Route::put('/visitors/{visitor}', [VisitorController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('visitors.update');
     Route::post('/visitors', [VisitorController::class, 'store'])->middleware('role:security')->name('visitors.store');

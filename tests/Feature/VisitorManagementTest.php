@@ -273,7 +273,7 @@ class VisitorManagementTest extends TestCase
             ->assertSee('value="Alpha"', false);
     }
 
-    public function test_staff_cannot_access_visitor_monitoring_pages(): void
+    public function test_staff_can_read_visitor_pages_but_cannot_check_out_visitors(): void
     {
         $subdivision = Subdivision::create([
             'subdivision_name' => 'Green Field',
@@ -295,11 +295,14 @@ class VisitorManagementTest extends TestCase
 
         $this->actingAs($staff)
             ->get(route('visitors.index'))
-            ->assertRedirect(route('dashboard'))
-            ->assertSessionHas('error', 'You do not have permission to access that page.');
+            ->assertOk();
 
         $this->actingAs($staff)
             ->get(route('visitors.show', ['visitor' => $visitor->visitor_id]))
+            ->assertOk();
+
+        $this->actingAs($staff)
+            ->post(route('visitors.checkout', $visitor))
             ->assertRedirect(route('dashboard'))
             ->assertSessionHas('error', 'You do not have permission to access that page.');
     }
