@@ -66,6 +66,15 @@
                 selectedResidentId: @js(old('resident_id', '')),
                 hostSearch: @js(old('host_employee', '')),
                 selectedResidentPhone: '',
+                ownerPermission: false,
+                approvingOwnerId: '',
+                get requiresOwnerPermission() {
+                    const host = this.subdivisionResidents.find(r => String(r.id) === String(this.selectedResidentId));
+                    return this.visitType === 'resident' && host && !host.is_owner;
+                },
+                get houseOwners() {
+                    return (this.residentsByHouse[String(this.selectedHouseId)] || []).filter(r => r.is_owner);
+                },
                 hostOpen: false,
                 exportPreviewOpen: false,
                 exportPreviewUrl: @js($visitorExportPreviewUrl),
@@ -175,6 +184,8 @@
                     this.selectedHouseAddress = '';
                 },
                 clearResidentSelection({ clearSearch = false } = {}) {
+                    this.ownerPermission = false;
+                    this.approvingOwnerId = '';
                     this.selectedResidentId = '';
                     this.selectedResidentPhone = '';
                     if (clearSearch) {
@@ -183,6 +194,8 @@
                     this.clearResidentLocation();
                 },
                 applyResidentSelection(resident) {
+                    this.ownerPermission = false;
+                    this.approvingOwnerId = '';
                     this.selectedResidentId = String(resident.id);
                     this.hostSearch = resident.name;
                     this.selectedResidentPhone = resident.phone || '';
@@ -518,6 +531,26 @@
                             </div>
                         </div>
 
+                        <div x-show="requiresOwnerPermission" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
+                            <h4 class="font-semibold text-slate-900">Owner permission required</h4>
+                            <p class="mt-2 text-sm text-slate-600">The host is another household member. Call the owner and obtain permission before admitting this visitor.</p>
+                            <p x-show="houseOwners.length === 0" class="mt-2 text-sm text-rose-700">No active owner is registered for this house. Ask the administrator to update the household record before check-in.</p>
+                            <template x-for="owner in houseOwners" :key="owner.id">
+                                <label class="mt-3 flex items-center gap-3">
+                                    <input type="radio" name="approving_owner_id" :value="owner.id" x-model="approvingOwnerId" @change="ownerPermission = false" :disabled="!requiresOwnerPermission" :required="requiresOwnerPermission">
+                                    <span x-text="owner.name"></span>
+                                    <a x-show="owner.phone" :href="'tel:' + (owner.phone || '').replace(/[^0-9+]/g, '')" class="font-semibold text-brand-700 underline" x-text="'Call ' + owner.phone"></a>
+                                    <span x-show="!owner.phone" class="text-sm text-slate-500">No phone recorded</span>
+                                </label>
+                            </template>
+                            <label class="mt-4 flex items-center gap-3 text-sm">
+                                <input type="checkbox" name="owner_permission" value="1" x-model="ownerPermission" :disabled="!requiresOwnerPermission || !approvingOwnerId" :required="requiresOwnerPermission">
+                                I called the selected owner and they approved this visitor’s entry.
+                            </label>
+                            @error('owner_permission') <p class="mt-2 text-sm text-rose-700">{{ $message }}</p> @enderror
+                            @error('approving_owner_id') <p class="mt-2 text-sm text-rose-700">{{ $message }}</p> @enderror
+                        </div>
+
                         <div x-show="visitType === 'walk_in'" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
                             <div class="mb-4">
                                 <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Walk-in Details</h4>
@@ -604,6 +637,7 @@
                                     <p class="mt-1 text-sm text-slate-500">Visitors currently inside the subdivision.</p>
                                 </div>
                                 <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
+                                @include('visitors.partials.chart-filters')
                                     <input type="hidden" name="tab" value="check-out">
                                     <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                                     <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
@@ -725,6 +759,7 @@
                             </p>
                             <div class="flex flex-wrap items-center gap-2">
                                 <form method="GET" action="{{ route('visitors.index') }}" class="flex items-center gap-2">
+                                @include('visitors.partials.chart-filters')
                                     @if ($filterQ !== '')
                                         <input type="hidden" name="q" value="{{ $filterQ }}">
                                     @endif
@@ -791,7 +826,7 @@
                     <div class="h-full overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
                     <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900">Visitor History</h3>
+                            <h3 class="text-lg font-semibold text-slate-900">{{ request()->boolean('chart_filter') ? 'Matching Visitor Check-ins' : 'Visitor History' }}</h3>
                             <p class="mt-1 text-sm text-slate-500">Browse visitor check-in/check-out records with host, purpose, and status history.</p>
                         </div>
 
@@ -884,6 +919,7 @@
                         </p>
                         <div class="flex flex-wrap items-center gap-2">
                             <form method="GET" action="{{ route('visitors.index') }}" class="flex items-center gap-2">
+                                @include('visitors.partials.chart-filters')
                                 @if ($filterQ !== '')
                                     <input type="hidden" name="q" value="{{ $filterQ }}">
                                 @endif

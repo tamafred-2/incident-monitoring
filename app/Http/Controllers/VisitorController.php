@@ -64,14 +64,16 @@ class VisitorController extends Controller
             ])->values()->all());
 
         $residentsByHouse = House::query()
+            ->when(!$user->isAdmin(), fn ($q) => $q->where('subdivision_id', $user->allowedSubdivisionId()))
             ->with(['residents' => fn ($q) => $q->where('status', ActiveStatus::Active)
-                ->select('house_id', 'resident_id', 'full_name', 'phone')])
+                ->select('house_id', 'resident_id', 'full_name', 'phone', 'relation_to_owner')])
             ->get()
             ->mapWithKeys(fn (House $house) => [
                 (string) $house->house_id => $house->residents->map(fn (Resident $r) => [
                     'id'    => $r->resident_id,
                     'name'  => $r->full_name,
                     'phone' => $r->phone,
+                    'is_owner' => strcasecmp(trim((string) $r->relation_to_owner), 'Owner') === 0,
                 ])->values()->all(),
             ]);
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
@@ -317,9 +319,8 @@ class VisitorController extends Controller
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
 
-        $idPhotoPath = $this->storeVisitorIdPhoto($request);
-
         if (($data['visit_type'] ?? 'resident') === 'walk_in') {
+            $idPhotoPath = $this->storeVisitorIdPhoto($request);
             $onVehicle = (bool) ($data['on_vehicle'] ?? false);
             $plateNumber = $onVehicle
                 ? (trim((string) ($data['plate_number'] ?? '')) ?: null)
@@ -401,6 +402,37 @@ class VisitorController extends Controller
             ])->withInput();
         }
 
+        $ownerApproval = null;
+        if (strcasecmp(trim((string) $resident->relation_to_owner), 'Owner') !== 0) {
+            $approval = $request->validate([
+                'owner_permission' => ['required', 'accepted'],
+                'approving_owner_id' => ['required', 'integer'],
+            ], ['owner_permission.accepted' => 'Call the house owner and obtain permission before checking in this visitor.']);
+
+            $owner = Resident::query()
+                ->whereKey($approval['approving_owner_id'])
+                ->where('house_id', $house->house_id)
+                ->where('subdivision_id', $subdivisionId)
+                ->where('status', ActiveStatus::Active)
+                ->first();
+
+            if (!$owner || strcasecmp(trim((string) $owner->relation_to_owner), 'Owner') !== 0) {
+                return back()->withErrors(['approving_owner_id' => 'An active owner of this house must give permission before entry.'])->withInput();
+            }
+
+            $ownerApproval = [
+                'owner_id' => $owner->resident_id,
+                'owner_name' => $owner->full_name,
+                'owner_phone' => $owner->phone,
+                'host_resident_id' => $resident->resident_id,
+                'recorded_by' => $request->user()->user_id,
+                'recorded_by_name' => $request->user()->name,
+                'approved_at' => now()->toIso8601String(),
+                'method' => 'phone',
+            ];
+        }
+
+        $idPhotoPath = $this->storeVisitorIdPhoto($request);
         $onVehicle = (bool) ($data['on_vehicle'] ?? false);
         $plateNumber = $onVehicle
             ? (trim((string) ($data['plate_number'] ?? '')) ?: null)
@@ -429,6 +461,7 @@ class VisitorController extends Controller
             'id_photo_path'         => $idPhotoPath,
             'purpose'               => $data['purpose'] ?? null,
             'host_employee'         => $resident->full_name,
+            'owner_approval'        => $ownerApproval,
             'house_address_or_unit' => $house->display_address,
             'check_in'              => now(),
             'check_out'             => null,
@@ -473,6 +506,9 @@ class VisitorController extends Controller
         }
 
         if ($visitor->status !== VisitorStatus::Inside) {
+            if ($request->input('return_to') === 'dashboard') {
+                return redirect()->route('dashboard')->with('error', 'That visitor is already checked out.');
+            }
             return redirect()->route('visitors.index', $this->visitorRouteContext($request, $visitor->subdivision_id))
                 ->with('error', 'That visitor is already checked out.');
         }
@@ -482,8 +518,10 @@ class VisitorController extends Controller
             'status' => VisitorStatus::CheckedOut->value,
         ]);
 
-        return redirect()->route('visitors.index', $this->visitorRouteContext($request, $visitor->subdivision_id))
-            ->with('success', 'Visitor checked out successfully.');
+        return redirect()->route(
+            $request->input('return_to') === 'dashboard' ? 'dashboard' : 'visitors.index',
+            $request->input('return_to') === 'dashboard' ? [] : $this->visitorRouteContext($request, $visitor->subdivision_id)
+        )->with('success', 'Visitor checked out successfully.');
     }
 
     public function destroy(Request $request, Visitor $visitor): RedirectResponse
@@ -619,8 +657,8 @@ class VisitorController extends Controller
             return null;
         }
 
-        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $value)) {
-            return str_replace('T', ' ', $value) . ':00';
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/', $value)) {
+            return str_replace('T', ' ', $value) . (strlen($value) === 16 ? ':00' : '');
         }
 
         if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $value)) {
@@ -654,7 +692,7 @@ class VisitorController extends Controller
 
         $query = Visitor::query()
             ->with('subdivision')
-            ->where('status', VisitorStatus::CheckedOut)
+            ->when(!$request->boolean('chart_filter'), fn ($q) => $q->where('status', VisitorStatus::CheckedOut))
             ->orderByDesc('check_in');
 
         if ($filterQ !== '') {
@@ -682,6 +720,18 @@ class VisitorController extends Controller
             $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
             $query->where('subdivision_id', $filterSubdivision);
+        }
+
+        if ($request->boolean('chart_filter') && $request->filled('weekday')) {
+            $weekday = $request->query('weekday');
+            abort_unless(in_array($weekday, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], true) && $filterDateFrom && $filterDateTo, 422);
+            $dates = [];
+            for ($day = \Illuminate\Support\Carbon::parse($filterDateFrom)->startOfDay(); $day->lte(\Illuminate\Support\Carbon::parse($filterDateTo)); $day->addDay()) {
+                if ($day->format('D') === $weekday) {
+                    $dates[] = $day->toDateString();
+                }
+            }
+            $query->whereIn(\Illuminate\Support\Facades\DB::raw('DATE(check_in)'), $dates);
         }
 
         return $query;

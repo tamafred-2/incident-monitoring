@@ -18,6 +18,7 @@ class Visitor extends Model
     public const UPDATED_AT = null;
 
     protected $fillable = [
+        'owner_approval',
         'subdivision_id',
         'full_name',
         'surname',
@@ -60,6 +61,7 @@ class Visitor extends Model
     protected function casts(): array
     {
         return [
+            'owner_approval' => 'array',
             'check_in' => 'datetime',
             'check_out' => 'datetime',
             'status' => VisitorStatus::class,

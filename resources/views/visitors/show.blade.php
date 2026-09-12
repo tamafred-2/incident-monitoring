@@ -18,6 +18,12 @@
     </x-slot>
 
     <div class="py-10">
+        @if ($visitor->owner_approval)
+            <div class="mx-auto mb-6 max-w-7xl rounded-2xl border border-slate-200 bg-white p-5">
+                <h3 class="font-semibold text-slate-900">Owner permission</h3>
+                <p class="mt-2 text-sm text-slate-600">Approved by {{ $visitor->owner_approval['owner_name'] }} by phone. Recorded by {{ $visitor->owner_approval['recorded_by_name'] }} on {{ \Illuminate\Support\Carbon::parse($visitor->owner_approval['approved_at'])->format('M j, Y h:i A') }}.</p>
+            </div>
+        @endif
         <div
             x-data="{
                 previewImage: null,

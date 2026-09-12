@@ -36,6 +36,7 @@ class VisitorCheckInFlowTest extends TestCase
             'subdivision_id' => $subdivision->subdivision_id,
             'house_id' => $house->house_id,
             'full_name' => 'Juan Dela Cruz',
+            'relation_to_owner' => 'Owner',
             'phone' => '09171234567',
             'status' => 'Active',
         ]);
@@ -82,6 +83,36 @@ class VisitorCheckInFlowTest extends TestCase
             'passenger_count' => 3,
             'status' => 'Approved',
         ]);
+    }
+
+    public function test_household_member_visit_requires_valid_owner_permission(): void
+    {
+        $subdivision = Subdivision::create(['subdivision_name' => 'Northview', 'status' => 'Active']);
+        $security = User::factory()->create(['role' => 'security', 'subdivision_id' => $subdivision->subdivision_id]);
+        $house = House::create(['subdivision_id' => $subdivision->subdivision_id, 'block' => '3', 'lot' => '12']);
+        $son = Resident::create(['subdivision_id' => $subdivision->subdivision_id, 'house_id' => $house->house_id, 'full_name' => 'Jose Junior', 'relation_to_owner' => 'Son', 'status' => 'Active']);
+        $owner = Resident::create(['subdivision_id' => $subdivision->subdivision_id, 'house_id' => $house->house_id, 'full_name' => 'Jose', 'relation_to_owner' => 'Owner', 'phone' => '09171234567', 'status' => 'Active']);
+        $payload = [
+            'visit_type' => 'resident', 'surname' => 'Cruz', 'first_name' => 'Ana', 'phone' => '09181234567',
+            'resident_id' => $son->resident_id, 'resident_house_id' => $house->house_id,
+            'house_address_or_unit' => $house->display_address,
+            'id_photo' => UploadedFile::fake()->create('visitor-id.jpg', 120, 'image/jpeg'),
+        ];
+        $this->actingAs($security)->get(route('visitors.index'))->assertOk()->assertSee('Owner permission required');
+        $this->post(route('visitors.store'), $payload)->assertSessionHasErrors('owner_permission');
+        $this->assertDatabaseCount('visitors', 0);
+        $this->post(route('visitors.store'), $payload + ['owner_permission' => 1, 'approving_owner_id' => $son->resident_id])->assertSessionHasErrors('approving_owner_id');
+        $this->assertDatabaseCount('visitors', 0);
+        $owner->update(['status' => 'Inactive']);
+        $this->post(route('visitors.store'), $payload + ['owner_permission' => 1, 'approving_owner_id' => $owner->resident_id])->assertSessionHasErrors('approving_owner_id');
+        $this->assertDatabaseCount('visitors', 0);
+        $owner->update(['status' => 'Active']);
+        $this->post(route('visitors.store'), $payload + ['owner_permission' => 1, 'approving_owner_id' => $owner->resident_id])->assertSessionHasNoErrors();
+        $visitor = \App\Models\Visitor::firstOrFail();
+        $this->assertSame('Jose Junior', $visitor->host_employee);
+        $this->assertSame($owner->resident_id, $visitor->owner_approval['owner_id']);
+        $this->assertSame($security->user_id, $visitor->owner_approval['recorded_by']);
+        $this->get(route('visitors.show', $visitor))->assertOk()->assertSee('Approved by Jose by phone');
     }
 
     public function test_security_can_check_in_walk_in_visitor_without_resident(): void
