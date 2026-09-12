@@ -77,8 +77,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::delete('/incidents/{incidentId}', [IncidentController::class, 'destroy'])->middleware('role:admin')->name('incidents.destroy');
     Route::post('/incidents/{incidentId}/restore', [IncidentController::class, 'restore'])->middleware('role:admin')->name('incidents.restore');
     Route::delete('/incidents/{incidentId}/force', [IncidentController::class, 'forceDelete'])->middleware('role:admin')->name('incidents.force-delete');
-    Route::get('/residents', [ResidentController::class, 'index'])->middleware('role:admin,staff')->name('residents.index');
-    Route::get('/residents/{resident}', [ResidentController::class, 'show'])->middleware(['role:admin,staff', 'subdivision'])->name('residents.show');
+    Route::get('/residents', [ResidentController::class, 'index'])->middleware('role:admin,staff,security')->name('residents.index');
+    Route::get('/residents/{resident}', [ResidentController::class, 'show'])->middleware(['role:admin,staff,security', 'subdivision'])->name('residents.show');
     Route::post('/residents', [ResidentController::class, 'store'])->middleware('role:admin')->name('residents.store');
     Route::put('/residents/{resident}', [ResidentController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('residents.update');
     Route::delete('/residents/{resident}', [ResidentController::class, 'destroy'])->middleware(['role:admin', 'subdivision'])->name('residents.destroy');

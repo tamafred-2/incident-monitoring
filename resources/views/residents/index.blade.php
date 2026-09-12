@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Residents" subtitle="Manage resident records and house assignments used in visitor approval and incident monitoring." />
+        <x-page-header title="Residents" subtitle="Search residents by name and view their contact details." />
     </x-slot>
 
     <div class="py-10">
@@ -9,13 +9,17 @@
 
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
                 <form method="GET" action="{{ route('residents.index') }}" class="grid gap-4 md:grid-cols-[1fr_180px_auto]">
+                    @if (request()->filled('relation_to_owner'))
+                        <input type="hidden" name="relation_to_owner" value="{{ request('relation_to_owner') }}">
+                    @endif
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Search</label>
                         <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, address, house"
                                data-live-search="#residents-results" autocomplete="off"
                                class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
-                        <p class="mt-1 text-xs text-slate-400">Searches all residents as you type</p>
+                        <p class="mt-1 text-xs text-slate-400">Searches residents as you type</p>
                     </div>
+                    @if (auth()->user()->isAdmin())
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>
                         <select name="status" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
@@ -25,6 +29,7 @@
                             @endforeach
                         </select>
                     </div>
+                    @endif
                     <div class="flex items-start gap-3 md:pt-6">
                         @if (auth()->user()->isAdmin())
                             <button
@@ -45,7 +50,12 @@
                 <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-900">Resident Directory</h3>
-                        <p class="mt-1 text-sm text-slate-500">Browse and manage resident profiles with housing assignment details.</p>
+                        @if (request()->filled('relation_to_owner'))
+                            <p class="mt-2 text-sm text-slate-600">Relation to owner: {{ request('relation_to_owner') }}
+                                <a href="{{ route('residents.index', request()->except(['relation_to_owner', 'page'])) }}" class="ml-2 text-brand-700 underline">Clear filter</a>
+                            </p>
+                        @endif
+                        <p class="mt-1 text-sm text-slate-500">Find contact details and housing assignments.</p>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -56,7 +66,9 @@
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">House</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Street</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Relation</th>
-                                <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
+                                @if (auth()->user()->isAdmin())
+                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
+                                @endif
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                             </tr>
                         </thead>
@@ -66,7 +78,9 @@
                                     <td class="px-6 py-4">
                                         <div class="min-w-[12rem]">
                                             <div class="font-medium text-slate-900">{{ $resident->full_name }}</div>
-                                            <div class="mt-1 text-xs text-slate-500">{{ $resident->email ?: 'No email provided' }}</div>
+                                            <div class="mt-2">
+                                                @include('residents.partials.phone-link')
+                                            </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-slate-600">
@@ -84,9 +98,11 @@
                                             {{ $resident->relation_to_owner ?: '-' }}
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 text-slate-600">
-                                        <x-status-badge :status="$resident->status" class="whitespace-nowrap" />
-                                    </td>
+                                    @if (auth()->user()->isAdmin())
+                                        <td class="px-6 py-4 text-slate-600">
+                                            <x-status-badge :status="$resident->status" class="whitespace-nowrap" />
+                                        </td>
+                                    @endif
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3 flex-nowrap">
                                             <a
@@ -120,7 +136,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-6 py-10 text-center text-slate-500">No residents found.</td>
+                                    <td colspan="{{ auth()->user()->isAdmin() ? 6 : 5 }}" class="px-6 py-10 text-center text-slate-500">No residents found.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -136,6 +152,9 @@
                     </p>
                     <div class="flex flex-wrap items-center gap-2">
                         <form method="GET" action="{{ route('residents.index') }}" class="flex items-center gap-2">
+                            @if (request()->filled('relation_to_owner'))
+                                <input type="hidden" name="relation_to_owner" value="{{ request('relation_to_owner') }}">
+                            @endif
                             @if ($filterQ !== '')
                                 <input type="hidden" name="q" value="{{ $filterQ }}">
                             @endif

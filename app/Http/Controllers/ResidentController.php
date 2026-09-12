@@ -21,7 +21,7 @@ class ResidentController extends Controller
     {
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
-        $filterStatus = trim((string) $request->query('status', ''));
+        $filterStatus = $user->isAdmin() ? trim((string) $request->query('status', '')) : '';
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
         $perPage = $this->resolvePerPageChoice(
             $request->query('per_page_custom'),
@@ -32,6 +32,16 @@ class ResidentController extends Controller
         $query = Resident::query()
             ->with(['subdivision', 'house', 'user'])
             ->orderBy('full_name');
+
+        if ($request->filled('relation_to_owner')) {
+            $relation = (string) $request->query('relation_to_owner');
+            $query->where(function ($builder) use ($relation) {
+                $builder->where('relation_to_owner', $relation);
+                if ($relation === 'Unspecified') {
+                    $builder->orWhereNull('relation_to_owner')->orWhere('relation_to_owner', '');
+                }
+            });
+        }
 
         if ($filterQ !== '') {
             $query->where(function ($builder) use ($filterQ) {
@@ -49,6 +59,7 @@ class ResidentController extends Controller
         }
 
         if (!$user->isAdmin()) {
+            $query->where('status', ActiveStatus::Active->value);
             $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
             $query->where('subdivision_id', $filterSubdivision);
@@ -77,6 +88,10 @@ class ResidentController extends Controller
 
     public function show(Request $request, Resident $resident): View
     {
+        if (!$request->user()->isAdmin() && $resident->status !== ActiveStatus::Active) {
+            abort(404);
+        }
+
         if (!$request->user()->canAccessSubdivision($resident->subdivision_id)) {
             abort(403);
         }

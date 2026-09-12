@@ -23,9 +23,11 @@
                         <h3 class="mt-2 text-2xl font-semibold text-slate-900">{{ $resident->full_name }}</h3>
                         <p class="mt-2 text-sm text-slate-500">{{ $resident->subdivision?->subdivision_name ?? '-' }}</p>
                     </div>
+                    @if (auth()->user()->isAdmin())
                     <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $resident->status === ActiveStatus::Active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
                         {{ $resident->status }}
                     </span>
+                    @endif
                 </div>
 
                 <div class="grid gap-6 mt-6 lg:grid-cols-2">
@@ -34,7 +36,7 @@
                         <dl class="mt-4 space-y-3 text-sm">
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Phone</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $resident->phone ?: '-' }}</dd>
+                                <dd class="font-medium text-right text-slate-900">@include('residents.partials.phone-link')</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Email</dt>
