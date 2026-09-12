@@ -16,17 +16,23 @@ use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorRequest;
 use Illuminate\Database\Seeder;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 
 class SqliteDemoSeeder extends Seeder
 {
+    private CarbonImmutable $seedNow;
     /**
      * Seed a small SQLite-first demo dataset for local development.
      */
     public function run(): void
     {
+        $this->seedNow = CarbonImmutable::now(config('app.timezone'));
+        if ($this->seedNow->lt(CarbonImmutable::parse('2026-01-08', config('app.timezone')))) {
+            throw new \RuntimeException('Demo activity requires a current date after the first week of January 2026.');
+        }
         DB::statement('PRAGMA foreign_keys = OFF');
 
         try {
@@ -196,7 +202,7 @@ class SqliteDemoSeeder extends Seeder
                     'resident' => $residents[0],
                     'house_address_or_unit' => $house1Address,
                     'status' => VisitorRequestStatus::Pending->value,
-                    'requested_at' => now()->subMinutes(20),
+                    'requested_at' => $this->seedNow->subMinutes(20),
                     'responded_at' => null,
                 ],
                 [
@@ -211,8 +217,8 @@ class SqliteDemoSeeder extends Seeder
                     'resident' => $residents[0],
                     'house_address_or_unit' => $house1Address,
                     'status' => VisitorRequestStatus::Approved->value,
-                    'requested_at' => now()->subHours(2),
-                    'responded_at' => now()->subHours(2)->addMinutes(5),
+                    'requested_at' => $this->seedNow->subHours(2),
+                    'responded_at' => $this->seedNow->subHours(2)->addMinutes(5),
                 ],
                 [
                     'visitor_name' => 'Ben Santos',
@@ -226,8 +232,8 @@ class SqliteDemoSeeder extends Seeder
                     'resident' => $residents[2],
                     'house_address_or_unit' => $house2Address,
                     'status' => VisitorRequestStatus::Declined->value,
-                    'requested_at' => now()->subHour(),
-                    'responded_at' => now()->subMinutes(50),
+                    'requested_at' => $this->seedNow->subHour(),
+                    'responded_at' => $this->seedNow->subMinutes(50),
                 ],
                 [
                     'visitor_name' => 'Joyce Tan',
@@ -241,8 +247,8 @@ class SqliteDemoSeeder extends Seeder
                     'resident' => $residents[3],
                     'house_address_or_unit' => $house2Address,
                     'status' => VisitorRequestStatus::Approved->value,
-                    'requested_at' => now()->subHours(6),
-                    'responded_at' => now()->subHours(6)->addMinutes(10),
+                    'requested_at' => $this->seedNow->subHours(6),
+                    'responded_at' => $this->seedNow->subHours(6)->addMinutes(10),
                 ],
             ];
 
@@ -284,7 +290,7 @@ class SqliteDemoSeeder extends Seeder
                 'purpose' => 'Delivery for homeowner',
                 'host_employee' => $residents[0]->full_name,
                 'house_address_or_unit' => $house1Address,
-                'check_in' => now()->subHours(2)->addMinutes(10),
+                'check_in' => $this->seedNow->subHours(2)->addMinutes(10),
                 'check_out' => null,
                 'status' => VisitorStatus::Inside->value,
             ];
@@ -308,8 +314,8 @@ class SqliteDemoSeeder extends Seeder
                 'purpose' => 'Plumbing repair',
                 'host_employee' => $residents[3]->full_name,
                 'house_address_or_unit' => $house2Address,
-                'check_in' => now()->subHours(6)->addMinutes(20),
-                'check_out' => now()->subHours(5)->addMinutes(30),
+                'check_in' => $this->seedNow->subHours(6)->addMinutes(20),
+                'check_out' => $this->seedNow->subHours(5)->addMinutes(30),
                 'status' => VisitorStatus::CheckedOut->value,
             ];
 
@@ -339,8 +345,8 @@ class SqliteDemoSeeder extends Seeder
                 'description' => 'Lamp post beside the clubhouse entrance has been off since last night.',
                 'category' => 'Safety',
                 'location' => $house1Address,
-                'incident_date' => now()->subHours(6),
-                'reported_at' => now()->subHours(5),
+                'incident_date' => $this->seedNow->subHours(6),
+                'reported_at' => $this->seedNow->subHours(5),
                 'status' => $incidentStatuses['pending_primary'],
                 'reported_by' => $securityUser->user_id,
             ]);
@@ -351,8 +357,8 @@ class SqliteDemoSeeder extends Seeder
                 'description' => 'Suspicious vehicle parked outside Block 2 for over 24 hours.',
                 'category' => 'Security',
                 'location' => $house2Address,
-                'incident_date' => now()->subDays(1),
-                'reported_at' => now()->subDays(1),
+                'incident_date' => $this->seedNow->subDays(1),
+                'reported_at' => $this->seedNow->subDays(1),
                 'status' => $incidentStatuses['pending_secondary'],
                 'reported_by' => $staffUser->user_id,
             ]);
@@ -363,9 +369,9 @@ class SqliteDemoSeeder extends Seeder
                 'description' => 'Broken gate latch on the main entrance repaired.',
                 'category' => 'Property Damage',
                 'location' => $house1Address,
-                'incident_date' => now()->subDays(3),
-                'reported_at' => now()->subDays(3),
-                'resolved_at' => now()->subDays(2),
+                'incident_date' => $this->seedNow->subDays(3),
+                'reported_at' => $this->seedNow->subDays(3),
+                'resolved_at' => $this->seedNow->subDays(2),
                 'status' => $incidentStatuses['resolved_primary'],
                 'reported_by' => $adminUser->user_id,
             ]);
@@ -376,9 +382,9 @@ class SqliteDemoSeeder extends Seeder
                 'description' => 'Noise complaint from Block 2 Lot 3 during late hours. Resolved after warning.',
                 'category' => 'Noise Complaint',
                 'location' => $house2Address,
-                'incident_date' => now()->subDays(7),
-                'reported_at' => now()->subDays(7),
-                'resolved_at' => now()->subDays(6),
+                'incident_date' => $this->seedNow->subDays(7),
+                'reported_at' => $this->seedNow->subDays(7),
+                'resolved_at' => $this->seedNow->subDays(6),
                 'status' => $incidentStatuses['resolved_secondary'],
                 'reported_by' => $securityUser2->user_id,
             ]);
@@ -447,10 +453,17 @@ class SqliteDemoSeeder extends Seeder
         $hasReqVehicle   = Schema::hasColumn('visitor_requests', 'vehicle_type');
         $hasPlateCol     = Schema::hasColumn('visitors', 'plate_number');
 
-        $startTs = mktime(0, 0, 0, 1, 1, 2026);
-        $nowTs   = time();
+        $startTs = CarbonImmutable::parse('2026-01-01 00:00:00', config('app.timezone'))->timestamp;
+        $nowTs   = $this->seedNow->timestamp;
         $rand    = static function (array $arr) { return $arr[mt_rand(0, count($arr) - 1)]; };
-        $randTs  = function () use ($startTs, $nowTs) { return mt_rand($startTs, $nowTs); };
+        // Place one event in each evenly spaced interval, covering the first
+        // week of January through the latest day without random month gaps.
+        $spreadTs = static function (int $index, int $count, int $end) use ($startTs): int {
+            $span = max(0, $end - $startTs);
+            $lower = $startTs + (int) floor($span * $index / $count);
+            $upper = $startTs + (int) floor($span * ($index + 1) / $count);
+            return mt_rand($lower, $upper);
+        };
         $plate   = function () use ($platePrefixes) { return $platePrefixes[mt_rand(0, count($platePrefixes) - 1)] . ' ' . str_pad((string) mt_rand(1, 9999), 4, '0', STR_PAD_LEFT); };
         $phone   = static function (int $seed) { return '09' . str_pad((string)(100000000 + $seed), 9, '0', STR_PAD_LEFT); };
 
@@ -548,8 +561,8 @@ class SqliteDemoSeeder extends Seeder
             // Pending incidents cluster in the last 30 days; resolved ones spread
             // from Jan 1 and leave 36h of headroom so resolution isn't clipped by "now".
             $incidentTs = $isResolved
-                ? mt_rand($startTs, max($startTs, $nowTs - 133200))
-                : mt_rand($nowTs - 2592000, $nowTs - 3600);
+                ? $spreadTs($i - 32, 394, max($startTs, $nowTs - 133200))
+                : mt_rand(max($startTs, $nowTs - 2592000), max($startTs, $nowTs - 3600));
             $reportedTs = min($incidentTs + mt_rand(600, 7200), $nowTs);
             // 12-36h to resolve → averages out to ~1 day.
             $resolvedTs = $isResolved ? min($reportedTs + mt_rand(43200, 129600), $nowTs) : null;
@@ -576,7 +589,7 @@ class SqliteDemoSeeder extends Seeder
             $sn         = $rand($surnames);
             $mi         = mt_rand(0, 2) === 0 ? $rand($middleInits) : null;
             $reqStatus  = $rand($reqStatuses);
-            $requestedTs = $randTs();
+            $requestedTs = $spreadTs($i, 100, $nowTs);
             $respondedTs = $reqStatus !== VisitorRequestStatus::Pending->value ? min($requestedTs + mt_rand(120, 1800), $nowTs) : null;
             $hasPlate   = mt_rand(0, 1);
 
@@ -618,7 +631,7 @@ class SqliteDemoSeeder extends Seeder
             $sn        = $rand($surnames);
             $mi        = mt_rand(0, 2) === 0 ? $rand($middleInits) : null;
             $isInside  = $i < 49;
-            $checkInTs = $isInside ? mt_rand($nowTs - 172800, $nowTs - 900) : $randTs();
+            $checkInTs = $isInside ? mt_rand(max($startTs, $nowTs - 172800), $nowTs - 900) : $spreadTs($i - 49, 1149, $nowTs - 14400);
             $checkOutTs = $isInside ? null : min($checkInTs + mt_rand(1800, 14400), $nowTs);
             $hasPlate  = mt_rand(0, 1);
 
