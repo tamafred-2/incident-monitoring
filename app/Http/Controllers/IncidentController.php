@@ -220,6 +220,9 @@ class IncidentController extends Controller
             : $this->mapIncidentStatusForStorage((string) $data['status']);
 
         $proofPhotoUploadCount = count((array) $request->file('proof_photos', []));
+        if ($this->requiresProofPhotoForStatus($status)) {
+            throw ValidationException::withMessages(['status' => 'Create the incident first, save investigation evidence, then resolve it with separate resolution proof.']);
+        }
         if (!$isResident && $this->requiresProofPhotoForStatus($status) && $proofPhotoUploadCount < 1) {
             return back()->withErrors([
                 'proof_photos' => 'At least one proof image is required when incident status is Resolved (Close).',
