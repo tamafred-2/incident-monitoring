@@ -40,7 +40,7 @@
             @include('partials.alerts')
             @php
                 $isResolvedIncident = in_array($incident->status, \App\Enums\IncidentStatus::resolvedValues(), true);
-                $statusLabel = $isResolvedIncident ? 'Resolved' : 'Pending';
+                $statusLabel = \App\Enums\IncidentStatus::displayLabel($incident->status);
             @endphp
 
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
@@ -49,9 +49,6 @@
                         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Incident</p>
                         <p class="mt-2 text-sm text-slate-500">
                             Subdivision: {{ $incident->subdivision->subdivision_name ?? '-' }}
-                            @if ($incident->house)
-                                &mdash; {{ $incident->house->display_address }}
-                            @endif
                         </p>
                     </div>
 
@@ -65,156 +62,59 @@
                     </div>
                 </div>
 
-                <div class="grid gap-6 mt-6 xl:grid-cols-[1.15fr_0.85fr]">
-                    <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
+                <div class="grid gap-6 mt-6 md:grid-cols-2">
+                    <section class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Report Summary</h4>
-                        <dl class="mt-4 space-y-3 text-sm">
-                            @php
-                                $incidentDate = $incident->incident_date;
-                                $reportedAt = $incident->reported_at;
-                                $sameIncidentAndReportedDate = $incidentDate && $reportedAt
-                                    ? $incidentDate->equalTo($reportedAt)
-                                    : false;
-                            @endphp
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Category</dt>
-                                <dd class="font-medium text-right text-slate-900">{{ $incident->category ?: '-' }}</dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Location</dt>
-                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->location ?: '-' }}</dd>
-                            </div>
-                            @if ($sameIncidentAndReportedDate)
+                        <dl class="mt-4 space-y-4 text-sm">
+                            @foreach (['Category' => $incident->category, 'Location' => ($incident->location ?: $incident->house?->display_address), 'Reported By' => $incident->reporter?->full_name] as $label => $value)
                                 <div class="flex items-start justify-between gap-4">
-                                    <dt class="text-slate-500">Incident / Reported Date</dt>
-                                    <dd class="font-medium text-right text-slate-900">
-                                        <span class="block whitespace-nowrap">{{ $incidentDate->format('M j, Y') }}</span>
-                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incidentDate->format('h:i A') }}</span>
-                                    </dd>
+                                    <dt class="text-slate-500">{{ $label }}</dt>
+                                    <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $value ?: '-' }}</dd>
                                 </div>
-                            @else
+                            @endforeach
+                            @if ($incident->house && $incident->location && strcasecmp(trim($incident->location), trim($incident->house->display_address)) !== 0)
                                 <div class="flex items-start justify-between gap-4">
-                                    <dt class="text-slate-500">Incident Date</dt>
-                                    <dd class="font-medium text-right text-slate-900">
-                                        @if ($incident->incident_date)
-                                            <span class="block whitespace-nowrap">{{ $incident->incident_date->format('M j, Y') }}</span>
-                                            <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->incident_date->format('h:i A') }}</span>
-                                        @else
-                                            -
-                                        @endif
-                                    </dd>
-                                </div>
-                                <div class="flex items-start justify-between gap-4">
-                                    <dt class="text-slate-500">Date Reported</dt>
-                                    <dd class="font-medium text-right text-slate-900">
-                                        @if ($incident->reported_at)
-                                            <span class="block whitespace-nowrap">{{ $incident->reported_at->format('M j, Y') }}</span>
-                                            <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->reported_at->format('h:i A') }}</span>
-                                        @else
-                                            -
-                                        @endif
-                                    </dd>
+                                    <dt class="text-slate-500">House / Unit</dt>
+                                    <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->house->display_address }}</dd>
                                 </div>
                             @endif
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Date Resolved</dt>
-                                <dd class="font-medium text-right text-slate-900">
-                                    @if ($incident->resolved_at)
-                                        <span class="block whitespace-nowrap">{{ $incident->resolved_at->format('M j, Y') }}</span>
-                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->resolved_at->format('h:i A') }}</span>
-                                    @else
-                                        -
-                                    @endif
-                                </dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Reported By</dt>
-                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->reporter?->full_name ?? '-' }}</dd>
-                            </div>
                         </dl>
-                    </div>
-
-                    <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
-                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Incident Tracking</h4>
-                        <dl class="mt-4 space-y-3 text-sm">
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Reporter</dt>
-                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->reporter?->full_name ?? '-' }}</dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Current Status</dt>
-                                <dd>
-                                    <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $incident->trashed() ? 'bg-rose-100 text-rose-700' : ($isResolvedIncident ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700') }}">
-                                        {{ $incident->trashed() ? 'Archived' : $statusLabel }}
-                                    </span>
-                                </dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">House / Unit</dt>
-                                <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $incident->house?->display_address ?? '-' }}</dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Date Reported</dt>
-                                <dd class="font-medium text-right text-slate-900">
-                                    @if ($incident->reported_at)
-                                        <span class="block whitespace-nowrap">{{ $incident->reported_at->format('M j, Y') }}</span>
-                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->reported_at->format('h:i A') }}</span>
-                                    @else
-                                        -
-                                    @endif
-                                </dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Date Resolved</dt>
-                                <dd class="font-medium text-right text-slate-900">
-                                    @if ($incident->resolved_at)
-                                        <span class="block whitespace-nowrap">{{ $incident->resolved_at->format('M j, Y') }}</span>
-                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $incident->resolved_at->format('h:i A') }}</span>
-                                    @else
-                                        -
-                                    @endif
-                                </dd>
-                            </div>
+                    </section>
+                    <section class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
+                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Timeline</h4>
+                        <p class="mt-2 text-xs text-slate-500">{{ config('app.timezone') }}</p>
+                        @php
+                            $sameDates = $incident->incident_date && $incident->reported_at && $incident->incident_date->equalTo($incident->reported_at);
+                            $timeline = $sameDates
+                                ? ['Incident / Reported Date' => $incident->reported_at]
+                                : ['Incident Date' => $incident->incident_date, 'Date Reported' => $incident->reported_at];
+                            $timeline['Date Resolved'] = $incident->resolved_at;
+                        @endphp
+                        <dl class="mt-4 space-y-4 text-sm">
+                            @foreach ($timeline as $label => $date)
+                                <div class="flex items-start justify-between gap-4">
+                                    <dt class="text-slate-500">{{ $label }}</dt>
+                                    <dd class="font-medium text-right text-slate-900">
+                                        @if ($date)
+                                            <span class="block whitespace-nowrap">{{ $date->format('M j, Y') }}</span>
+                                            <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $date->format('h:i:s A') }}</span>
+                                        @else
+                                            <span class="text-slate-500">{{ $label === 'Date Resolved' ? 'Not resolved yet' : '-' }}</span>
+                                        @endif
+                                    </dd>
+                                </div>
+                            @endforeach
                         </dl>
-                    </div>
+                    </section>
                 </div>
-
                 <div class="p-5 mt-6 bg-white border rounded-2xl border-slate-200">
                     <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Description</h4>
                     <p class="mt-3 text-sm leading-7 whitespace-pre-line text-slate-700">{{ $incident->description ?: 'No description provided.' }}</p>
                 </div>
 
-                @if ($isResolvedIncident)
-                    <div class="p-5 mt-6 bg-white border rounded-2xl border-slate-200">
-                        <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Proof Images</h4>
-                        @if ($proofPhotos->isNotEmpty())
-                            <div class="grid gap-4 mt-4 sm:grid-cols-2 xl:grid-cols-3">
-                                @foreach ($proofPhotos as $photo)
-                                    <button
-                                        type="button"
-                                        @click="openPreview('{{ $photo['url'] }}', 'Proof image {{ $loop->iteration }}')"
-                                        class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:-translate-y-0.5 hover:shadow-md"
-                                    >
-                                        <img
-                                            src="{{ $photo['url'] }}"
-                                            alt="Proof image {{ $loop->iteration }}"
-                                            class="object-cover w-full h-56"
-                                        >
-                                        <div class="px-4 py-3 text-sm font-medium text-slate-700">
-                                            Proof image {{ $loop->iteration }}
-                                        </div>
-                                    </button>
-                                @endforeach
-                            </div>
-                        @else
-                            <p class="mt-3 text-sm text-slate-500">No proof images were attached to this incident.</p>
-                        @endif
-                    </div>
-                @endif
+                @include('incidents.partials.evidence-gallery')
             </div>
-
-            <div
-                x-cloak
+            <div x-cloak
                 x-show="previewImage"
                 x-on:keydown.escape.window="closePreview()"
                 class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-slate-950/80"

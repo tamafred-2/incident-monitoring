@@ -12,6 +12,7 @@ class IncidentPhoto extends Model
     public const UPDATED_AT = null;
 
     protected $fillable = [
+        'stage',
         'incident_id',
         'photo_path',
         'sort_order',

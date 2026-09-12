@@ -87,6 +87,7 @@ class IncidentController extends Controller
         }
 
         $incidents = $query
+            ->tap(fn ($q) => $this->applyChartFilters($q, $request))
             ->paginate($perPage)
             ->withQueryString();
         $subdivisions = $user->isAdmin()
@@ -261,6 +262,7 @@ class IncidentController extends Controller
             'proofPhotos' => $this->proofPhotosFor($incident),
             'incidentCategories' => $this->incidentCategories(),
             'isFullEditor' => $request->user()->isAdmin(),
+            'isResolvedIncident' => $this->requiresProofPhotoForStatus($incident->status),
         ]);
     }
 
@@ -275,6 +277,21 @@ class IncidentController extends Controller
             : $this->incidentStatusValidationRules()
         );
         $status = $this->mapIncidentStatusForStorage((string) $data['status']);
+        $investigationPaths = $incident->proofPhotos()->where('stage', 'investigation')->pluck('photo_path')->all();
+        if ($this->requiresProofPhotoForStatus($status) && !$this->requiresProofPhotoForStatus($previousStatus)) {
+            if (count(array_diff($investigationPaths, $data['remove_proof_photos'] ?? [])) === 0) {
+                throw ValidationException::withMessages(['investigation_photos' => 'Save investigation proof first while the incident is under investigation. Then upload separate resolution proof and mark it resolved.']);
+            }
+            if (count($request->file('proof_photos', [])) === 0) {
+                throw ValidationException::withMessages(['proof_photos' => 'Upload a new resolution proof image before resolving this incident.']);
+            }
+        }
+        if ($request->hasFile('investigation_photos') && ($this->requiresProofPhotoForStatus($status) || $this->requiresProofPhotoForStatus($previousStatus))) {
+            throw ValidationException::withMessages(['investigation_photos' => 'Save investigation evidence before the resolution step.']);
+        }
+        if ($request->hasFile('investigation_photos')) {
+            $status = $this->secondaryPendingStatus();
+        }
         $existingProofPhotoPaths = $this->proofPhotosFor($incident->load('proofPhotos'))
             ->pluck('path')
             ->all();
@@ -283,6 +300,16 @@ class IncidentController extends Controller
             $data['remove_proof_photos'] ?? []
         );
 
+        if ($this->requiresProofPhotoForStatus($previousStatus) && array_intersect($investigationPaths, $proofPhotosToRemove)) {
+            throw ValidationException::withMessages(['remove_proof_photos' => 'Investigation evidence must be retained for a resolved incident.']);
+        }
+        $resolutionPaths = $incident->proofPhotos()->whereIn('stage', ['resolution', 'legacy'])->pluck('photo_path')->all();
+        if ($this->requiresProofPhotoForStatus($status) && $this->requiresProofPhotoForStatus($previousStatus)
+            && $proofPhotosToRemove && count(array_diff($resolutionPaths, $proofPhotosToRemove)) === 0 && !$request->hasFile('proof_photos')) {
+            throw ValidationException::withMessages(['proof_photos' => 'Keep at least one resolution proof image.']);
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $incident, $data, $status, $previousStatus, $isFullEditor, $existingProofPhotoPaths, $proofPhotosToRemove) {
         if ($isFullEditor) {
             $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
             if (!$subdivisionId) {
@@ -329,20 +356,29 @@ class IncidentController extends Controller
             $this->notifyIncidentStatusIfNeeded($incident, $previousStatus);
         }
 
-        foreach ($proofPhotosToRemove as $photoPath) {
-            $this->deleteProofPhoto($photoPath);
-        }
+        \Illuminate\Support\Facades\DB::afterCommit(function () use ($proofPhotosToRemove) {
+            foreach ($proofPhotosToRemove as $photoPath) {
+                $this->deleteProofPhoto($photoPath);
+            }
+        });
 
         $remainingProofPhotoPaths = array_values(array_diff($existingProofPhotoPaths, $proofPhotosToRemove));
         $newProofPhotoPaths = $this->storeProofPhotos($request);
         $finalProofPhotoPaths = array_values(array_unique(array_merge($remainingProofPhotoPaths, $newProofPhotoPaths)));
 
         $this->syncIncidentPhotoRecords($incident, $finalProofPhotoPaths, false);
+        foreach ($newProofPhotoPaths as $path) {
+            $incident->proofPhotos()->where('photo_path', $path)->update(['stage' => $this->requiresProofPhotoForStatus($status) ? 'resolution' : 'supporting']);
+        }
+        foreach ($this->storeProofPhotos($request, 'investigation_photos') as $path) {
+            $incident->proofPhotos()->create(['photo_path' => $path, 'stage' => 'investigation', 'sort_order' => $incident->proofPhotos()->count()]);
+        }
 
         return redirect()->route('incidents.show', array_merge(
             ['incidentId' => $incident->incident_id],
             $this->indexContext($request)
         ))->with('success', 'Incident updated successfully.');
+        });
     }
 
     public function destroy(Request $request, int $incidentId): RedirectResponse
@@ -423,6 +459,8 @@ class IncidentController extends Controller
             'location_other' => ['nullable', 'string', 'max:150', 'required_if:location,__other__'],
             'incident_date' => ['required', 'date'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,user_id'],
+            'investigation_photos' => ['nullable', 'array', 'max:10'],
+            'investigation_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'proof_photos' => ['nullable', 'array', 'max:10'],
             'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'remove_proof_photos' => ['nullable', 'array'],
@@ -433,7 +471,7 @@ class IncidentController extends Controller
             return $rules;
         }
 
-        $rules['reported_at'] = ['required', 'date'];
+        $rules['reported_at'] = ['required', 'date', 'before_or_equal:now'];
         $rules['resolved_at'] = ['nullable', 'date', 'after_or_equal:reported_at'];
         $rules['status'] = ['required', Rule::in($this->allowedIncidentStatusesForInput())];
 
@@ -445,6 +483,8 @@ class IncidentController extends Controller
         return [
             'status' => ['required', Rule::in($this->allowedIncidentStatusesForInput())],
             'resolved_at' => ['nullable', 'date'],
+            'investigation_photos' => ['nullable', 'array', 'max:10'],
+            'investigation_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'proof_photos' => ['nullable', 'array', 'max:10'],
             'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'remove_proof_photos' => ['nullable', 'array'],
@@ -608,8 +648,8 @@ class IncidentController extends Controller
             return null;
         }
 
-        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $value)) {
-            return str_replace('T', ' ', $value) . ':00';
+        if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/', $value)) {
+            return str_replace('T', ' ', $value) . (strlen($value) === 16 ? ':00' : '');
         }
 
         if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $value)) {
@@ -633,9 +673,9 @@ class IncidentController extends Controller
         }
     }
 
-    private function storeProofPhotos(Request $request): array
+    private function storeProofPhotos(Request $request, string $field = 'proof_photos'): array
     {
-        $files = $request->file('proof_photos', []);
+        $files = $request->file($field, []);
         if (!is_array($files) || $files === []) {
             return [];
         }
@@ -663,16 +703,15 @@ class IncidentController extends Controller
         $existingPaths = $append ? $this->proofPhotosFor($incident->fresh('proofPhotos'))->pluck('path')->all() : [];
         $allPaths = array_values(array_unique(array_merge($existingPaths, $newPhotoPaths)));
 
-        IncidentPhoto::query()->where('incident_id', $incident->incident_id)->delete();
+        IncidentPhoto::query()->where('incident_id', $incident->incident_id)->whereNotIn('photo_path', $allPaths)->delete();
 
         if ($allPaths !== []) {
-            $now = now();
-            IncidentPhoto::insert(collect($allPaths)->map(fn (string $photoPath, int $index) => [
-                'incident_id' => $incident->incident_id,
-                'photo_path' => $photoPath,
-                'sort_order' => $index,
-                'created_at' => $now,
-            ])->all());
+            foreach ($allPaths as $index => $photoPath) {
+                IncidentPhoto::updateOrCreate(
+                    ['incident_id' => $incident->incident_id, 'photo_path' => $photoPath],
+                    ['sort_order' => $index]
+                );
+            }
         }
 
         $incident->forceFill([
@@ -698,12 +737,16 @@ class IncidentController extends Controller
 
     private function resolveHistoryView(?string $view): string
     {
-        return in_array($view, ['active', 'history'], true) ? $view : 'active';
+        return in_array($view, ['active', 'history', 'all'], true) ? $view : 'active';
     }
 
     private function applyHistoryViewScope(Builder $query, string $historyView): void
     {
         $query->whereNull('deleted_at');
+
+        if ($historyView === 'all') {
+            return;
+        }
 
         if ($historyView === 'history') {
             $query->whereIn('status', $this->resolvedStatuses());
@@ -712,6 +755,32 @@ class IncidentController extends Controller
         }
 
         $query->whereNotIn('status', $this->resolvedStatuses());
+    }
+
+    private function applyChartFilters(Builder $query, Request $request): void
+    {
+        if (!$request->boolean('chart_filter')) {
+            return;
+        }
+        $query->whereNotNull('reported_at');
+        foreach (['category' => 'Uncategorized', 'status' => 'Unknown'] as $column => $fallback) {
+            if ($request->filled($column)) {
+                $value = (string) $request->query($column);
+                $query->where(function ($q) use ($column, $value, $fallback) {
+                    if ($column === 'status') {
+                        $q->whereIn($column, IncidentStatus::valuesForLabel($value));
+                    } else {
+                        $q->where($column, $value);
+                    }
+                    if ($value === $fallback) {
+                        $q->orWhereNull($column)->orWhere($column, '');
+                    }
+                });
+            }
+        }
+        if ($request->filled('house_id')) {
+            $query->where('house_id', (int) $request->query('house_id'));
+        }
     }
 
     private function findIncidentOrFail(Request $request, int $incidentId, bool $withTrashed = false): Incident
@@ -792,7 +861,10 @@ class IncidentController extends Controller
             ->filter()
             ->unique()
             ->values()
-            ->map(fn (string $path) => ['path' => $path, 'url' => route('incidents.photos.show', ['path' => $path])]);
+            ->map(function (string $path) use ($incident) {
+                $record = $incident->proofPhotos->firstWhere('photo_path', $path);
+                return ['path' => $path, 'url' => route('incidents.photos.show', ['path' => $path]), 'stage' => $record?->stage ?? 'legacy', 'uploaded_at' => $record?->created_at];
+            });
     }
 
     private function proofPhotoAbsolutePath(string $path): ?string
@@ -848,7 +920,7 @@ class IncidentController extends Controller
             Notification::send($reporter, new IncidentUpdatedNotification(
                 $incident,
                 'Incident Status Updated',
-                "Your incident is now {$incident->status}."
+                'Your incident is now ' . IncidentStatus::displayLabel($incident->status) . '.'
             ));
         }
     }
@@ -886,15 +958,11 @@ class IncidentController extends Controller
             return null;
         }
 
-        if (!empty($data['resolved_at'])) {
-            return $data['resolved_at'];
-        }
-
         if ($incident?->resolved_at) {
             return $incident->resolved_at->format('Y-m-d H:i:s');
         }
 
-        return $data['reported_at'] ?? null;
+        return now()->format('Y-m-d H:i:s');
     }
 
     private function allowedIncidentStatusesForInput(): array
@@ -1032,6 +1100,8 @@ class IncidentController extends Controller
             $query->where('subdivision_id', $filterSubdivision);
         }
 
+        $this->applyChartFilters($query, $request);
+
         return $query;
     }
 
@@ -1087,7 +1157,7 @@ class IncidentController extends Controller
             return [
                 'category' => $incident->category ?: '-',
                 'location' => $incident->location ?: '-',
-                'status' => $incident->status,
+                'status' => IncidentStatus::displayLabel($incident->status),
                 'reporter' => $incident->reporter?->full_name ?: '-',
                 'reported_at' => $incident->reported_at?->format('Y-m-d H:i:s') ?: '-',
                 'resolved_at' => $incident->resolved_at?->format('Y-m-d H:i:s') ?: '-',

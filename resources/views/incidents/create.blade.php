@@ -41,8 +41,8 @@
                         $selectedCategory = old('category');
                         $customCategory = old('category_other');
                         $incidentStatusOptions = [
-                            'Open' => 'Pending (Open)',
-                            'Under Investigation' => 'Pending (Investigating)',
+                            'Open' => 'Pending',
+                            'Under Investigation' => 'Investigation',
                         ];
                     @endphp
                     <div data-category-root>

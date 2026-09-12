@@ -70,9 +70,9 @@
                             ->filter(fn ($path) => is_string($path))
                             ->all();
                         $incidentStatusOptions = [
-                            'Open' => 'Pending (Open)',
-                            'Under Investigation' => 'Pending (Investigating)',
-                            'Resolved' => 'Resolved (Close)',
+                            'Open' => 'Pending',
+                            'Under Investigation' => 'Investigation',
+                            'Resolved' => 'Resolved',
                         ];
                         $selectedHouseId = (int) old('house_id', $incident->house_id);
                         $selectedHouseAddress = optional($houses->firstWhere('house_id', $selectedHouseId))->display_address;
@@ -137,17 +137,17 @@
                         <label class="block text-sm font-medium text-slate-700">Status</label>
                         <select name="status" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500" data-status-select>
                             @foreach ($incidentStatusOptions as $statusValue => $statusLabel)
-                                <option value="{{ $statusValue }}" @selected(old('status', $incident->status) === $statusValue)>{{ $statusLabel }}</option>
+                                <option value="{{ $statusValue }}" @selected(old('status', $incident->status) === $statusValue) @disabled($statusValue === 'Resolved' && !$isResolvedIncident && $proofPhotos->where('stage', 'investigation')->isEmpty())>{{ $statusLabel }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="md:col-span-2 @if (old('status', $incident->status) !== 'Resolved') hidden @endif" data-resolved-wrapper>
+                    <div class="md:col-span-2" data-resolved-wrapper>
                         <label class="block text-sm font-medium text-slate-700">Date Resolved</label>
-                        <input type="datetime-local" name="resolved_at" value="{{ old('resolved_at', optional($incident->resolved_at)->format('Y-m-d\TH:i')) }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500" data-resolved-input>
+                        <p class="mt-2 text-sm text-slate-600">{{ $incident->resolved_at?->format('M j, Y h:i:s A') ?? 'Recorded automatically when resolved' }} ({{ config('app.timezone') }})</p>
                     </div>
 
-                    <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-5 @if (old('status', $incident->status) !== 'Resolved') hidden @endif" data-proof-section>
-                        <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Existing Proof Images</h3>
+                    <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-5" data-proof-section>
+                        <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Saved Evidence</h3>
                         @if ($proofPhotos->isNotEmpty())
                             <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 @foreach ($proofPhotos as $photo)
@@ -159,7 +159,7 @@
                                             class="w-full transition hover:-translate-y-0.5 hover:shadow-md"
                                         >
                                             <img src="{{ $photo['url'] }}" alt="Existing proof image {{ $loop->iteration }}" class="h-40 w-full object-cover">
-                                            <div class="px-4 py-3 text-sm font-medium text-slate-700">Proof image {{ $loop->iteration }}</div>
+                                            <div class="px-4 py-3 text-sm font-medium text-slate-700">{{ ucfirst($photo['stage']) }} evidence · {{ $photo['stage'] !== 'legacy' ? $photo['uploaded_at']?->format('M j, Y h:i:s A') : 'Original time not verified' }}</div>
                                         </button>
                                         <label class="flex items-center gap-2 border-t border-slate-200 px-4 py-3 text-sm font-medium {{ $markedForRemoval ? 'text-rose-700' : 'text-slate-700' }}">
                                             <input
@@ -180,8 +180,16 @@
                         @endif
                     </div>
 
+                    @if (!$isResolvedIncident)
+                        <div class="md:col-span-2 rounded-2xl border border-slate-200 p-5">
+                            <label for="investigation-photos" class="font-semibold text-slate-700">Investigation proof — Before</label>
+                            <input id="investigation-photos" type="file" name="investigation_photos[]" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="mt-3 block w-full text-sm">
+                            <p class="mt-2 text-sm text-slate-500">Save these photos first. This records the investigation step before a later resolution. Upload times are recorded by the server in {{ config('app.timezone') }}.</p>
+                        </div>
+                    @endif
                     <div class="md:col-span-2" data-proof-preview-root>
-                        <label class="block text-sm font-medium text-slate-700">Add More Proof Photos</label>
+                        <h3 class="mb-2 font-semibold text-slate-700">Resolution proof — After</h3>
+                        <label class="block text-sm font-medium text-slate-700">Upload Resolution Photos</label>
                         <input
                             type="file"
                             name="proof_photos[]"
@@ -190,7 +198,7 @@
                             class="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
                             data-proof-input
                         >
-                        <p class="mt-2 text-xs text-slate-500" data-proof-help>New uploads will be added to the existing proof images. Up to 10 files per upload.</p>
+                        <p class="mt-2 text-xs text-slate-500" data-proof-help>Upload separate after-resolution images here. Up to 10 files per upload.</p>
                         <div class="mt-4 hidden grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-proof-preview-list></div>
                     </div>
 
@@ -198,6 +206,7 @@
                         <a href="{{ route('incidents.show', array_merge(['incidentId' => $incident->incident_id], $indexContext)) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</a>
                         <button class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Save Changes</button>
                     </div>
+
                 </form>
             </div>
 
@@ -263,95 +272,7 @@
                 syncCategoryField();
             });
 
-            var statusSelects = document.querySelectorAll('[data-status-select]');
-            statusSelects.forEach(function (select) {
-                var root = select.closest('form');
-                var resolvedWrapper = root ? root.querySelector('[data-resolved-wrapper]') : null;
-                var resolvedInput = root ? root.querySelector('[data-resolved-input]') : null;
-                var reportedInput = root ? root.querySelector('[name="reported_at"]') : null;
-                var proofSection = root ? root.querySelector('[data-proof-section]') : null;
-                var proofInput = root ? root.querySelector('[data-proof-input]') : null;
-                var removeProofCheckboxes = root ? root.querySelectorAll('input[name="remove_proof_photos[]"]') : [];
-                var form = root || select.closest('form');
-
-                if (!resolvedWrapper || !resolvedInput) {
-                    return;
-                }
-
-                function syncProofRequirement(isResolved) {
-                    if (!proofInput) {
-                        return true;
-                    }
-
-                    var hasNewUpload = !!(proofInput.files && proofInput.files.length > 0);
-                    var remainingExistingProof = 0;
-
-                    Array.prototype.forEach.call(removeProofCheckboxes, function (checkbox) {
-                        if (!checkbox.checked) {
-                            remainingExistingProof += 1;
-                        }
-                    });
-
-                    var hasProof = hasNewUpload || remainingExistingProof > 0;
-
-                    proofInput.required = isResolved && !hasProof;
-                    proofInput.setCustomValidity(isResolved && !hasProof
-                        ? 'At least one proof image is required when status is Resolved.'
-                        : '');
-
-                    return hasProof;
-                }
-
-                function syncResolvedField() {
-                    var isResolved = select.value === 'Resolved';
-                    resolvedWrapper.classList.toggle('hidden', !isResolved);
-                    if (proofSection) {
-                        proofSection.classList.toggle('hidden', !isResolved);
-                    }
-
-                    if (isResolved) {
-                        if (!resolvedInput.value && reportedInput && reportedInput.value) {
-                            resolvedInput.value = reportedInput.value;
-                        }
-                        syncProofRequirement(true);
-                        return;
-                    }
-
-                    resolvedInput.value = '';
-                    syncProofRequirement(false);
-                }
-
-                if (proofInput) {
-                    proofInput.addEventListener('change', function () {
-                        syncProofRequirement(select.value === 'Resolved');
-                    });
-                }
-
-                Array.prototype.forEach.call(removeProofCheckboxes, function (checkbox) {
-                    checkbox.addEventListener('change', function () {
-                        syncProofRequirement(select.value === 'Resolved');
-                    });
-                });
-
-                if (form) {
-                    form.addEventListener('submit', function (event) {
-                        var isResolved = select.value === 'Resolved';
-                        var hasProof = syncProofRequirement(isResolved);
-
-                        if (isResolved && !hasProof) {
-                            event.preventDefault();
-                            if (proofInput) {
-                                proofInput.reportValidity();
-                            }
-                        }
-                    });
-                }
-
-                select.addEventListener('change', syncResolvedField);
-                syncResolvedField();
-            });
-
-            var locationRoots = document.querySelectorAll('[data-location-root]');
+                        var locationRoots = document.querySelectorAll('[data-location-root]');
             locationRoots.forEach(function (root) {
                 if (root.dataset.locationInitialized === 'true') {
                     return;

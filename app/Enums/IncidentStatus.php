@@ -24,7 +24,27 @@ enum IncidentStatus: string
 
     public function label(): string
     {
-        return $this->value;
+        return self::displayLabel($this->value);
+    }
+
+    public static function displayLabel(?string $status): string
+    {
+        return match ($status) {
+            'Open', 'Reported', 'Pending' => 'Pending',
+            'Under Investigation', 'Investigating', 'Ongoing', 'Investigation' => 'Investigation',
+            'Resolved', 'Closed', 'Done', 'Completed' => 'Resolved',
+            default => $status ?? 'Unknown',
+        };
+    }
+
+    public static function valuesForLabel(string $label): array
+    {
+        return match ($label) {
+            'Pending' => ['Open', 'Reported', 'Pending'],
+            'Investigation' => ['Under Investigation', 'Investigating', 'Ongoing', 'Investigation'],
+            'Resolved' => ['Resolved', 'Closed', 'Done', 'Completed'],
+            default => [$label],
+        };
     }
 
     /**

@@ -554,6 +554,8 @@ class IncidentManagementTest extends TestCase
 
     public function test_assigned_staff_can_update_incident_status(): void
     {
+        $this->freezeTime();
+        Storage::fake('public');
         $subdivision = Subdivision::create([
             'subdivision_name' => 'Elm Gardens',
             'status' => 'Active',
@@ -584,14 +586,36 @@ class IncidentManagementTest extends TestCase
             'assigned_to' => $staff->user_id,
         ]);
 
+        $this->actingAs($staff)->put(route('incidents.update', $incident->incident_id), [
+            'status' => 'Resolved',
+            'proof_photos' => [UploadedFile::fake()->create('after.jpg', 128, 'image/jpeg')],
+        ])->assertSessionHasErrors('investigation_photos');
+        $this->assertSame('Under Investigation', $incident->fresh()->status);
+
+        $this->put(route('incidents.update', $incident->incident_id), [
+            'status' => 'Under Investigation',
+            'investigation_photos' => [UploadedFile::fake()->create('before.jpg', 128, 'image/jpeg')],
+        ])->assertSessionHasNoErrors();
+        $before = $incident->proofPhotos()->where('stage', 'investigation')->firstOrFail();
+        $uploadedAt = $before->created_at->toDateTimeString();
+        $this->travel(10)->minutes();
+        $this->put(route('incidents.update', $incident->incident_id), ['status' => 'Resolved'])
+            ->assertSessionHasErrors('proof_photos');
+
         $response = $this
             ->actingAs($staff)
             ->put(route('incidents.update', $incident->incident_id), [
                 'status' => 'Resolved',
-                'resolved_at' => now()->format('Y-m-d H:i:s'),
+                'resolved_at' => now()->subMinutes(9)->format('Y-m-d H:i:s'),
+                'proof_photos' => [UploadedFile::fake()->create('after.jpg', 128, 'image/jpeg')],
             ]);
 
         $response->assertRedirectContains(route('incidents.show', ['incidentId' => $incident->incident_id]));
+
+        $this->assertSame($uploadedAt, $before->fresh()->created_at->toDateTimeString());
+        $this->assertSame(now()->toDateTimeString(), $incident->fresh()->resolved_at->toDateTimeString());
+        $this->assertSame(1, $incident->proofPhotos()->where('stage', 'resolution')->count());
+        $this->get(route('incidents.show', $incident->incident_id))->assertOk()->assertSee('Investigation proof')->assertSee('Resolution proof')->assertSee('Asia/Manila');
 
         $this->assertDatabaseHas('incidents', [
             'incident_id' => $incident->incident_id,
