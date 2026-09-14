@@ -28,6 +28,7 @@
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="grid gap-4 md:grid-cols-2">
                     @csrf
+                    <input type="hidden" name="_submission_token" value="{{ bin2hex(random_bytes(16)) }}">
 
                     @if ($effectiveSubdivision)
                         <input type="hidden" name="subdivision_id" value="{{ $effectiveSubdivision }}">

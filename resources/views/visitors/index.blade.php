@@ -248,8 +248,10 @@
                             </button>
                         </div>
 
-                    <form method="POST" action="{{ route('visitors.store') }}" enctype="multipart/form-data" class="space-y-6">
+                    <form method="POST" action="{{ route('visitors.store') }}" enctype="multipart/form-data" class="space-y-6" data-visitor-check-in>
                         @csrf
+                        <input type="hidden" name="_submission_token" value="{{ bin2hex(random_bytes(16)) }}">
+                        <div data-check-in-errors role="alert" tabindex="-1" hidden class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"></div>
                         <input type="hidden" name="tab" value="check-in">
                         <input type="hidden" name="q" value="{{ $filterQ }}">
                         <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">

@@ -14,6 +14,25 @@ class VisitorCheckInFlowTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_modal_check_in_confirms_save_and_replays_without_duplicate(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $subdivision = Subdivision::create(['subdivision_name' => 'Northview', 'status' => 'Active']);
+        $security = User::factory()->create(['role' => 'security', 'subdivision_id' => $subdivision->subdivision_id]);
+        $payload = [
+            '_submission_token' => str_repeat('d', 32), 'visit_type' => 'walk_in',
+            'surname' => 'Cruz', 'first_name' => 'Ana', 'phone' => '09181234567',
+            'house_address_or_unit' => 'Clubhouse',
+            'id_photo' => UploadedFile::fake()->create('id.jpg', 120, 'image/jpeg'),
+        ];
+        $this->actingAs($security)->postJson(route('visitors.store'), array_replace($payload, ['phone' => '']))->assertUnprocessable()->assertJsonValidationErrors('phone');
+        $this->postJson(route('visitors.store'), $payload)->assertCreated()
+            ->assertJsonPath('saved', true)->assertJsonPath('redirect_url', route('visitors.index', ['tab' => 'check-out']));
+        $this->postJson(route('visitors.store'), $payload)->assertOk()->assertJsonPath('saved', true);
+        $this->assertDatabaseCount('visitors', 1);
+        $this->get(route('visitors.index', ['tab' => 'check-out']))->assertOk()->assertSee('Ana Cruz');
+    }
+
     public function test_security_can_check_in_resident_visit_immediately(): void
     {
         $subdivision = Subdivision::create([

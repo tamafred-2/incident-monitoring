@@ -6,6 +6,7 @@
 ])
 
 @php
+$show = $show && !session('form_saved', false);
 $maxWidth = [
     'sm' => 'sm:max-w-sm',
     'md' => 'sm:max-w-md',

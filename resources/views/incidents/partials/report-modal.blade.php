@@ -18,6 +18,7 @@
 
         <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4 md:grid-cols-2">
             @csrf
+            <input type="hidden" name="_submission_token" value="{{ bin2hex(random_bytes(16)) }}">
             @php
                 $residentUser = auth()->user()?->isResident();
                 $autoSubdivisionId = (int) old('subdivision_id', $effectiveSubdivision);

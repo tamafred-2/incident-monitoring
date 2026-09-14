@@ -1,4 +1,6 @@
 import './bootstrap';
+import './form-submission';
+import './visitor-check-in';
 
 import Alpine from 'alpinejs';
 import Chart from 'chart.js/auto';
