@@ -259,7 +259,9 @@
                             values.push(value);
                         });
 
-                        return values;
+                        return values.sort(function (a, b) {
+                            return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+                        });
                     }
 
                     function setSelectOptions(select, values, placeholder, selectedValue) {
