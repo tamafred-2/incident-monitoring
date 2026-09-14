@@ -5,12 +5,41 @@ namespace Tests\Feature;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Models\Visitor;
+use App\Models\Incident;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AdminVisitorNotificationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_new_incident_joins_visitor_feed_and_can_be_read_and_cleared(): void
+    {
+        $this->freezeTime();
+        $admin = User::factory()->create(['role' => 'admin', 'subdivision_id' => null]);
+        $subdivision = Subdivision::create(['subdivision_name' => 'North Gate', 'status' => 'Active']);
+        Visitor::create(['subdivision_id' => $subdivision->subdivision_id, 'first_name' => 'Ana', 'surname' => 'Cruz', 'check_in' => now()->subMinute(), 'status' => 'Inside']);
+        $this->actingAs($admin)->postJson(route('admin.visitor-notifications.read-all'))->assertOk();
+        $this->travel(1)->seconds();
+        $incident = Incident::create([
+            'subdivision_id' => $subdivision->subdivision_id,
+            'description' => 'Broken gate', 'category' => 'Property Damage', 'location' => 'Main gate',
+            'reported_by' => $admin->user_id, 'status' => 'Open',
+            'incident_date' => now()->subDay(), 'reported_at' => now()->subDay(),
+        ]);
+        $response = $this->actingAs($admin->fresh())->getJson(route('admin.visitor-notifications.index'));
+        $response->assertOk()->assertJsonCount(2, 'notifications')
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonPath('notifications.0.type', 'incident_reported')
+            ->assertJsonPath('notifications.0.is_unread', true)
+            ->assertJsonPath('notifications.0.detail_url', route('incidents.show', ['incidentId' => $incident->incident_id]));
+        $this->get($response->json('notifications.0.detail_url'))->assertOk();
+        $this->postJson(route('admin.visitor-notifications.read-one'), ['key' => $response->json('notifications.0.key')])
+            ->assertOk()->assertJsonPath('unread_count', 0);
+        $this->deleteJson(route('admin.visitor-notifications.clear-all'))->assertNoContent();
+        $this->actingAs($admin->fresh())->getJson(route('admin.visitor-notifications.index'))
+            ->assertOk()->assertJsonCount(0, 'notifications')->assertJsonPath('unread_count', 0);
+    }
 
     public function test_admin_sees_visitor_activity_notification_panel(): void
     {
@@ -42,7 +71,7 @@ class AdminVisitorNotificationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Visitor Notifications')
+            ->assertSee('Notifications')
             ->assertSee('Ana Rivera')
             ->assertSee('checked in at West Ridge.');
     }

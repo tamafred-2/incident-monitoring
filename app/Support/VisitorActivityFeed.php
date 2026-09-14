@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\User;
+use App\Models\Incident;
 use App\Models\Visitor;
 use Illuminate\Support\Collection;
 
@@ -52,8 +53,34 @@ class VisitorActivityFeed
             ->get()
             ->map(fn (Visitor $visitor): array => self::formatActivity($visitor, 'checked_out', $visitor->check_out));
 
+        $incidents = Incident::query()
+            ->with(['reporter', 'subdivision'])
+            ->whereNotNull('created_at')
+            ->orderByDesc('created_at')
+            ->limit($sourceLimit)
+            ->get()
+            ->map(function (Incident $incident): array {
+                // Use actual creation time so a backdated report is still new.
+                $occurredAt = $incident->created_at;
+                $category = $incident->category ?: 'Uncategorized';
+                $reporter = $incident->reporter?->full_name ?? 'A user';
+                return [
+                    'key' => "incident:{$incident->incident_id}:created",
+                    'type' => 'incident_reported',
+                    'incident_id' => $incident->incident_id,
+                    'title' => "New incident: {$category}",
+                    'message' => "{$reporter} reported an incident at " . ($incident->location ?: $incident->subdivision?->subdivision_name ?: 'an unspecified location') . '.',
+                    'detail_url' => route('incidents.show', ['incidentId' => $incident->incident_id]),
+                    'occurred_at' => $occurredAt->toIso8601String(),
+                    'time_label' => $occurredAt->format('M j, Y h:i A'),
+                    'relative_time' => $occurredAt->diffForHumans(),
+                    'sort_at' => $occurredAt->timestamp,
+                ];
+            });
+
         return $checkIns
             ->concat($checkOuts)
+            ->concat($incidents)
             ->sortByDesc('sort_at')
             ->values();
     }
@@ -105,6 +132,7 @@ class VisitorActivityFeed
             'type' => $type,
             'visitor_id' => $visitor->visitor_id,
             'visitor_name' => $visitor->full_name,
+            'title' => $visitor->full_name,
             'subdivision_name' => $subdivisionName,
             'message' => "{$visitor->full_name} {$label} at {$subdivisionName}.",
             'detail_url' => route('visitors.show', $visitor),
