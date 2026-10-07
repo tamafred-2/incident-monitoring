@@ -8,6 +8,8 @@ use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
+use App\Rules\PersonName;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,27 +17,24 @@ use Illuminate\View\View;
 
 class UserController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $filterQ = trim((string) $request->query('q', ''));
         $filterRole = trim((string) $request->query('role', ''));
         $filterSubdivision = $request->query('subdivision_id');
-        $filterView = trim((string) $request->query('view', 'active'));
-        $perPage = $this->resolvePerPageChoice(
-            $request->query('per_page_custom'),
-            $request->query('per_page'),
-            10
-        );
+        $filterView = trim((string) $request->query('view', 'all'));
+        $perPage = 10;
 
         $query = User::query()
             ->with('subdivision')
             ->orderBy('role')
             ->orderBy('full_name');
 
-        if ($filterView === 'deleted') {
+        if (in_array($filterView, ['active', 'inactive'], true)) {
+            $query->where('is_active', $filterView === 'active');
+        } elseif ($filterView === 'deleted') {
             $query->onlyTrashed();
-        } elseif ($filterView === 'all') {
-            $query->withTrashed();
+
         }
 
         if ($filterQ !== '') {
@@ -58,10 +57,11 @@ class UserController extends Controller
         }
 
         $users = $query
-            ->paginate($perPage)
+            ->orderBy('user_id')->simplePaginate($perPage)
             ->withQueryString();
         $subdivisions = Subdivision::orderBy('subdivision_name')->get();
-        return view('users.index', compact(
+
+        return $this->scrollView('users.index', compact(
             'users',
             'subdivisions',
             'filterQ',
@@ -69,7 +69,7 @@ class UserController extends Controller
             'filterSubdivision',
             'filterView',
             'perPage'
-        ));
+        ), ['users' => 'users']);
     }
 
     public function show(Request $request, User $user): View
@@ -87,10 +87,10 @@ class UserController extends Controller
         $isResident = $request->input('role') === UserRole::Resident->value;
 
         $rules = [
-            'surname' => ['required', 'string', 'max:100'],
-            'first_name' => ['required', 'string', 'max:100'],
-            'middle_name' => ['nullable', 'string', 'max:100'],
-            'extension' => ['nullable', 'string', 'max:20'],
+            'surname' => ['required', 'string', 'max:100', new PersonName],
+            'first_name' => ['required', 'string', 'max:100', new PersonName],
+            'middle_name' => ['nullable', 'string', 'max:100', new PersonName],
+            'extension' => ['nullable', 'string', 'max:20', new PersonName],
             'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
             'role' => ['required', Rule::enum(UserRole::class)],
             'is_active' => ['nullable', 'boolean'],
@@ -138,7 +138,7 @@ class UserController extends Controller
 
         if ($mode === 'new') {
             $subdivisionId = (int) $request->input('new_resident_subdivision_id');
-            if (!$subdivisionId) {
+            if (! $subdivisionId) {
                 return back()->withErrors(['new_resident_subdivision_id' => 'Please select a subdivision for the new resident.'])->withInput();
             }
 
@@ -146,7 +146,7 @@ class UserController extends Controller
                 ->where('house_id', (int) $request->input('new_resident_house_id'))
                 ->where('subdivision_id', $subdivisionId)
                 ->first();
-            if (!$house) {
+            if (! $house) {
                 return back()->withErrors(['new_resident_house_id' => 'Please select a valid house for the chosen subdivision.'])->withInput();
             }
 
@@ -164,12 +164,12 @@ class UserController extends Controller
             $userSubdivisionId = $subdivisionId;
         } else {
             $residentId = (int) ($data['resident_id'] ?? 0);
-            if (!$residentId) {
+            if (! $residentId) {
                 return back()->withErrors(['resident_id' => 'Please select a resident record to link to this account.'])->withInput();
             }
 
             $resident = Resident::find($residentId);
-            if (!$resident) {
+            if (! $resident) {
                 return back()->withErrors(['resident_id' => 'The selected resident record was not found.'])->withInput();
             }
 
@@ -209,10 +209,10 @@ class UserController extends Controller
     {
         $data = $request->validate(
             [
-                'surname' => ['required', 'string', 'max:100'],
-                'first_name' => ['required', 'string', 'max:100'],
-                'middle_name' => ['nullable', 'string', 'max:100'],
-                'extension' => ['nullable', 'string', 'max:20'],
+                'surname' => ['required', 'string', 'max:100', new PersonName],
+                'first_name' => ['required', 'string', 'max:100', new PersonName],
+                'middle_name' => ['nullable', 'string', 'max:100', new PersonName],
+                'extension' => ['nullable', 'string', 'max:20', new PersonName],
                 'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->user_id, 'user_id')],
                 'role' => ['required', Rule::in(UserRole::manageableValues())],
                 'is_active' => ['nullable', 'boolean'],
@@ -221,8 +221,8 @@ class UserController extends Controller
             ]
         );
 
-        if ($user->role === UserRole::Admin && $data['role'] !== UserRole::Admin->value && User::where('role', UserRole::Admin)->count() <= 1) {
-            return back()->withErrors(['role' => 'Cannot remove the last administrator.'])->withInput();
+        if ($error = $this->accountChangeError($request, $user, $request->boolean('is_active', $user->is_active), $data['role'])) {
+            return back()->withErrors(['is_active' => $error])->withInput();
         }
 
         if ($data['role'] !== UserRole::Admin->value && empty($data['subdivision_id'])) {
@@ -243,7 +243,7 @@ class UserController extends Controller
             $data['temporary_password'] = null;
         }
 
-        $data['is_active'] = $request->boolean('is_active');
+        $data['is_active'] = $request->boolean('is_active', $user->is_active);
 
         $user->update($data);
 
@@ -251,27 +251,38 @@ class UserController extends Controller
             ->with('success', 'User updated successfully.');
     }
 
-    public function destroy(Request $request, User $user)
+    public function setStatus(Request $request, User $user): RedirectResponse
     {
-        if ($request->user()->user_id === $user->user_id) {
-            return redirect()->route('users.index')->with('error', 'You cannot delete your own account.');
+        $data = $request->validate(['is_active' => ['required', 'boolean']]);
+        $active = (bool) $data['is_active'];
+        if ($error = $this->accountChangeError($request, $user, $active, $user->role->value)) {
+            return redirect()->route('users.index', $this->indexContext($request))->with('error', $error);
         }
 
-        if ($user->role === UserRole::Admin && User::where('role', UserRole::Admin)->count() <= 1) {
-            return redirect()->route('users.index')->with('error', 'You cannot delete the last administrator.');
+        $user->update(['is_active' => $active]);
+
+        return redirect()->route('users.index', array_replace($this->indexContext($request), ['view' => 'all']))
+            ->with('success', $active ? 'User activated successfully.' : 'User deactivated successfully.');
+    }
+
+    private function accountChangeError(Request $request, User $user, bool $active, string $role): ?string
+    {
+        if (! $active && $request->user()->is($user)) {
+            return 'You cannot deactivate your own account.';
+        }
+        if ($user->role === UserRole::Admin && $user->is_active && (! $active || $role !== UserRole::Admin->value)
+            && ! User::where('role', UserRole::Admin)->where('is_active', true)->where('user_id', '!=', $user->user_id)->exists()) {
+            return 'You cannot deactivate or change the role of the last active administrator.';
         }
 
-        $user->delete();
-
-        return redirect()->route('users.index', $this->indexContext($request))
-            ->with('success', 'User archived successfully.');
+        return null;
     }
 
     public function restore(Request $request, int $userId)
     {
         $user = User::withTrashed()->findOrFail($userId);
 
-        if (!$user->trashed()) {
+        if (! $user->trashed()) {
             return redirect()->route('users.index', $this->indexContext($request))
                 ->with('error', 'That user is already active.');
         }
@@ -290,21 +301,6 @@ class UserController extends Controller
             ->with('success', 'User restored successfully.');
     }
 
-    public function forceDelete(Request $request, int $userId)
-    {
-        $user = User::withTrashed()->findOrFail($userId);
-
-        if (!$user->trashed()) {
-            return redirect()->route('users.index', $this->indexContext($request))
-                ->with('error', 'Only archived users can be permanently deleted.');
-        }
-
-        $user->forceDelete();
-
-        return redirect()->route('users.index', $this->indexContext($request))
-            ->with('success', 'User permanently deleted.');
-    }
-
     private function indexContext(Request $request): array
     {
         $context = array_filter([
@@ -318,8 +314,8 @@ class UserController extends Controller
             ),
         ], static fn ($value) => $value !== null && $value !== '');
 
-        $view = $request->input('view', $request->query('view', 'active'));
-        if ($view !== 'active') {
+        $view = $request->input('view', $request->query('view', 'all'));
+        if ($view !== 'all') {
             $context['view'] = $view;
         }
 
@@ -351,5 +347,4 @@ class UserController extends Controller
 
         return $this->resolvePerPage($selectedValue, $default);
     }
-
 }

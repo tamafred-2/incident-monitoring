@@ -7,8 +7,10 @@ use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\User;
-use Illuminate\Http\Request;
+use App\Rules\PersonName;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -17,17 +19,13 @@ use Illuminate\View\View;
 
 class ResidentController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
         $filterStatus = $user->isAdmin() ? trim((string) $request->query('status', '')) : '';
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
-        $perPage = $this->resolvePerPageChoice(
-            $request->query('per_page_custom'),
-            $request->query('per_page'),
-            10
-        );
+        $perPage = 10;
 
         $query = Resident::query()
             ->with(['subdivision', 'house', 'user'])
@@ -58,7 +56,7 @@ class ResidentController extends Controller
             $query->where('status', $filterStatus);
         }
 
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             $query->where('status', ActiveStatus::Active->value);
             $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
@@ -66,8 +64,15 @@ class ResidentController extends Controller
         }
 
         $residents = $query
-            ->paginate($perPage)
+            ->orderBy('resident_id')->simplePaginate($perPage)
             ->withQueryString();
+        $modalResidents = collect($residents->items());
+        if ($user->isAdmin() && $request->session()->has('errors') && $request->old('edit_resident_id')) {
+            $editingResident = Resident::with(['subdivision', 'house', 'user'])->find($request->old('edit_resident_id'));
+            if ($editingResident && ! $modalResidents->contains('resident_id', $editingResident->resident_id)) {
+                $modalResidents = $modalResidents->push($editingResident);
+            }
+        }
         $subdivisions = $user->isAdmin()
             ? Subdivision::orderBy('subdivision_name')->get()
             : collect();
@@ -75,24 +80,25 @@ class ResidentController extends Controller
             ? House::query()->with('subdivision')->orderBy('subdivision_id')->orderBy('block')->orderBy('lot')->get()
             : collect();
 
-        return view('residents.index', compact(
+        return $this->scrollView('residents.index', compact(
             'residents',
+            'modalResidents',
             'subdivisions',
             'houses',
             'filterQ',
             'filterStatus',
             'filterSubdivision',
             'perPage'
-        ));
+        ), ['residents' => 'residents']);
     }
 
     public function show(Request $request, Resident $resident): View
     {
-        if (!$request->user()->isAdmin() && $resident->status !== ActiveStatus::Active) {
+        if (! $request->user()->isAdmin() && $resident->status !== ActiveStatus::Active) {
             abort(404);
         }
 
-        if (!$request->user()->canAccessSubdivision($resident->subdivision_id)) {
+        if (! $request->user()->canAccessSubdivision($resident->subdivision_id)) {
             abort(403);
         }
 
@@ -197,7 +203,7 @@ class ResidentController extends Controller
                 ->where('resident_id', $resident->resident_id)
                 ->get()
                 ->each(function (User $linkedUser): void {
-                    if (!$linkedUser->trashed()) {
+                    if (! $linkedUser->trashed()) {
                         $linkedUser->delete();
                     }
                 });
@@ -212,11 +218,11 @@ class ResidentController extends Controller
     private function validateResident(Request $request, ?Resident $resident = null): array
     {
         $data = $request->validate([
-            'surname' => ['required_without:full_name', 'nullable', 'string', 'max:50'],
-            'first_name' => ['required_without:full_name', 'nullable', 'string', 'max:50'],
-            'middle_name' => ['nullable', 'string', 'max:50'],
-            'extension' => ['nullable', 'string', 'max:20'],
-            'full_name' => ['nullable', 'string', 'max:100'],
+            'surname' => ['required_without:full_name', 'nullable', 'string', 'max:50', new PersonName],
+            'first_name' => ['required_without:full_name', 'nullable', 'string', 'max:50', new PersonName],
+            'middle_name' => ['nullable', 'string', 'max:50', new PersonName],
+            'extension' => ['nullable', 'string', 'max:20', new PersonName],
+            'full_name' => ['nullable', 'string', 'max:100', new PersonName],
             'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
             'email' => ['required', 'email', 'max:100'],
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
@@ -242,17 +248,17 @@ class ResidentController extends Controller
 
         if ($relation !== '') {
             $allowedRelations = ['Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
-            if (!in_array($relation, $allowedRelations, true)) {
+            if (! in_array($relation, $allowedRelations, true)) {
                 $relation = Str::title($relation);
             }
         }
 
         $house = null;
 
-        if (!empty($data['house_id'])) {
+        if (! empty($data['house_id'])) {
             $house = House::query()->find($data['house_id']);
 
-            if (!$house || (int) $house->subdivision_id !== (int) $data['subdivision_id']) {
+            if (! $house || (int) $house->subdivision_id !== (int) $data['subdivision_id']) {
                 throw ValidationException::withMessages([
                     'house_id' => 'The selected house does not belong to the selected subdivision.',
                 ]);

@@ -2,14 +2,15 @@
 
 use App\Http\Controllers\AdminVisitorNotificationController;
 use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HouseController;
 use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\IncidentNotificationController;
 use App\Http\Controllers\PasswordResetRequestController;
-use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ResidentVisitorController;
 use App\Http\Controllers\ResidentController;
+use App\Http\Controllers\ResidentVisitorController;
 use App\Http\Controllers\SubdivisionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorController;
@@ -27,6 +28,14 @@ Route::get('/subdivision-logo/{subdivision}', [SubdivisionController::class, 'lo
 
 Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::prefix('/incident-notifications')->name('incident-notifications.')->group(function () {
+        Route::get('/', [IncidentNotificationController::class, 'index'])->name('index');
+        Route::post('/read-one', [IncidentNotificationController::class, 'readOne'])->name('read-one');
+        Route::post('/read-all', [IncidentNotificationController::class, 'readAll'])->name('read-all');
+        Route::delete('/clear-all', [IncidentNotificationController::class, 'clearAll'])->name('clear-all');
+    });
+    Route::get('/dashboard/records/{table}', [DashboardController::class, 'records'])
+        ->whereIn('table', ['incidents', 'visitors'])->name('dashboard.records');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('role:admin,staff')->name('analytics.index');
     Route::get('/analytics/records', [AnalyticsController::class, 'records'])->middleware('role:admin,staff')->name('analytics.records');
 
@@ -60,9 +69,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/users/{user}', [UserController::class, 'show'])->middleware('role:admin')->name('users.show');
     Route::post('/users', [UserController::class, 'store'])->middleware('role:admin')->name('users.store');
     Route::put('/users/{user}', [UserController::class, 'update'])->middleware('role:admin')->name('users.update');
-    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('role:admin')->name('users.destroy');
+    Route::patch('/users/{user}/status', [UserController::class, 'setStatus'])->middleware('role:admin')->name('users.status');
     Route::post('/users/{userId}/restore', [UserController::class, 'restore'])->middleware('role:admin')->name('users.restore');
-    Route::delete('/users/{userId}/force', [UserController::class, 'forceDelete'])->middleware('role:admin')->name('users.force-delete');
 
     Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
     Route::get('/incidents/export', [IncidentController::class, 'export'])->name('incidents.export');
@@ -104,7 +112,7 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/change-password', [ProfileController::class, 'forcePasswordChange'])->name('password.force-change');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
 });
 
 require __DIR__.'/auth.php';

@@ -2,11 +2,12 @@
 
 namespace App\Providers;
 
+use App\Support\IncidentNotificationFeed;
 use App\Support\VisitorActivityFeed;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,7 +32,14 @@ class AppServiceProvider extends ServiceProvider
         View::composer(['layouts.app', 'layouts.navigation'], function ($view): void {
             $user = auth()->user();
 
-            if (!$user || !$user->isAdmin() || !Schema::hasTable('visitors')) {
+            if ($user && ! $user->isAdmin()) {
+                $view->with('adminVisitorNotifications', IncidentNotificationFeed::recentForUser($user));
+                $view->with('adminVisitorUnreadCount', IncidentNotificationFeed::unreadCountForUser($user));
+
+                return;
+            }
+
+            if (! $user || ! $user->isAdmin() || ! Schema::hasTable('visitors')) {
                 $view->with('adminVisitorNotifications', collect());
                 $view->with('adminVisitorUnreadCount', 0);
 

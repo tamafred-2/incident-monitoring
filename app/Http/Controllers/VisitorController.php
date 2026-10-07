@@ -10,11 +10,15 @@ use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
 use App\Models\VisitorRequest;
+use App\Rules\PersonName;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -24,58 +28,54 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class VisitorController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $user = $request->user();
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
         $filterDateFrom = $this->normalizeDateTimeInput($request->query('date_from'));
         $filterDateTo = $this->normalizeDateTimeInput($request->query('date_to'));
-        $historyPerPage = $this->resolvePerPageChoice(
-            $request->query('history_per_page_custom'),
-            $request->query('history_per_page'),
-            10
-        );
-        $checkOutPerPage = $this->resolvePerPageChoice(
-            $request->query('check_out_per_page_custom'),
-            $request->query('check_out_per_page'),
-            10
-        );
+        $historyPerPage = 10;
+        $checkOutPerPage = 10;
 
         $visitors = $this->buildVisitorHistoryQuery($request)
-            ->paginate($historyPerPage, ['*'], 'history_page')
+            ->orderByDesc('visitor_id')->simplePaginate($historyPerPage, ['*'], 'history_page')
             ->withQueryString();
-        $subdivisions = $user->isAdmin()
-            ? Subdivision::where('status', ActiveStatus::Active)->orderBy('subdivision_name')->get()
-            : collect();
-        $housesBySubdivision = House::query()
-            ->select('house_id', 'subdivision_id', 'street', 'block', 'lot')
-            ->orderBy('street')
-            ->orderBy('block')
-            ->orderBy('lot')
-            ->get()
-            ->groupBy('subdivision_id')
-            ->map(fn ($houses) => $houses->map(fn (House $house) => [
-                'house_id' => (int) $house->house_id,
-                'street' => trim((string) $house->street),
-                'block' => trim((string) $house->block),
-                'lot' => trim((string) $house->lot),
-                'display_address' => $house->display_address,
-            ])->values()->all());
+        if ($request->header('X-Scroll-List')) {
+            $subdivisions = $housesBySubdivision = $residentsByHouse = collect();
+        } else {
+            $subdivisions = $user->isAdmin()
+                ? Subdivision::where('status', ActiveStatus::Active)->orderBy('subdivision_name')->get()
+                : collect();
+            $housesBySubdivision = House::query()
+                ->select('house_id', 'subdivision_id', 'street', 'block', 'lot')
+                ->orderBy('street')
+                ->orderBy('block')
+                ->orderBy('lot')
+                ->get()
+                ->groupBy('subdivision_id')
+                ->map(fn ($houses) => $houses->map(fn (House $house) => [
+                    'house_id' => (int) $house->house_id,
+                    'street' => trim((string) $house->street),
+                    'block' => trim((string) $house->block),
+                    'lot' => trim((string) $house->lot),
+                    'display_address' => $house->display_address,
+                ])->values()->all());
 
-        $residentsByHouse = House::query()
-            ->when(!$user->isAdmin(), fn ($q) => $q->where('subdivision_id', $user->allowedSubdivisionId()))
-            ->with(['residents' => fn ($q) => $q->where('status', ActiveStatus::Active)
-                ->select('house_id', 'resident_id', 'full_name', 'phone', 'relation_to_owner')])
-            ->get()
-            ->mapWithKeys(fn (House $house) => [
-                (string) $house->house_id => $house->residents->map(fn (Resident $r) => [
-                    'id'    => $r->resident_id,
-                    'name'  => $r->full_name,
-                    'phone' => $r->phone,
-                    'is_owner' => strcasecmp(trim((string) $r->relation_to_owner), 'Owner') === 0,
-                ])->values()->all(),
-            ]);
+            $residentsByHouse = House::query()
+                ->when(! $user->isAdmin(), fn ($q) => $q->where('subdivision_id', $user->allowedSubdivisionId()))
+                ->with(['residents' => fn ($q) => $q->where('status', ActiveStatus::Active)
+                    ->select('house_id', 'resident_id', 'full_name', 'phone', 'relation_to_owner')])
+                ->get()
+                ->mapWithKeys(fn (House $house) => [
+                    (string) $house->house_id => $house->residents->map(fn (Resident $r) => [
+                        'id' => $r->resident_id,
+                        'name' => $r->full_name,
+                        'phone' => $r->phone,
+                        'is_owner' => strcasecmp(trim((string) $r->relation_to_owner), 'Owner') === 0,
+                    ])->values()->all(),
+                ]);
+        }
         $effectiveSubdivision = $this->resolveEffectiveSubdivisionId($request);
 
         $insideVisitorQuery = Visitor::query()
@@ -97,7 +97,7 @@ class VisitorController extends Controller
                 }
             )
             ->when(
-                !$user->isAdmin(),
+                ! $user->isAdmin(),
                 fn ($builder) => $builder->where('subdivision_id', $user->allowedSubdivisionId())
             )
             ->when(
@@ -113,10 +113,10 @@ class VisitorController extends Controller
         );
         $insideVisitors = $insideVisitorQuery
             ->orderByDesc('check_in')
-            ->paginate($checkOutPerPage, ['*'], 'check_out_page')
+            ->orderByDesc('visitor_id')->simplePaginate($checkOutPerPage, ['*'], 'check_out_page')
             ->withQueryString();
 
-        return view('visitors.index', compact(
+        return $this->scrollView('visitors.index', compact(
             'visitors',
             'subdivisions',
             'filterQ',
@@ -129,7 +129,7 @@ class VisitorController extends Controller
             'checkOutPerPage',
             'filterDateFrom',
             'filterDateTo',
-        ));
+        ), ['visitor-history' => 'visitors', 'visitor-inside' => 'insideVisitors']);
     }
 
     public function show(Request $request, Visitor $visitor): View
@@ -166,7 +166,7 @@ class VisitorController extends Controller
     public function export(Request $request): Response|StreamedResponse|RedirectResponse
     {
         $format = strtolower((string) $request->query('format', 'excel'));
-        if (!in_array($format, ['excel', 'pdf'], true)) {
+        if (! in_array($format, ['excel', 'pdf'], true)) {
             return back()->with('error', 'Unsupported export format.');
         }
 
@@ -175,7 +175,7 @@ class VisitorController extends Controller
                 $pdf = Pdf::loadView('visitors.report-print', $this->visitorReportViewData($request, false, true, true))
                     ->setPaper('a4', 'landscape');
 
-                return $pdf->download('visitor-report-' . now()->format('Ymd_His') . '.pdf');
+                return $pdf->download('visitor-report-'.now()->format('Ymd_His').'.pdf');
             } catch (\Throwable $exception) {
                 report($exception);
 
@@ -185,7 +185,7 @@ class VisitorController extends Controller
 
         $visitors = $this->buildVisitorHistoryQuery($request)->get();
         $reportRows = $this->buildVisitorReportRows($visitors, false);
-        $filename = 'visitor-report-' . now()->format('Ymd_His') . '.csv';
+        $filename = 'visitor-report-'.now()->format('Ymd_His').'.csv';
 
         return response()->streamDownload(function () use ($reportRows) {
             $handle = fopen('php://output', 'w');
@@ -227,7 +227,7 @@ class VisitorController extends Controller
 
     public function edit(Request $request, Visitor $visitor): View
     {
-        if (!$request->user()->isAdmin()) {
+        if (! $request->user()->isAdmin()) {
             abort(403);
         }
 
@@ -239,18 +239,18 @@ class VisitorController extends Controller
 
     public function update(Request $request, Visitor $visitor): RedirectResponse
     {
-        if (!$request->user()->isAdmin()) {
+        if (! $request->user()->isAdmin()) {
             abort(403);
         }
 
         $data = $request->validate([
-            'surname' => ['required', 'string', 'max:100'],
-            'first_name' => ['required', 'string', 'max:100'],
-            'middle_initials' => ['nullable', 'string', 'max:20'],
-            'extension' => ['nullable', 'string', 'max:20'],
+            'surname' => ['required', 'string', 'max:100', new PersonName],
+            'first_name' => ['required', 'string', 'max:100', new PersonName],
+            'middle_initials' => ['nullable', 'string', 'max:20', new PersonName],
+            'extension' => ['nullable', 'string', 'max:20', new PersonName],
             'phone' => ['required', 'string', 'max:40', 'regex:/^[0-9]+$/'],
             'purpose' => ['nullable', 'string'],
-            'host_employee' => ['nullable', 'string', 'max:150'],
+            'host_employee' => ['nullable', 'string', 'max:150', new PersonName],
             'house_address_or_unit' => ['nullable', 'string', 'max:120'],
             'check_in' => ['required', 'date'],
             'check_out' => ['nullable', 'date', 'after_or_equal:check_in'],
@@ -281,7 +281,7 @@ class VisitorController extends Controller
 
     public function idPhoto(Request $request, Visitor $visitor): BinaryFileResponse
     {
-        if (!$request->user()->canAccessSubdivision($visitor->subdivision_id)) {
+        if (! $request->user()->canAccessSubdivision($visitor->subdivision_id)) {
             abort(403);
         }
 
@@ -294,28 +294,28 @@ class VisitorController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'subdivision_id'        => ['nullable', 'integer'],
-            'visit_type'            => ['required', Rule::in(['resident', 'walk_in'])],
-            'surname'               => ['required', 'string', 'max:100'],
-            'first_name'            => ['required', 'string', 'max:100'],
-            'middle_initials'       => ['nullable', 'string', 'max:20'],
-            'extension'             => ['nullable', 'string', 'max:20'],
-            'phone'                 => ['required', 'string', 'max:40', 'regex:/^[0-9]+$/'],
-            'purpose'               => ['nullable', 'string'],
-            'on_vehicle'            => ['nullable', 'boolean'],
-            'plate_number'          => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
-            'passenger_count'       => ['nullable', 'integer', 'min:1', 'max:20', 'required_if:on_vehicle,1'],
-            'vehicle_type'          => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
-            'vehicle_color'         => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
-            'id_photo'              => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
-            'host_employee'         => ['nullable', 'string', 'max:150'],
+            'subdivision_id' => ['nullable', 'integer'],
+            'visit_type' => ['required', Rule::in(['resident', 'walk_in'])],
+            'surname' => ['required', 'string', 'max:100', new PersonName],
+            'first_name' => ['required', 'string', 'max:100', new PersonName],
+            'middle_initials' => ['nullable', 'string', 'max:20', new PersonName],
+            'extension' => ['nullable', 'string', 'max:20', new PersonName],
+            'phone' => ['required', 'string', 'max:40', 'regex:/^[0-9]+$/'],
+            'purpose' => ['nullable', 'string'],
+            'on_vehicle' => ['nullable', 'boolean'],
+            'plate_number' => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
+            'passenger_count' => ['nullable', 'integer', 'min:1', 'max:20', 'required_if:on_vehicle,1'],
+            'vehicle_type' => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
+            'vehicle_color' => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
+            'id_photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'host_employee' => ['nullable', 'string', 'max:150', new PersonName],
             'house_address_or_unit' => ['nullable', 'string', 'max:120', 'required_if:visit_type,resident', 'required_if:visit_type,walk_in'],
-            'resident_house_id'     => ['nullable', 'integer'],
-            'resident_id'           => ['nullable', 'integer', 'required_if:visit_type,resident'],
+            'resident_house_id' => ['nullable', 'integer'],
+            'resident_id' => ['nullable', 'integer', 'required_if:visit_type,resident'],
         ]);
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
-        if (!$subdivisionId) {
+        if (! $subdivisionId) {
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
         }
 
@@ -336,23 +336,23 @@ class VisitorController extends Controller
                 : null;
 
             Visitor::create([
-                'subdivision_id'        => $subdivisionId,
-                'surname'               => $data['surname'],
-                'first_name'            => $data['first_name'],
-                'middle_initials'       => $data['middle_initials'] ?? null,
-                'extension'             => $data['extension'] ?? null,
-                'phone'                 => $data['phone'],
-                'plate_number'          => $plateNumber,
-                'passenger_count'       => $passengerCount,
-                'vehicle_type'          => $vehicleType,
-                'vehicle_color'         => $vehicleColor,
-                'id_photo_path'         => $idPhotoPath,
-                'purpose'               => $data['purpose'] ?? null,
-                'host_employee'         => null,
+                'subdivision_id' => $subdivisionId,
+                'surname' => $data['surname'],
+                'first_name' => $data['first_name'],
+                'middle_initials' => $data['middle_initials'] ?? null,
+                'extension' => $data['extension'] ?? null,
+                'phone' => $data['phone'],
+                'plate_number' => $plateNumber,
+                'passenger_count' => $passengerCount,
+                'vehicle_type' => $vehicleType,
+                'vehicle_color' => $vehicleColor,
+                'id_photo_path' => $idPhotoPath,
+                'purpose' => $data['purpose'] ?? null,
+                'host_employee' => null,
                 'house_address_or_unit' => trim((string) ($data['house_address_or_unit'] ?? '')) ?: null,
-                'check_in'              => now(),
-                'check_out'             => null,
-                'status'                => VisitorStatus::Inside->value,
+                'check_in' => now(),
+                'check_out' => null,
+                'status' => VisitorStatus::Inside->value,
             ]);
 
             return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
@@ -368,7 +368,7 @@ class VisitorController extends Controller
                 ->first();
         }
 
-        if (!$house) {
+        if (! $house) {
             $normalizedAddress = strtoupper(trim((string) ($data['house_address_or_unit'] ?? '')));
 
             $house = House::query()
@@ -383,7 +383,7 @@ class VisitorController extends Controller
                 });
         }
 
-        if (!$house) {
+        if (! $house) {
             return back()->withErrors([
                 'house_address_or_unit' => 'Please select a valid house / unit for the chosen subdivision.',
             ])->withInput();
@@ -396,7 +396,7 @@ class VisitorController extends Controller
             ->where('status', ActiveStatus::Active)
             ->first();
 
-        if (!$resident) {
+        if (! $resident) {
             return back()->withErrors([
                 'resident_id' => 'Please select a valid active resident for the chosen house / unit.',
             ])->withInput();
@@ -416,7 +416,7 @@ class VisitorController extends Controller
                 ->where('status', ActiveStatus::Active)
                 ->first();
 
-            if (!$owner || strcasecmp(trim((string) $owner->relation_to_owner), 'Owner') !== 0) {
+            if (! $owner || strcasecmp(trim((string) $owner->relation_to_owner), 'Owner') !== 0) {
                 return back()->withErrors(['approving_owner_id' => 'An active owner of this house must give permission before entry.'])->withInput();
             }
 
@@ -448,51 +448,51 @@ class VisitorController extends Controller
             : null;
 
         $visitor = Visitor::create([
-            'subdivision_id'        => $subdivisionId,
-            'surname'               => $data['surname'],
-            'first_name'            => $data['first_name'],
-            'middle_initials'       => $data['middle_initials'] ?? null,
-            'extension'             => $data['extension'] ?? null,
-            'phone'                 => $data['phone'],
-            'plate_number'          => $plateNumber,
-            'passenger_count'       => $passengerCount,
-            'vehicle_type'          => $vehicleType,
-            'vehicle_color'         => $vehicleColor,
-            'id_photo_path'         => $idPhotoPath,
-            'purpose'               => $data['purpose'] ?? null,
-            'host_employee'         => $resident->full_name,
-            'owner_approval'        => $ownerApproval,
+            'subdivision_id' => $subdivisionId,
+            'surname' => $data['surname'],
+            'first_name' => $data['first_name'],
+            'middle_initials' => $data['middle_initials'] ?? null,
+            'extension' => $data['extension'] ?? null,
+            'phone' => $data['phone'],
+            'plate_number' => $plateNumber,
+            'passenger_count' => $passengerCount,
+            'vehicle_type' => $vehicleType,
+            'vehicle_color' => $vehicleColor,
+            'id_photo_path' => $idPhotoPath,
+            'purpose' => $data['purpose'] ?? null,
+            'host_employee' => $resident->full_name,
+            'owner_approval' => $ownerApproval,
             'house_address_or_unit' => $house->display_address,
-            'check_in'              => now(),
-            'check_out'             => null,
-            'status'                => VisitorStatus::Inside->value,
+            'check_in' => now(),
+            'check_out' => null,
+            'status' => VisitorStatus::Inside->value,
         ]);
 
         VisitorRequest::create([
-            'visitor_id'            => $visitor->visitor_id,
-            'resident_id'           => $resident->resident_id,
-            'subdivision_id'        => $subdivisionId,
-            'visitor_name'          => Visitor::formatFullName(
+            'visitor_id' => $visitor->visitor_id,
+            'resident_id' => $resident->resident_id,
+            'subdivision_id' => $subdivisionId,
+            'visitor_name' => Visitor::formatFullName(
                 $data['first_name'],
                 $data['middle_initials'] ?? null,
                 $data['surname'],
                 $data['extension'] ?? null
             ),
-            'surname'               => $data['surname'],
-            'first_name'            => $data['first_name'],
-            'middle_initials'       => $data['middle_initials'] ?? null,
-            'extension'             => $data['extension'] ?? null,
-            'phone'                 => $data['phone'],
-            'plate_number'          => $plateNumber,
-            'passenger_count'       => $passengerCount,
-            'vehicle_type'          => $vehicleType,
-            'vehicle_color'         => $vehicleColor,
-            'id_photo_path'         => $idPhotoPath,
-            'purpose'               => $data['purpose'] ?? null,
+            'surname' => $data['surname'],
+            'first_name' => $data['first_name'],
+            'middle_initials' => $data['middle_initials'] ?? null,
+            'extension' => $data['extension'] ?? null,
+            'phone' => $data['phone'],
+            'plate_number' => $plateNumber,
+            'passenger_count' => $passengerCount,
+            'vehicle_type' => $vehicleType,
+            'vehicle_color' => $vehicleColor,
+            'id_photo_path' => $idPhotoPath,
+            'purpose' => $data['purpose'] ?? null,
             'house_address_or_unit' => $house->display_address,
-            'status'                => VisitorRequestStatus::Approved->value,
-            'requested_at'          => now(),
-            'responded_at'          => now(),
+            'status' => VisitorRequestStatus::Approved->value,
+            'requested_at' => now(),
+            'responded_at' => now(),
         ]);
 
         return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
@@ -501,7 +501,7 @@ class VisitorController extends Controller
 
     public function checkout(Request $request, Visitor $visitor): RedirectResponse
     {
-        if (!$request->user()->canAccessSubdivision($visitor->subdivision_id)) {
+        if (! $request->user()->canAccessSubdivision($visitor->subdivision_id)) {
             return redirect()->route('visitors.index')->with('error', 'You cannot access that visitor record.');
         }
 
@@ -509,6 +509,7 @@ class VisitorController extends Controller
             if ($request->input('return_to') === 'dashboard') {
                 return redirect()->route('dashboard')->with('error', 'That visitor is already checked out.');
             }
+
             return redirect()->route('visitors.index', $this->visitorRouteContext($request, $visitor->subdivision_id))
                 ->with('error', 'That visitor is already checked out.');
         }
@@ -526,7 +527,7 @@ class VisitorController extends Controller
 
     public function destroy(Request $request, Visitor $visitor): RedirectResponse
     {
-        if (!$request->user()->canAccessSubdivision($visitor->subdivision_id)) {
+        if (! $request->user()->canAccessSubdivision($visitor->subdivision_id)) {
             return redirect()->route('visitors.index')->with('error', 'You cannot access that visitor record.');
         }
 
@@ -541,7 +542,7 @@ class VisitorController extends Controller
     {
         $visitor = Visitor::withTrashed()->findOrFail($visitorId);
 
-        if (!$request->user()->canAccessSubdivision($visitor->subdivision_id)) {
+        if (! $request->user()->canAccessSubdivision($visitor->subdivision_id)) {
             return redirect()->route('visitors.index')->with('error', 'You cannot access that visitor record.');
         }
 
@@ -555,7 +556,7 @@ class VisitorController extends Controller
     {
         $visitor = Visitor::withTrashed()->findOrFail($visitorId);
 
-        if (!$request->user()->canAccessSubdivision($visitor->subdivision_id)) {
+        if (! $request->user()->canAccessSubdivision($visitor->subdivision_id)) {
             return redirect()->route('visitors.index')->with('error', 'You cannot access that visitor record.');
         }
 
@@ -570,7 +571,7 @@ class VisitorController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             return $user->allowedSubdivisionId();
         }
 
@@ -588,7 +589,7 @@ class VisitorController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             return $user->allowedSubdivisionId();
         }
 
@@ -603,7 +604,7 @@ class VisitorController extends Controller
     private function visitorRouteContext(Request $request, int|string|null $subdivisionId): array
     {
         $tab = $request->input('tab', $request->query('tab', 'history'));
-        if (!in_array($tab, ['check-in', 'check-out', 'history'], true)) {
+        if (! in_array($tab, ['check-in', 'check-out', 'history'], true)) {
             $tab = 'history';
         }
 
@@ -658,11 +659,11 @@ class VisitorController extends Controller
         }
 
         if (preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/', $value)) {
-            return str_replace('T', ' ', $value) . (strlen($value) === 16 ? ':00' : '');
+            return str_replace('T', ' ', $value).(strlen($value) === 16 ? ':00' : '');
         }
 
         if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/', $value)) {
-            return strlen($value) === 16 ? $value . ':00' : $value;
+            return strlen($value) === 16 ? $value.':00' : $value;
         }
 
         return null;
@@ -692,7 +693,7 @@ class VisitorController extends Controller
 
         $query = Visitor::query()
             ->with('subdivision')
-            ->when(!$request->boolean('chart_filter'), fn ($q) => $q->where('status', VisitorStatus::CheckedOut))
+            ->when(! $request->boolean('chart_filter'), fn ($q) => $q->where('status', VisitorStatus::CheckedOut))
             ->orderByDesc('check_in');
 
         if ($filterQ !== '') {
@@ -716,7 +717,7 @@ class VisitorController extends Controller
             $filterDateTo
         );
 
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
             $query->where('subdivision_id', $filterSubdivision);
@@ -726,12 +727,12 @@ class VisitorController extends Controller
             $weekday = $request->query('weekday');
             abort_unless(in_array($weekday, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], true) && $filterDateFrom && $filterDateTo, 422);
             $dates = [];
-            for ($day = \Illuminate\Support\Carbon::parse($filterDateFrom)->startOfDay(); $day->lte(\Illuminate\Support\Carbon::parse($filterDateTo)); $day->addDay()) {
+            for ($day = Carbon::parse($filterDateFrom)->startOfDay(); $day->lte(Carbon::parse($filterDateTo)); $day->addDay()) {
                 if ($day->format('D') === $weekday) {
                     $dates[] = $day->toDateString();
                 }
             }
-            $query->whereIn(\Illuminate\Support\Facades\DB::raw('DATE(check_in)'), $dates);
+            $query->whereIn(DB::raw('DATE(check_in)'), $dates);
         }
 
         return $query;
@@ -770,7 +771,7 @@ class VisitorController extends Controller
                 if ($absolutePath && File::exists($absolutePath)) {
                     $mime = File::mimeType($absolutePath) ?: 'image/png';
                     $contents = File::get($absolutePath);
-                    $photoDataUri = 'data:' . $mime . ';base64,' . base64_encode($contents);
+                    $photoDataUri = 'data:'.$mime.';base64,'.base64_encode($contents);
                 }
             }
 
@@ -818,7 +819,7 @@ class VisitorController extends Controller
     private function storeVisitorIdPhoto(Request $request): string
     {
         $file = $request->file('id_photo');
-        if (!$file) {
+        if (! $file) {
             abort(422, 'ID photo is required.');
         }
 
@@ -827,7 +828,7 @@ class VisitorController extends Controller
 
     private function visitorPhotoAbsolutePath(?string $path): ?string
     {
-        if (!$path || !str_starts_with($path, 'uploads/visitors/id-photos/')) {
+        if (! $path || ! str_starts_with($path, 'uploads/visitors/id-photos/')) {
             return null;
         }
 

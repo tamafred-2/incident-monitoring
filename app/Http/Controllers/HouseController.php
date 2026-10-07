@@ -5,16 +5,17 @@ namespace App\Http\Controllers;
 use App\Enums\ActiveStatus;
 use App\Models\House;
 use App\Models\Subdivision;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 
 class HouseController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $filterQ = trim((string) $request->query('q', ''));
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
@@ -42,20 +43,20 @@ class HouseController extends Controller
             $query->where('subdivision_id', $filterSubdivision);
         }
 
-        $houses = $query->get();
+        $houses = $query->orderBy('house_id')->simplePaginate(10)->withQueryString();
         $subdivisions = Subdivision::query()
             ->where('status', ActiveStatus::Active)
             ->orderBy('subdivision_name')
             ->get();
 
-        return view('houses.index', compact('houses', 'subdivisions', 'filterQ', 'filterSubdivision'));
+        return $this->scrollView('houses.index', compact('houses', 'subdivisions', 'filterQ', 'filterSubdivision'), ['houses' => 'houses']);
     }
 
     public function show(Request $request, House $house): View
     {
         $user = $request->user();
 
-        if (!$user->isAdmin() && !$user->canAccessSubdivision($house->subdivision_id)) {
+        if (! $user->isAdmin() && ! $user->canAccessSubdivision($house->subdivision_id)) {
             abort(403);
         }
 
@@ -64,7 +65,7 @@ class HouseController extends Controller
             'residents' => fn ($query) => $query->orderBy('full_name'),
         ]);
 
-        $showSubdivisionBackLink = $request->boolean('from_subdivision') || !$user->isAdmin();
+        $showSubdivisionBackLink = $request->boolean('from_subdivision') || ! $user->isAdmin();
         $subdivisionContext = array_filter([
             'subdivision' => $house->subdivision_id,
             'q' => $request->query('q'),

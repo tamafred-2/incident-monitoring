@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PasswordResetRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -13,25 +14,25 @@ class PasswordResetRequestController extends Controller
     /**
      * Show pending and recently completed password reset requests.
      */
-    public function index(): View
+    public function index(): View|JsonResponse
     {
         // Invalidate requests that were never confirmed within the grace period.
         PasswordResetRequest::expireStale();
 
         $pending = PasswordResetRequest::with('user')
             ->where('status', PasswordResetRequest::STATUS_PENDING)
-            ->orderBy('created_at')
-            ->get();
+            ->orderBy('created_at')->orderBy('id')
+            ->paginate(10, ['*'], 'pending_page')->withQueryString();
 
         $recent = PasswordResetRequest::with(['user', 'resolver'])
             ->whereIn('status', [PasswordResetRequest::STATUS_COMPLETED, PasswordResetRequest::STATUS_EXPIRED])
             ->orderByDesc('updated_at')
-            ->paginate(15);
+            ->orderByDesc('id')->simplePaginate(10)->withQueryString();
 
-        return view('password-resets.index', [
+        return $this->scrollView('password-resets.index', [
             'pendingRequests' => $pending,
             'recentRequests' => $recent,
-        ]);
+        ], ['reset-history' => 'recentRequests', 'reset-pending' => 'pendingRequests']);
     }
 
     /**
@@ -49,13 +50,13 @@ class PasswordResetRequestController extends Controller
             return back()->with('error', 'This request expired because it was not confirmed in time. Ask the user to submit a new request.');
         }
 
-        if (!$passwordResetRequest->isPending()) {
+        if (! $passwordResetRequest->isPending()) {
             return back()->with('error', 'This request has already been handled.');
         }
 
         $user = $passwordResetRequest->user;
 
-        if (!$user) {
+        if (! $user) {
             $passwordResetRequest->delete();
 
             return back()->with('error', 'The account for this request no longer exists.');

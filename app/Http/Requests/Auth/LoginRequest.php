@@ -44,10 +44,12 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        if (! Auth::attempt($this->only('email', 'password') + ['is_active' => true], $this->boolean('remember'))) {
             $deletedUser = User::withTrashed()
                 ->where('email', $this->string('email')->toString())
-                ->whereNotNull('deleted_at')
+                ->where(function ($query) {
+                    $query->whereNotNull('deleted_at')->orWhere('is_active', false);
+                })
                 ->first();
 
             if ($deletedUser && Hash::check($this->string('password')->toString(), $deletedUser->password)) {

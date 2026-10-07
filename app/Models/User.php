@@ -5,12 +5,11 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
-use App\Models\Resident;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role as SpatieRole;
@@ -18,8 +17,10 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
+    protected $attributes = ['is_active' => true];
+
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, SoftDeletes, HasRoles {
+    use HasFactory, HasRoles, Notifiable, SoftDeletes {
         HasRoles::hasRole as protected spatieHasRole;
     }
 
@@ -86,7 +87,7 @@ class User extends Authenticatable
      */
     public function syncSpatieRoleFromColumn(): void
     {
-        if (blank($this->role) || !Schema::hasTable('roles')) {
+        if (blank($this->role) || ! Schema::hasTable('roles')) {
             return;
         }
 
@@ -95,7 +96,7 @@ class User extends Authenticatable
         try {
             $role = SpatieRole::findOrCreate($roleName, $this->guard_name);
 
-            if (!$this->roles()->where($role->getKeyName(), $role->getKey())->exists()) {
+            if (! $this->roles()->where($role->getKeyName(), $role->getKey())->exists()) {
                 $this->syncRoles([$role->name]);
             }
         } catch (\Throwable $exception) {
@@ -202,7 +203,7 @@ class User extends Authenticatable
             return true;
         }
 
-        if (!is_string($roles) && !is_array($roles) && !$roles instanceof UserRole) {
+        if (! is_string($roles) && ! is_array($roles) && ! $roles instanceof UserRole) {
             return $this->spatieHasRole($roles, $guard);
         }
 
@@ -210,7 +211,7 @@ class User extends Authenticatable
 
         // Defer to Spatie when the list carries Role models/collections rather
         // than plain role names or UserRole enums.
-        if (collect($list)->contains(fn ($role) => !is_string($role) && !$role instanceof UserRole)) {
+        if (collect($list)->contains(fn ($role) => ! is_string($role) && ! $role instanceof UserRole)) {
             return $this->spatieHasRole($roles, $guard);
         }
 
@@ -236,7 +237,7 @@ class User extends Authenticatable
             return true;
         }
 
-        if (!$subdivisionId || !$this->subdivision_id) {
+        if (! $subdivisionId || ! $this->subdivision_id) {
             return false;
         }
 

@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\IncidentStatus;
 use App\Models\House;
 use App\Models\Incident;
 use App\Models\Resident;
 use App\Models\Visitor;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -18,7 +21,7 @@ class AnalyticsController extends Controller
     /** Selectable trend granularities. */
     private const GRANULARITIES = ['daily', 'weekly', 'monthly', 'yearly'];
 
-    public function records(Request $request): View
+    public function records(Request $request): View|JsonResponse
     {
         $data = $request->validate([
             'chart' => ['required', 'in:incidentsTrend,incidentsStatus,incidentsCategory,visitorsTrend,visitorsWeekday,residentsRelation,topHouses'],
@@ -34,7 +37,7 @@ class AnalyticsController extends Controller
             'residents' => Resident::query()->orderBy('full_name'),
             default => Incident::query()->orderByDesc('reported_at'),
         };
-        if (!$request->user()->isAdmin()) {
+        if (! $request->user()->isAdmin()) {
             $query->where('subdivision_id', $request->user()->allowedSubdivisionId());
             if ($kind === 'residents') {
                 $query->where('status', 'Active');
@@ -44,11 +47,15 @@ class AnalyticsController extends Controller
             $query->whereBetween($kind === 'visitors' ? 'check_in' : 'reported_at', [Carbon::parse($data['from'])->startOfDay(), Carbon::parse($data['to'])->endOfDay()]);
         }
         if (in_array($chart, ['incidentsCategory', 'incidentsStatus', 'residentsRelation'], true)) {
-            $column = match ($chart) { 'incidentsCategory' => 'category', 'incidentsStatus' => 'status', default => 'relation_to_owner' };
-            $fallback = match ($chart) { 'incidentsCategory' => 'Uncategorized', 'incidentsStatus' => 'Unknown', default => 'Unspecified' };
+            $column = match ($chart) {
+                'incidentsCategory' => 'category', 'incidentsStatus' => 'status', default => 'relation_to_owner'
+            };
+            $fallback = match ($chart) {
+                'incidentsCategory' => 'Uncategorized', 'incidentsStatus' => 'Unknown', default => 'Unspecified'
+            };
             $query->where(function ($q) use ($column, $value, $fallback) {
                 if ($column === 'status') {
-                    $q->whereIn($column, \App\Enums\IncidentStatus::valuesForLabel($value));
+                    $q->whereIn($column, IncidentStatus::valuesForLabel($value));
                 } else {
                     $q->where($column, $value);
                 }
@@ -70,13 +77,14 @@ class AnalyticsController extends Controller
             }
             $query->whereIn(DB::raw('DATE(check_in)'), $dates);
         }
-        return view('analytics.records', [
-            'records' => $query->paginate(20)->withQueryString(),
+
+        return $this->scrollView('analytics.records', [
+            'records' => $query->orderBy($query->getModel()->getKeyName())->paginate(20)->withQueryString(),
             'kind' => $kind,
             'selection' => $value,
             'from' => $data['from'],
             'to' => $data['to'],
-        ]);
+        ], ['analytics-records' => 'records']);
     }
 
     public function index(Request $request): View
@@ -86,7 +94,7 @@ class AnalyticsController extends Controller
         $isAdmin = $user->isAdmin();
 
         $scope = fn (Builder $query): Builder => $query->when(
-            !$isAdmin,
+            ! $isAdmin,
             fn (Builder $inner) => $inner->where('subdivision_id', $allowedId)
         );
 
@@ -117,7 +125,7 @@ class AnalyticsController extends Controller
             'filterFrom' => $trendStart->toDateString(),
             'filterTo' => $trendEnd->toDateString(),
             'hasRange' => $hasRange,
-            'rangeLabel' => $trendStart->format('M j, Y') . ' – ' . $trendEnd->format('M j, Y'),
+            'rangeLabel' => $trendStart->format('M j, Y').' – '.$trendEnd->format('M j, Y'),
             'incidents' => $this->buildIncidentAnalytics($scope, $granularity, $trendStart, $trendEnd, $filterStart, $filterEnd),
             'visitors' => $this->buildVisitorAnalytics($scope, $granularity, $trendStart, $trendEnd, $filterStart, $filterEnd),
             'community' => $this->buildCommunityAnalytics($scope, $trendStart, $trendEnd),
@@ -160,7 +168,7 @@ class AnalyticsController extends Controller
             ->groupBy('status')
             ->orderByDesc('aggregate')
             ->get()
-            ->groupBy(fn ($row) => \App\Enums\IncidentStatus::displayLabel($row->status))
+            ->groupBy(fn ($row) => IncidentStatus::displayLabel($row->status))
             ->map(fn ($rows) => (int) $rows->sum('aggregate'))
             ->all();
 
@@ -223,7 +231,7 @@ class AnalyticsController extends Controller
 
         if (Schema::hasColumn('residents', 'relation_to_owner')) {
             $byRelation = $scope(Resident::query())
-                ->when(!auth()->user()->isAdmin(), fn ($q) => $q->where('status', 'Active'))
+                ->when(! auth()->user()->isAdmin(), fn ($q) => $q->where('status', 'Active'))
                 ->select('relation_to_owner', DB::raw('COUNT(*) as aggregate'))
                 ->groupBy('relation_to_owner')
                 ->orderByDesc('aggregate')
@@ -246,7 +254,7 @@ class AnalyticsController extends Controller
         $houseValues = [];
 
         foreach ($topHouses as $row) {
-            $houseLabels[] = $row->house?->display_address ?? ('House #' . $row->house_id);
+            $houseLabels[] = $row->house?->display_address ?? ('House #'.$row->house_id);
             $houseValues[] = (int) $row->aggregate;
         }
 
@@ -316,7 +324,7 @@ class AnalyticsController extends Controller
      * granularity. Buckets are keyed by ISO date internally so display labels
      * can never collide; the value array is one total per period.
      *
-     * @param  \Illuminate\Support\Collection<int, mixed>  $dates
+     * @param  Collection<int, mixed>  $dates
      * @return array{labels: array<int, string>, values: array<int, int>}
      */
     private function bucketRange($dates, string $granularity, Carbon $start, Carbon $end): array

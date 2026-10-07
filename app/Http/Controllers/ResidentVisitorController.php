@@ -6,30 +6,32 @@ use App\Enums\VisitorRequestStatus;
 use App\Enums\VisitorStatus;
 use App\Models\Visitor;
 use App\Models\VisitorRequest;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ResidentVisitorController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $resident = $request->user()->resident;
 
-        abort_if(!$resident, 403, 'No resident profile linked to your account.');
+        abort_if(! $resident, 403, 'No resident profile linked to your account.');
 
         $requests = VisitorRequest::where('resident_id', $resident->resident_id)
-            ->orderByDesc('requested_at')
-            ->get();
+            ->orderByDesc('requested_at')->orderByDesc('request_id')
+            ->simplePaginate(10)->withQueryString();
 
-        return view('resident-visitors.index', compact('requests', 'resident'));
+        return $this->scrollView('resident-visitors.index', compact('requests', 'resident'), ['visitor-requests' => 'requests']);
     }
 
-    public function photo(Request $request, VisitorRequest $visitorRequest): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    public function photo(Request $request, VisitorRequest $visitorRequest): BinaryFileResponse
     {
         $resident = $request->user()->resident;
-        abort_if(!$resident, 403);
+        abort_if(! $resident, 403);
         abort_unless($visitorRequest->resident_id === $resident->resident_id, 403);
         abort_unless($visitorRequest->id_photo_path, 404);
 
@@ -44,29 +46,29 @@ class ResidentVisitorController extends Controller
         $this->authorizeRequest($request, $visitorRequest);
 
         $visitor = Visitor::create([
-            'subdivision_id'        => $visitorRequest->subdivision_id,
-            'surname'               => $visitorRequest->surname ?? $visitorRequest->visitor_name,
-            'first_name'            => $visitorRequest->first_name ?? $visitorRequest->visitor_name,
-            'middle_initials'       => $visitorRequest->middle_initials,
-            'extension'             => $visitorRequest->extension,
-            'phone'                 => $visitorRequest->phone,
-            'plate_number'          => $visitorRequest->plate_number,
-            'passenger_count'       => $visitorRequest->passenger_count,
-            'vehicle_type'          => $visitorRequest->vehicle_type,
-            'vehicle_color'         => $visitorRequest->vehicle_color,
-            'id_photo_path'         => $visitorRequest->id_photo_path,
-            'purpose'               => $visitorRequest->purpose,
-            'host_employee'         => $request->user()->resident->full_name,
+            'subdivision_id' => $visitorRequest->subdivision_id,
+            'surname' => $visitorRequest->surname ?? $visitorRequest->visitor_name,
+            'first_name' => $visitorRequest->first_name ?? $visitorRequest->visitor_name,
+            'middle_initials' => $visitorRequest->middle_initials,
+            'extension' => $visitorRequest->extension,
+            'phone' => $visitorRequest->phone,
+            'plate_number' => $visitorRequest->plate_number,
+            'passenger_count' => $visitorRequest->passenger_count,
+            'vehicle_type' => $visitorRequest->vehicle_type,
+            'vehicle_color' => $visitorRequest->vehicle_color,
+            'id_photo_path' => $visitorRequest->id_photo_path,
+            'purpose' => $visitorRequest->purpose,
+            'host_employee' => $request->user()->resident->full_name,
             'house_address_or_unit' => $visitorRequest->house_address_or_unit,
-            'check_in'              => now(),
-            'check_out'             => null,
-            'status'                => VisitorStatus::Inside->value,
+            'check_in' => now(),
+            'check_out' => null,
+            'status' => VisitorStatus::Inside->value,
         ]);
 
         $visitorRequest->update([
-            'status'       => VisitorRequestStatus::Approved->value,
+            'status' => VisitorRequestStatus::Approved->value,
             'responded_at' => now(),
-            'visitor_id'   => $visitor->visitor_id,
+            'visitor_id' => $visitor->visitor_id,
         ]);
 
         return back()->with('success', 'Visitor approved. Admin/Guard can now allow entry based on your response.');
@@ -85,7 +87,7 @@ class ResidentVisitorController extends Controller
     {
         $resident = $request->user()->resident;
 
-        abort_if(!$resident || $visitorRequest->resident_id !== $resident->resident_id, 403);
+        abort_if(! $resident || $visitorRequest->resident_id !== $resident->resident_id, 403);
         abort_if($visitorRequest->status !== VisitorRequestStatus::Pending, 422, 'This request has already been responded to.');
     }
 }

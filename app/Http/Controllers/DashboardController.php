@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Enums\IncidentStatus;
 use App\Enums\VisitorStatus;
-use App\Models\Incident;
 use App\Models\House;
+use App\Models\Incident;
 use App\Models\Resident;
 use App\Models\Subdivision;
+use App\Models\User;
 use App\Models\Visitor;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\CursorPaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -22,22 +25,12 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $allowedId = $user->allowedSubdivisionId();
-        $insidePerPage = $this->resolvePerPageChoice(
-            $request->query('inside_per_page_custom'),
-            $request->query('inside_per_page'),
-            10
-        );
-        $pendingIncidentsPerPage = $this->resolvePerPageChoice(
-            $request->query('pending_incidents_per_page_custom'),
-            $request->query('pending_incidents_per_page'),
-            10
-        );
         $isResidentDashboard = $user->isResident();
-        $isStaffDashboard = !$isResidentDashboard && $user->isStaff();
-        $showPendingIncidentList = !$isResidentDashboard && ($isStaffDashboard || $user->isAdmin());
+        $isStaffDashboard = ! $isResidentDashboard && $user->isStaff();
+        $showPendingIncidentList = ! $isResidentDashboard && ($isStaffDashboard || $user->isAdmin());
 
         $scope = fn (Builder $query): Builder => $query->when(
-            !$user->isAdmin(),
+            ! $user->isAdmin(),
             fn (Builder $inner) => $inner->where('subdivision_id', $allowedId)
         );
 
@@ -51,7 +44,7 @@ class DashboardController extends Controller
             $isResidentDashboard,
             fn ($query) => $query->where('reported_by', $user->user_id),
             fn ($query) => $query->when(
-                !$user->isAdmin(),
+                ! $user->isAdmin(),
                 fn ($innerQuery) => $innerQuery->where('subdivision_id', $allowedId)
             )
         )->count();
@@ -59,43 +52,32 @@ class DashboardController extends Controller
         $totalResidents = $isResidentDashboard
             ? ($user->resident ? 1 : 0)
             : Resident::when(
-                !$user->isAdmin(),
+                ! $user->isAdmin(),
                 fn ($query) => $query->where('subdivision_id', $allowedId)
             )->count();
 
         $totalHouses = $isResidentDashboard
             ? ($user->resident?->house_id ? 1 : 0)
             : House::when(
-                !$user->isAdmin(),
+                ! $user->isAdmin(),
                 fn ($query) => $query->where('subdivision_id', $allowedId)
             )->count();
 
         $visitorsToday = $isResidentDashboard
             ? 0
             : Visitor::when(
-                !$user->isAdmin(),
+                ! $user->isAdmin(),
                 fn ($query) => $query->where('subdivision_id', $allowedId)
             )->whereDate('check_in', now()->toDateString())->count();
 
         $visitorsInside = $isResidentDashboard
             ? 0
             : Visitor::when(
-                !$user->isAdmin(),
+                ! $user->isAdmin(),
                 fn ($query) => $query->where('subdivision_id', $allowedId)
             )->where('status', VisitorStatus::Inside)->count();
 
-        $insideVisitors = $isResidentDashboard
-            ? Visitor::query()->whereRaw('1 = 0')->paginate($insidePerPage)
-            : Visitor::query()
-                ->with('subdivision')
-                ->when(
-                    !$user->isAdmin(),
-                    fn ($query) => $query->where('subdivision_id', $allowedId)
-                )
-                ->where('status', VisitorStatus::Inside)
-                ->orderByDesc('check_in')
-                ->paginate($insidePerPage)
-                ->withQueryString();
+        $insideVisitors = $this->dashboardRecords($request, 'visitors');
 
         $residentOpenIncidents = $isResidentDashboard
             ? Incident::where('reported_by', $user->user_id)
@@ -112,7 +94,7 @@ class DashboardController extends Controller
         $staffActiveIncidents = $isStaffDashboard
             ? Incident::query()
                 ->when(
-                    !$user->isAdmin(),
+                    ! $user->isAdmin(),
                     fn ($query) => $query->where('subdivision_id', $allowedId)
                 )
                 ->whereNotIn('status', $this->resolvedIncidentStatuses())
@@ -122,28 +104,14 @@ class DashboardController extends Controller
         $staffPendingIncidents = $isStaffDashboard
             ? Incident::query()
                 ->when(
-                    !$user->isAdmin(),
+                    ! $user->isAdmin(),
                     fn ($query) => $query->where('subdivision_id', $allowedId)
                 )
                 ->whereIn('status', $this->pendingIncidentStatuses())
                 ->count()
             : 0;
 
-        $dashboardPendingIncidentList = $showPendingIncidentList
-            ? Incident::query()
-                ->with(['house', 'reporter'])
-                ->when(
-                    !$user->isAdmin(),
-                    fn ($query) => $query->where('subdivision_id', $allowedId)
-                )
-                ->whereIn('status', $this->pendingIncidentStatuses())
-                ->orderByDesc('reported_at')
-                ->orderByDesc('incident_date')
-                ->paginate($pendingIncidentsPerPage, ['*'], 'pending_page')
-                ->withQueryString()
-            : Incident::query()
-                ->whereRaw('1 = 0')
-                ->paginate($pendingIncidentsPerPage, ['*'], 'pending_page');
+        $dashboardPendingIncidentList = $this->dashboardRecords($request, 'incidents');
 
         return view('dashboard', compact(
             'isResidentDashboard',
@@ -157,14 +125,55 @@ class DashboardController extends Controller
             'visitorsToday',
             'visitorsInside',
             'insideVisitors',
-            'insidePerPage',
-            'pendingIncidentsPerPage',
             'residentOpenIncidents',
             'residentResolvedIncidents',
             'staffActiveIncidents',
             'staffPendingIncidents',
             'dashboardPendingIncidentList',
         ));
+    }
+
+    public function records(Request $request, string $table): JsonResponse
+    {
+        abort_unless(in_array($table, ['incidents', 'visitors'], true), 404);
+        abort_unless($this->canViewRecords($request->user(), $table), 403);
+
+        $records = $this->dashboardRecords($request, $table);
+
+        return response()->json([
+            'html' => view("dashboard.partials.{$table}-rows", compact('records'))->render(),
+            'next_cursor' => $records->nextCursor()?->encode(),
+            'count' => $records->count(),
+        ]);
+    }
+
+    private function canViewRecords(User $user, string $table): bool
+    {
+        return $table === 'incidents'
+            ? $user->isAdmin() || $user->isStaff()
+            : $user->isAdmin() || $user->isSecurity();
+    }
+
+    private function dashboardRecords(Request $request, string $table): CursorPaginator
+    {
+        $user = $request->user();
+        $isIncident = $table === 'incidents';
+        $query = $isIncident ? Incident::query() : Visitor::query();
+        $query->when(! $this->canViewRecords($user, $table), fn ($q) => $q->whereRaw('1 = 0'))
+            ->when(! $user->isAdmin(), fn ($q) => $q->where('subdivision_id', $user->allowedSubdivisionId()));
+
+        if ($isIncident) {
+            $query->whereIn('status', $this->pendingIncidentStatuses())
+                ->select('incidents.*')
+                ->selectRaw('COALESCE(reported_at, incident_date) AS dashboard_sort_at')
+                ->orderByDesc('dashboard_sort_at');
+        } else {
+            $query->where('status', VisitorStatus::Inside)->orderByDesc('check_in');
+        }
+
+        // Break timestamp ties with a unique key so inserts and checkouts do not shift later batches.
+        return $query->orderByDesc($isIncident ? 'incident_id' : 'visitor_id')
+            ->cursorPaginate(5, ['*'], $isIncident ? 'incident_cursor' : 'visitor_cursor');
     }
 
     /**
@@ -182,10 +191,6 @@ class DashboardController extends Controller
             ->whereIn('status', $this->pendingIncidentStatuses())
             ->count();
 
-        $resolutionRate = $totalIncidents > 0
-            ? round(($resolvedIncidents / $totalIncidents) * 100)
-            : 0;
-
         $totalResidents = $scope(Resident::query())->count();
         $totalHouses = $scope(House::query())->count();
 
@@ -193,8 +198,6 @@ class DashboardController extends Controller
             'total_incidents' => $totalIncidents,
             'pending_incidents' => $pendingIncidents,
             'resolved_incidents' => $resolvedIncidents,
-            'resolution_rate' => $resolutionRate,
-            'avg_resolution_label' => $this->averageResolutionLabel($scope),
             'total_visitors' => $scope(Visitor::query())->count(),
             'visitors_inside' => $scope(Visitor::query())->where('status', VisitorStatus::Inside)->count(),
             'total_residents' => $totalResidents,
@@ -203,68 +206,6 @@ class DashboardController extends Controller
                 ? round($totalResidents / $totalHouses, 1)
                 : 0,
         ];
-    }
-
-    /**
-     * @param  callable(Builder): Builder  $scope
-     */
-    private function averageResolutionLabel(callable $scope): string
-    {
-        $resolved = $scope(Incident::query())
-            ->whereNotNull('reported_at')
-            ->whereNotNull('resolved_at')
-            ->whereIn('status', $this->resolvedIncidentStatuses())
-            ->get(['reported_at', 'resolved_at']);
-
-        if ($resolved->isEmpty()) {
-            return 'N/A';
-        }
-
-        $totalHours = 0.0;
-        $count = 0;
-
-        foreach ($resolved as $incident) {
-            $hours = $incident->reported_at->diffInHours($incident->resolved_at, false);
-            if ($hours < 0) {
-                continue;
-            }
-
-            $totalHours += $hours;
-            $count++;
-        }
-
-        if ($count === 0) {
-            return 'N/A';
-        }
-
-        $avgHours = $totalHours / $count;
-
-        if ($avgHours < 24) {
-            return round($avgHours) . 'h';
-        }
-
-        return round($avgHours / 24, 1) . 'd';
-    }
-
-    private function resolvePerPage(mixed $value, int $default = 10): int
-    {
-        $perPage = (int) $value;
-
-        if ($perPage < 1) {
-            return $default;
-        }
-
-        return min($perPage, 100);
-    }
-
-    private function resolvePerPageChoice(mixed $customValue, mixed $selectedValue, int $default = 10): int
-    {
-        $custom = (int) $customValue;
-        if ($custom > 0) {
-            return $this->resolvePerPage($custom, $default);
-        }
-
-        return $this->resolvePerPage($selectedValue, $default);
     }
 
     private function pendingIncidentStatuses(): array
