@@ -230,7 +230,7 @@ class UserManagementTest extends TestCase
         ]);
     }
 
-    public function test_user_deletion_uses_soft_deletes(): void
+    public function test_user_can_be_deactivated_without_deletion(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
@@ -244,15 +244,16 @@ class UserManagementTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->delete(route('users.destroy', $targetUser));
+            ->patch(route('users.status', $targetUser), ['is_active' => false]);
 
         $response
             ->assertRedirectContains(route('users.index'))
-            ->assertSessionHas('success', 'User archived successfully.');
+            ->assertSessionHas('success', 'User deactivated successfully.');
 
-        $this->assertSoftDeleted('users', [
-            'user_id' => $targetUser->user_id,
-        ]);
+        $this->assertFalse($targetUser->fresh()->is_active);
+        $this->assertNull($targetUser->fresh()->deleted_at);
+        $this->patch(route('users.status', $targetUser), ['is_active' => true])->assertSessionHas('success', 'User activated successfully.');
+        $this->assertTrue($targetUser->fresh()->is_active);
     }
 
     public function test_archived_user_can_be_restored(): void
@@ -285,7 +286,7 @@ class UserManagementTest extends TestCase
         ]);
     }
 
-    public function test_archived_user_can_be_force_deleted(): void
+    public function test_user_deletion_endpoints_are_unavailable(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
@@ -299,18 +300,8 @@ class UserManagementTest extends TestCase
 
         $targetUser->delete();
 
-        $response = $this
-            ->actingAs($admin)
-            ->delete(route('users.force-delete', $targetUser->user_id), [
-                'view' => 'deleted',
-            ]);
-
-        $response
-            ->assertRedirectContains(route('users.index'))
-            ->assertSessionHas('success', 'User permanently deleted.');
-
-        $this->assertDatabaseMissing('users', [
-            'user_id' => $targetUser->user_id,
-        ]);
+        $this->actingAs($admin)->delete('/users/'.$targetUser->getKey())->assertStatus(405);
+        $this->delete('/users/'.$targetUser->getKey().'/force')->assertNotFound();
+        $this->assertNotNull(User::withTrashed()->find($targetUser->getKey()));
     }
 }

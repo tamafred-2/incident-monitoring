@@ -385,7 +385,7 @@ class IncidentManagementTest extends TestCase
                 'house_id' => $house->house_id,
                 'category' => 'Property Damage',
                 'location' => 'Clubhouse side entrance',
-                'incident_date' => now()->subMinutes(20)->format('Y-m-d H:i:s'),
+                'incident_date' => now()->format('Y-m-d H:i:s'),
                 'reported_at' => now()->format('Y-m-d H:i:s'),
                 'status' => 'Open',
                 'proof_photos' => [$photo],
@@ -586,7 +586,12 @@ class IncidentManagementTest extends TestCase
             'assigned_to' => $staff->user_id,
         ]);
 
-        $this->actingAs($staff)->put(route('incidents.update', $incident->incident_id), [
+        $this->actingAs($staff)->get(route('incidents.edit', $incident->incident_id))
+            ->assertOk()->assertSee('Investigation proof')->assertDontSee('Resolution proof');
+        $this->get(route('incidents.show', $incident->incident_id))
+            ->assertOk()->assertDontSee('Resolution proof');
+
+        $this->put(route('incidents.update', $incident->incident_id), [
             'status' => 'Resolved',
             'proof_photos' => [UploadedFile::fake()->create('after.jpg', 128, 'image/jpeg')],
         ])->assertSessionHasErrors('investigation_photos');
@@ -597,6 +602,10 @@ class IncidentManagementTest extends TestCase
             'investigation_photos' => [UploadedFile::fake()->create('before.jpg', 128, 'image/jpeg')],
         ])->assertSessionHasNoErrors();
         $before = $incident->proofPhotos()->where('stage', 'investigation')->firstOrFail();
+        $this->get(route('incidents.edit', $incident->incident_id))
+            ->assertOk()->assertSee('Resolution proof');
+        $this->get(route('incidents.show', $incident->incident_id))
+            ->assertOk()->assertDontSee('Resolution proof');
         $uploadedAt = $before->created_at->toDateTimeString();
         $this->travel(10)->minutes();
         $this->put(route('incidents.update', $incident->incident_id), ['status' => 'Resolved'])

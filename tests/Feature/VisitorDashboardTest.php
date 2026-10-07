@@ -361,6 +361,97 @@ class VisitorDashboardTest extends TestCase
             ->assertOk()
             ->assertSee('Pending Incidents')
             ->assertSee('Main entrance')
-            ->assertDontSee('Clubhouse');
+            ->assertViewHas('dashboardPendingIncidentList', fn ($records) => $records->pluck('location')->all() === ['Main entrance']);
+    }
+
+    public function test_dashboard_loads_five_visitors_and_scroll_cursor_survives_checkout(): void
+    {
+        $subdivision = Subdivision::create(['subdivision_name' => 'Scroll Visitors', 'status' => 'Active']);
+        $security = User::factory()->create(['role' => 'security', 'subdivision_id' => $subdivision->subdivision_id]);
+        $visitors = collect();
+        for ($i = 1; $i <= 12; $i++) {
+            $visitors->push(Visitor::create([
+                'subdivision_id' => $subdivision->subdivision_id,
+                'first_name' => "ScrollingVisitor{$i}", 'surname' => 'Test',
+                'check_in' => now(), 'status' => 'Inside',
+            ]));
+        }
+
+        $page = $this->actingAs($security)->get(route('dashboard', ['inside_per_page' => 100]));
+        $page->assertOk()->assertSee('ScrollingVisitor12')->assertDontSee('ScrollingVisitor7');
+        $initial = $page->viewData('insideVisitors');
+        $this->assertCount(5, $initial);
+        $this->assertSame($visitors->reverse()->take(5)->pluck('visitor_id')->values()->all(), $initial->pluck('visitor_id')->all());
+
+        // Removing a previously loaded record must not shift or skip the next batch.
+        $visitors->last()->update(['status' => 'Checked Out', 'check_out' => now()]);
+        $next = $this->getJson(route('dashboard.records', [
+            'table' => 'visitors', 'visitor_cursor' => $initial->nextCursor()->encode(),
+        ]))->assertOk()->assertJsonPath('count', 5);
+        $next->assertSee('ScrollingVisitor7')->assertDontSee('ScrollingVisitor12');
+        $last = $this->getJson(route('dashboard.records', [
+            'table' => 'visitors', 'visitor_cursor' => $next->json('next_cursor'),
+        ]))->assertOk()->assertJsonPath('count', 2)->assertJsonPath('next_cursor', null);
+        $last->assertSee('ScrollingVisitor1')->assertDontSee('ScrollingVisitor7');
+    }
+
+    public function test_scroll_endpoints_enforce_roles_subdivisions_and_active_statuses(): void
+    {
+        $home = Subdivision::create(['subdivision_name' => 'Home Scroll', 'status' => 'Active']);
+        $other = Subdivision::create(['subdivision_name' => 'Other Scroll', 'status' => 'Active']);
+        $staff = User::factory()->create(['role' => 'staff', 'subdivision_id' => $home->subdivision_id]);
+        $security = User::factory()->create(['role' => 'security', 'subdivision_id' => $home->subdivision_id]);
+        $resident = User::factory()->create(['role' => 'resident', 'subdivision_id' => $home->subdivision_id]);
+        foreach ([$home, $other] as $subdivision) {
+            foreach (['Open', 'Resolved'] as $status) {
+                Incident::create([
+                    'subdivision_id' => $subdivision->subdivision_id,
+                    'description' => "{$subdivision->subdivision_name} {$status}",
+                    'location' => "{$subdivision->subdivision_name} {$status}",
+                    'status' => $status, 'incident_date' => now(), 'reported_by' => $staff->user_id,
+                ]);
+            }
+            Visitor::create([
+                'subdivision_id' => $subdivision->subdivision_id,
+                'first_name' => $subdivision->subdivision_name, 'surname' => 'Visitor', 'status' => 'Inside', 'check_in' => now(),
+            ]);
+        }
+
+        $incidents = route('dashboard.records', ['table' => 'incidents']);
+        $visitors = route('dashboard.records', ['table' => 'visitors']);
+        $this->actingAs($staff)->getJson($incidents)->assertOk()->assertJsonPath('count', 1)
+            ->assertSee('Home Scroll Open')->assertDontSee('Other Scroll')->assertDontSee('Home Scroll Resolved');
+        $this->getJson($visitors)->assertForbidden();
+        $this->actingAs($security)->getJson($visitors)->assertOk()->assertJsonPath('count', 1)
+            ->assertSee('Home Scroll Visitor')->assertDontSee('Other Scroll');
+        $this->getJson($incidents)->assertForbidden();
+        $this->actingAs($resident)->getJson($visitors)->assertForbidden();
+        $this->getJson($incidents)->assertForbidden();
+    }
+
+    public function test_incident_scrolling_returns_separate_five_record_batches(): void
+    {
+        $subdivision = Subdivision::create(['subdivision_name' => 'Incident Scroll', 'status' => 'Active']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        for ($i = 1; $i <= 11; $i++) {
+            Incident::create([
+                'subdivision_id' => $subdivision->subdivision_id,
+                'description' => "ScrollIncident{$i}", 'location' => "ScrollIncident{$i}",
+                'status' => 'Under Investigation', 'incident_date' => now(), 'reported_by' => $admin->user_id,
+            ]);
+        }
+        $page = $this->actingAs($admin)->get(route('dashboard'));
+        $page->assertOk()->assertSee('ScrollIncident11');
+        $initial = $page->viewData('dashboardPendingIncidentList');
+        $this->assertCount(5, $initial);
+        $this->assertSame(['ScrollIncident11', 'ScrollIncident10', 'ScrollIncident9', 'ScrollIncident8', 'ScrollIncident7'], $initial->pluck('location')->all());
+        $next = $this->getJson(route('dashboard.records', [
+            'table' => 'incidents', 'incident_cursor' => $initial->nextCursor()->encode(),
+        ]))->assertOk()->assertJsonPath('count', 5);
+        $next->assertSee('ScrollIncident6')->assertDontSee('ScrollIncident11');
+        $this->getJson(route('dashboard.records', [
+            'table' => 'incidents', 'incident_cursor' => $next->json('next_cursor'),
+        ]))->assertOk()->assertJsonPath('count', 1)->assertJsonPath('next_cursor', null)
+            ->assertSee('ScrollIncident1');
     }
 }

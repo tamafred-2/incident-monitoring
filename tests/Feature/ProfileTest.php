@@ -70,41 +70,20 @@ class ProfileTest extends TestCase
         $this->assertSame('Test User', $user->refresh()->full_name);
     }
 
-    public function test_user_can_delete_their_account(): void
+    public function test_account_deletion_is_unavailable_from_profile(): void
     {
         $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->delete('/profile', [
-                'password' => 'password',
-            ]);
-
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect('/');
-
-        $this->assertGuest();
-        $this->assertSoftDeleted('users', [
-            'user_id' => $user->user_id,
-        ]);
+        $this->actingAs($user)->get('/profile')->assertOk()->assertDontSee('Delete Account');
+        $this->delete('/profile', ['password' => 'password'])->assertStatus(405);
+        $this->assertNotNull($user->fresh());
     }
 
-    public function test_correct_password_must_be_provided_to_delete_account(): void
+    public function test_users_cannot_change_their_account_status_through_profile(): void
     {
         $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->from('/profile')
-            ->delete('/profile', [
-                'password' => 'wrong-password',
-            ]);
-
-        $response
-            ->assertSessionHasErrorsIn('userDeletion', 'password')
-            ->assertRedirect('/profile');
-
-        $this->assertNotNull($user->fresh());
+        $this->actingAs($user)->patch('/profile', [
+            'surname' => 'Cruz', 'first_name' => 'Ana', 'email' => $user->email, 'is_active' => false,
+        ])->assertSessionHasNoErrors();
+        $this->assertTrue($user->fresh()->is_active);
     }
 }

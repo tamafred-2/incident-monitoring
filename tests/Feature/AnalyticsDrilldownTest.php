@@ -21,10 +21,10 @@ class AnalyticsDrilldownTest extends TestCase
             'tab' => 'history', 'chart_filter' => 1, 'date_from' => '2026-01-06T00:00:00', 'date_to' => '2026-01-06T23:59:59',
         ]))->assertOk()->assertViewIs('visitors.index')
             ->assertViewHas('filterDateFrom', '2026-01-06 00:00:00')
-            ->assertViewHas('visitors', fn ($rows) => $rows->total() === 2 && $rows->every(fn ($row) => $row->check_in->toDateString() === '2026-01-06'));
+            ->assertViewHas('visitors', fn ($rows) => $rows->count() === 2 && !$rows->hasMorePages() && $rows->every(fn ($row) => $row->check_in->toDateString() === '2026-01-06'));
         $this->get(route('visitors.index', [
             'tab' => 'history', 'chart_filter' => 1, 'weekday' => 'Tue', 'date_from' => '2026-01-01T00:00:00', 'date_to' => '2026-01-31T23:59:59',
-        ]))->assertOk()->assertViewHas('visitors', fn ($rows) => $rows->total() === 2);
+        ]))->assertOk()->assertViewHas('visitors', fn ($rows) => $rows->count() === 2 && !$rows->hasMorePages());
         $this->post(route('visitors.store'), [])->assertRedirect(route('dashboard'));
     }
 
@@ -48,7 +48,7 @@ class AnalyticsDrilldownTest extends TestCase
         ]))->assertOk()
             ->assertViewHas('filterDateFrom', '2026-01-06 00:00:00')
             ->assertViewHas('filterDateTo', '2026-01-06 23:59:59')
-            ->assertViewHas('incidents', fn ($rows) => $rows->total() === 2 && $rows->every(fn ($row) => $row->reported_at->toDateString() === '2026-01-06'));
+            ->assertViewHas('incidents', fn ($rows) => $rows->count() === 2 && !$rows->hasMorePages() && $rows->every(fn ($row) => $row->reported_at->toDateString() === '2026-01-06'));
     }
 
     public function test_chart_links_return_matching_records_and_preserve_scope(): void
@@ -61,27 +61,27 @@ class AnalyticsDrilldownTest extends TestCase
         $resident = Resident::create(['subdivision_id' => $subdivision->subdivision_id, 'full_name' => 'Matching owner', 'relation_to_owner' => 'Owner', 'status' => 'Active']);
         $this->actingAs($staff);
         $this->get(route('incidents.index', ['chart_filter' => 1, 'view' => 'all', 'status' => 'Pending']))
-            ->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->total() === 1);
+            ->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->count() === 1 && !$rows->hasMorePages());
         $incident->update(['status' => 'Under Investigation']);
         $this->get(route('incidents.index', ['chart_filter' => 1, 'view' => 'all', 'status' => 'Investigation']))
-            ->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->total() === 1)->assertSee('Investigation');
+            ->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->count() === 1 && !$rows->hasMorePages())->assertSee('Investigation');
         $this->get(route('analytics.index', ['from' => '2026-01-01', 'to' => '2026-01-31']))
             ->assertOk()->assertViewHas('incidents', fn ($data) => $data['status_labels'] === ['Investigation']);
         $incident->update(['status' => 'Open']);
         $this->get(route('residents.index', ['relation_to_owner' => 'Owner']))
             ->assertOk()->assertViewIs('residents.index')
-            ->assertViewHas('residents', fn ($rows) => $rows->total() === 1 && $rows->first()->resident_id === $resident->resident_id);
+            ->assertViewHas('residents', fn ($rows) => $rows->count() === 1 && !$rows->hasMorePages() && $rows->first()->resident_id === $resident->resident_id);
         $this->get(route('residents.index', ['relation_to_owner' => 'Son']))
-            ->assertOk()->assertViewHas('residents', fn ($rows) => $rows->total() === 0);
+            ->assertOk()->assertViewHas('residents', fn ($rows) => $rows->count() === 0 && !$rows->hasMorePages());
         foreach ([[], ['category' => 'Vandalism'], ['status' => 'Open'], ['house_id' => $house->house_id]] as $filters) {
             $this->get(route('incidents.index', $filters + ['view' => 'all', 'chart_filter' => 1, 'date_from' => '2026-01-06T00:00:00', 'date_to' => '2026-01-06T23:59:59']))
-                ->assertOk()->assertViewIs('incidents.index')->assertViewHas('incidents', fn ($rows) => $rows->total() === 1);
+                ->assertOk()->assertViewIs('incidents.index')->assertViewHas('incidents', fn ($rows) => $rows->count() === 1 && !$rows->hasMorePages());
         }
         $this->get(route('incidents.index', ['view' => 'all', 'chart_filter' => 1, 'category' => 'Other']))
-            ->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->total() === 0);
+            ->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->count() === 0 && !$rows->hasMorePages());
         $incident->update(['status' => 'Resolved']);
         $this->get(route('incidents.index', ['view' => 'all', 'chart_filter' => 1, 'status' => 'Resolved']))
-            ->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->total() === 1);
+            ->assertOk()->assertViewHas('incidents', fn ($rows) => $rows->count() === 1 && !$rows->hasMorePages());
         $incident->update(['status' => 'Open']);
         foreach ([
             ['incidentsTrend', '', $incident], ['incidentsCategory', 'Vandalism', $incident],

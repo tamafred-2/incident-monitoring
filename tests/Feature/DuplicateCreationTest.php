@@ -2,8 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\{House, Subdivision, User};
+use App\Models\House;
+use App\Models\Subdivision;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
@@ -15,10 +18,10 @@ class DuplicateCreationTest extends TestCase
     {
         $this->withSession(['form_saved' => true]);
         $template = '<x-modal name="create-record" :show="true">Form contents</x-modal>';
-        $html = \Illuminate\Support\Facades\Blade::render($template);
+        $html = Blade::render($template);
         $this->assertStringContainsString('show: false', $html);
         session()->forget('form_saved');
-        $html = \Illuminate\Support\Facades\Blade::render($template);
+        $html = Blade::render($template);
         $this->assertStringContainsString('show: true', $html);
     }
 
@@ -31,7 +34,7 @@ class DuplicateCreationTest extends TestCase
             '_submission_token' => str_repeat('a', 32),
             'subdivision_id' => $subdivision->subdivision_id, 'house_id' => $house->house_id,
             'description' => 'Broken gate', 'status' => 'Open',
-            'incident_date' => now()->subMinute()->toDateTimeString(), 'reported_at' => now()->toDateTimeString(),
+            'incident_date' => now()->toDateTimeString(), 'reported_at' => now()->toDateTimeString(),
         ];
         $this->actingAs($staff)->post(route('incidents.store'), array_replace($payload, ['description' => '']))->assertSessionHasErrors('description');
         for ($i = 0; $i < 3; $i++) {
@@ -43,8 +46,8 @@ class DuplicateCreationTest extends TestCase
         $this->assertDatabaseCount('incidents', 2);
 
         $payload['_submission_token'] = str_repeat('c', 32);
-        $key = 'form-submission:' . hash('sha256', $staff->user_id . '|incidents.store|' . $payload['_submission_token']);
-        $lock = Cache::lock($key . ':lock', 120);
+        $key = 'form-submission:'.hash('sha256', $staff->user_id.'|incidents.store|'.$payload['_submission_token']);
+        $lock = Cache::lock($key.':lock', 120);
         $lock->get();
         try {
             $this->post(route('incidents.store'), $payload)->assertSessionHas('error');
