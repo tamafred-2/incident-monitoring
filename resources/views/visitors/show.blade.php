@@ -3,8 +3,8 @@
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Visitor Details</h2>
-                <p class="mt-1 text-sm text-slate-500">Full record for the selected checked-in or historical visitor entry.</p>
+                <h2 class="page-title">Visitor Details</h2>
+                <p class="page-subtitle">Full record for the selected checked-in or historical visitor entry.</p>
             </div>
             <div class="flex flex-wrap gap-3">
                 <a
@@ -17,9 +17,9 @@
         </div>
     </x-slot>
 
-    <div class="py-10">
+    <div class="page-section">
         @if ($visitor->owner_approval)
-            <div class="mx-auto mb-6 max-w-7xl rounded-2xl border border-slate-200 bg-white p-5">
+            <div class="mx-4 mb-4 sm:mx-6 lg:mx-8 rounded-2xl border border-slate-200 bg-white p-5">
                 <h3 class="font-semibold text-slate-900">Owner permission</h3>
                 <p class="mt-2 text-sm text-slate-600">Approved by {{ $visitor->owner_approval['owner_name'] }} by phone. Recorded by {{ $visitor->owner_approval['recorded_by_name'] }} on {{ \Illuminate\Support\Carbon::parse($visitor->owner_approval['approved_at'])->format('M j, Y h:i A') }}.</p>
             </div>
@@ -37,7 +37,7 @@
                     this.previewLabel = '';
                 }
             }"
-            class="mx-auto flex max-w-5xl flex-col gap-6 px-4 sm:px-6 lg:px-8"
+            class="page-shell flex flex-col gap-4 min-[1600px]:gap-6"
         >
             @include('partials.alerts')
 

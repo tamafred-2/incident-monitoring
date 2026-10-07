@@ -1,5 +1,6 @@
 <div class="mt-6 grid gap-5 md:grid-cols-2">
     @foreach (['investigation' => 'Investigation proof — Before', 'resolution' => 'Resolution proof — After', 'supporting' => 'Supporting images', 'legacy' => 'Existing evidence — stage not recorded'] as $stage => $heading)
+        @continue($stage === 'resolution' && !$incident->isResolvedOrDone())
         @php $stagePhotos = $proofPhotos->where('stage', $stage); @endphp
         @if ($stagePhotos->isNotEmpty() || in_array($stage, ['investigation', 'resolution']))
             <section class="rounded-2xl border border-slate-200 bg-white p-5">

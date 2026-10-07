@@ -5,6 +5,7 @@
     'tone' => 'default',
     'href' => null,
     'tinted' => false,
+    'compact' => true,
 ])
 
 @php
@@ -30,14 +31,14 @@
     $surface = $tinted ? ($surfaces[$tone] ?? 'border-slate-200/80 bg-white') : 'border-slate-200/80 bg-white';
 @endphp
 
-<div {{ $attributes->merge(['class' => 'group relative overflow-hidden rounded-2xl border p-4 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ' . $surface]) }}>
+<div {{ $attributes->merge(['class' => 'group relative overflow-hidden rounded-2xl border shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ' . ($compact ? 'px-3 py-2 min-[1600px]:p-4 ' : 'p-4 ') . $surface]) }}>
     <div class="flex items-center gap-2">
         <span class="h-1.5 w-1.5 rounded-full {{ $t['dot'] }}"></span>
-        <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">{{ $label }}</p>
+        <p class="{{ $compact ? 'text-[10px] tracking-[0.08em] min-[1600px]:text-xs' : 'text-[11px] tracking-[0.12em]' }} font-semibold uppercase text-slate-500">{{ $label }}</p>
     </div>
-    <p class="mt-2 text-2xl font-bold tracking-tight tabular-nums {{ $t['value'] }}">{{ $value }}</p>
+    <p class="{{ $compact ? 'mt-0.5 text-lg min-[1600px]:mt-2 min-[1600px]:text-2xl' : 'mt-2 text-2xl' }} font-bold tracking-tight tabular-nums {{ $t['value'] }}">{{ $value }}</p>
     @if ($hint)
-        <p class="mt-1 text-xs {{ $tinted ? 'text-slate-600' : 'text-slate-400' }}">{{ $hint }}</p>
+        <p class="{{ $compact ? 'mt-0.5 text-[11px] min-[1600px]:mt-1 min-[1600px]:text-sm' : 'mt-1 text-xs' }} {{ $tinted ? 'text-slate-600' : 'text-slate-400' }}">{{ $hint }}</p>
     @endif
     {{ $slot }}
     @if ($href)

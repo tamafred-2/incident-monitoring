@@ -9,8 +9,8 @@
         </div>
     </x-slot>
 
-    <div class="py-10">
-        <div class="max-w-3xl px-4 mx-auto sm:px-6 lg:px-8">
+    <div class="page-section">
+        <div class="page-shell">
             @include('partials.alerts')
 
             <form method="POST" action="{{ route('subdivisions.update', $subdivision) }}" class="space-y-6" x-data="{

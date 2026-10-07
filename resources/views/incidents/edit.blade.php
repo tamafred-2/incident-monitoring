@@ -2,8 +2,8 @@
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Edit Incident</h2>
-                <p class="mt-1 text-sm text-slate-500">Update incident information while keeping pending and resolved status tracking clear.</p>
+                <h2 class="page-title">Edit Incident</h2>
+                <p class="page-subtitle">Update incident information while keeping pending and resolved status tracking clear.</p>
             </div>
             <div class="flex flex-wrap gap-3">
                 <a
@@ -16,7 +16,7 @@
         </div>
     </x-slot>
 
-    <div class="py-10">
+    <div class="page-section">
         <div
             x-data="{
                 previewImage: null,
@@ -30,7 +30,7 @@
                     this.previewLabel = '';
                 }
             }"
-            class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8"
+            class="page-shell"
         >
             @include('partials.alerts')
 
@@ -187,6 +187,7 @@
                             <p class="mt-2 text-sm text-slate-500">Save these photos first. This records the investigation step before a later resolution. Upload times are recorded by the server in {{ config('app.timezone') }}.</p>
                         </div>
                     @endif
+                    @if ($isResolvedIncident || $proofPhotos->where('stage', 'investigation')->isNotEmpty())
                     <div class="md:col-span-2" data-proof-preview-root>
                         <h3 class="mb-2 font-semibold text-slate-700">Resolution proof — After</h3>
                         <label class="block text-sm font-medium text-slate-700">Upload Resolution Photos</label>
@@ -201,6 +202,7 @@
                         <p class="mt-2 text-xs text-slate-500" data-proof-help>Upload separate after-resolution images here. Up to 10 files per upload.</p>
                         <div class="mt-4 hidden grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-proof-preview-list></div>
                     </div>
+                    @endif
 
                     <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
                         <a href="{{ route('incidents.show', array_merge(['incidentId' => $incident->incident_id], $indexContext)) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</a>

@@ -2,8 +2,8 @@
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">Notifications</h2>
-                <p class="mt-1 text-sm text-slate-500">Assignment, verification, and status updates for your incident reports.</p>
+                <h2 class="page-title">Notifications</h2>
+                <p class="page-subtitle">Assignment, verification, and status updates for your incident reports.</p>
             </div>
             <div class="flex flex-wrap gap-3">
                 <a
@@ -16,8 +16,8 @@
         </div>
     </x-slot>
 
-    <div class="py-10">
-        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+    <div class="page-section">
+        <div class="page-shell">
             @include('partials.alerts')
 
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

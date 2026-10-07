@@ -34,13 +34,41 @@
 }
 
 @layer components {
+    .page-shell {
+        @apply w-full min-w-0 px-4 sm:px-6 lg:px-8;
+    }
+
+    .page-section {
+        @apply py-4;
+    }
+
+    .page-title {
+        @apply text-xl font-bold leading-tight tracking-tight text-slate-900;
+    }
+
+    .page-subtitle {
+        @apply mt-1 text-xs leading-5 text-slate-500;
+    }
+
+    .app-content[data-page-type="standard"] table {
+        @apply text-sm;
+    }
+
+    .app-content[data-page-type="standard"] table th {
+        @apply px-4 py-2;
+    }
+
+    .app-content[data-page-type="standard"] table td {
+        @apply px-4 py-3;
+    }
+
     .sidebar-panel {
         background: linear-gradient(180deg, var(--shell-sidebar-strong) 0%, var(--shell-sidebar) 52%, #101b2d 100%);
         border-right: 1px solid rgba(148, 163, 184, 0.12);
     }
 
     .sidebar-link {
-        @apply flex items-center px-4 py-3 text-sm font-medium transition duration-150 ease-out rounded-xl;
+        @apply flex items-center px-3 py-2 text-[13px] font-medium transition duration-150 ease-out rounded-xl;
         color: var(--shell-sidebar-text);
     }
 
@@ -84,7 +112,7 @@
     }
 
     .sidebar-brand-desktop {
-        @apply flex-col items-center justify-center gap-3 text-center;
+        @apply flex-col items-center justify-center gap-2 text-center;
     }
 
     .sidebar-brand-mark {
@@ -99,7 +127,42 @@
     }
 
     .sidebar-brand-text {
-        @apply min-w-0 text-sm font-semibold tracking-[0.18em] text-white;
+        @apply min-w-0 text-xs font-semibold tracking-[0.12em] text-white;
+    }
+
+    .sidebar-brand-text-desktop {
+        @apply text-sm;
+    }
+}
+
+/* Roomier navigation on large viewports; browser zoom naturally changes this budget. */
+@media (min-width: 1600px) {
+    .page-section {
+        @apply py-6;
+    }
+
+    .page-title {
+        @apply text-2xl;
+    }
+
+    .page-subtitle {
+        @apply text-sm;
+    }
+
+    .app-content[data-page-type="standard"] table {
+        @apply text-base;
+    }
+
+    .app-content[data-page-type="standard"] table th {
+        @apply px-6 py-3;
+    }
+
+    .app-content[data-page-type="standard"] table td {
+        @apply px-6 py-4;
+    }
+
+    .sidebar-link {
+        @apply px-4 py-3 text-sm;
     }
 
     .sidebar-brand-text-desktop {

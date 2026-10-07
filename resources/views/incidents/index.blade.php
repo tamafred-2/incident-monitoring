@@ -31,7 +31,7 @@
             + ($activeIncidentTab === 'history' ? 5 : 4);
     @endphp
 
-    <div class="py-10">
+    <div class="page-section">
         <div
             x-data="{
                 previewImage: null,
@@ -86,7 +86,7 @@
                     this.closePdfConfirm();
                 }
             }"
-            class="flex flex-col gap-6 px-4 mx-auto max-w-7xl sm:px-6 lg:px-8"
+            class="page-shell flex flex-col gap-4 min-[1600px]:gap-6"
         >
             @include('partials.alerts')
 
@@ -218,9 +218,9 @@
                     </div>
                 @endif
                 <div id="incidents-results">
-                <div class="overflow-x-auto">
+                <x-scroll-list name="incidents" :records="$incidents">
                     <table class="min-w-full text-sm divide-y divide-slate-200">
-                        <thead class="bg-slate-50">
+                        <thead class="sticky top-0 z-10 bg-slate-50">
                             <tr>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Category</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Incident Status</th>
@@ -250,170 +250,12 @@
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                             </tr>
                         </thead>
-                        <tbody id="incidents-rows" class="bg-white divide-y divide-slate-100">
-                            @forelse ($incidents as $incident)
-                                <tr>
-                                    <td class="px-6 py-4 text-slate-600">
-                                        <div class="min-w-[11rem]">
-                                            <a
-                                                href="{{ route('incidents.show', array_filter([
-                                                    'incidentId' => $incident->incident_id,
-                                                    'q' => $filterQ ?: null,
-                                                    'subdivision_id' => $filterSubdivision ?: null,
-                                                    'view' => $historyView !== 'active' ? $historyView : null,
-                                                    'per_page' => $perPage,
-                                                    ...$sharedFilters,
-                                                ])) }}"
-                                                class="font-medium text-slate-900 hover:text-brand-700"
-                                            >
-                                                {{ $incident->category ?: 'Uncategorized' }}
-                                            </a>
-                                            <div class="mt-1 max-w-[14rem] truncate text-xs text-slate-500" title="{{ $incident->location ?: 'No location provided' }}">
-                                                {{ $incident->location ?: 'No location provided' }}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-slate-600">
-                                        @php
-                                            $isResolvedIncident = in_array($incident->status, \App\Enums\IncidentStatus::resolvedValues(), true);
-                                            $statusLabel = \App\Enums\IncidentStatus::displayLabel($incident->status);
-                                        @endphp
-                                        {{ $incident->trashed() ? 'Archived' : $statusLabel }}
-                                    </td>
-                                    @unless ($isResidentViewer)
-                                        <td class="px-6 py-4 text-slate-600">
-                                            <div class="max-w-[13rem] truncate" title="{{ $incident->reporter?->full_name ?? '-' }}">
-                                                {{ $incident->reporter?->full_name ?? '-' }}
-                                            </div>
-                                        </td>
-                                    @endunless
-                                    <td class="px-6 py-4 text-slate-600">
-                                        @if ($incident->reported_at)
-                                            <div class="min-w-[9rem]">
-                                                <div class="whitespace-nowrap font-medium text-slate-700">{{ $incident->reported_at->format('M j, Y') }}</div>
-                                                <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $incident->reported_at->format('h:i A') }}</div>
-                                            </div>
-                                        @else
-                                            -
-                                        @endif
-                                    </td>
-                                    @if ($activeIncidentTab === 'history')
-                                        <td class="px-6 py-4 text-slate-600">
-                                            @if ($incident->resolved_at)
-                                                <div class="min-w-[9rem]">
-                                                    <div class="whitespace-nowrap font-medium text-slate-700">{{ $incident->resolved_at->format('M j, Y') }}</div>
-                                                    <div class="mt-1 whitespace-nowrap text-xs text-slate-500">{{ $incident->resolved_at->format('h:i A') }}</div>
-                                                </div>
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                    @endif
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-2 whitespace-nowrap">
-                                            <a
-                                                href="{{ route('incidents.show', array_filter([
-                                                'incidentId' => $incident->incident_id,
-                                                'q' => $filterQ ?: null,
-                                                'subdivision_id' => $filterSubdivision ?: null,
-                                                'view' => $historyView !== 'active' ? $historyView : null,
-                                                'per_page' => $perPage,
-                                                ...$sharedFilters,
-                                            ])) }}"
-                                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50"
-                                            >
-                                                View
-                                            </a>
-
-                                            @if ((auth()->user()->isAdmin() || (auth()->user()->hasRole(['staff']) && !$incident->isResolvedOrDone())) && !$incident->trashed())
-                                                <a
-                                                    href="{{ route('incidents.edit', array_filter([
-                                                        'incidentId' => $incident->incident_id,
-                                                        'q' => $filterQ ?: null,
-                                                        'subdivision_id' => $filterSubdivision ?: null,
-                                                        'view' => $historyView !== 'active' ? $historyView : null,
-                                                        'per_page' => $perPage,
-                                                        ...$sharedFilters,
-                                                    ])) }}"
-                                                    class="px-3 py-2 text-xs font-semibold border rounded-lg border-brand-200 text-brand-700 hover:bg-brand-50"
-                                                >
-                                                    Edit
-                                                </a>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="{{ $emptyStateColspan }}" class="px-6 py-10 text-center text-slate-500">No incidents found.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
+                        <tbody data-scroll-rows id="incidents-rows" class="bg-white divide-y divide-slate-100">
+@include('scroll-lists.incidents')
+</tbody>
                     </table>
-                </div>
-                <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
-                    <p class="text-sm text-slate-500">
-                        @if ($incidents->total() > 0)
-                            Showing {{ $incidents->firstItem() }}-{{ $incidents->lastItem() }} of {{ $incidents->total() }} incidents
-                        @else
-                            No incident records to paginate
-                        @endif
-                    </p>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <form method="GET" action="{{ route('incidents.index') }}" class="flex items-center gap-2">
-                                @include('incidents.partials.chart-filters')
-                            @if ($filterQ !== '')
-                                <input type="hidden" name="q" value="{{ $filterQ }}">
-                            @endif
-                            @if ($filterSubdivision)
-                                <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
-                            @endif
-                            @if ($filterDateFrom)
-                                <input type="hidden" name="date_from" value="{{ $filterDateFrom }}">
-                            @endif
-                            @if ($filterDateTo)
-                                <input type="hidden" name="date_to" value="{{ $filterDateTo }}">
-                            @endif
-                            <input type="hidden" name="view" value="{{ $historyView }}">
-                            <label for="incidents-rows-per-page" class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
-                            <input
-                                id="incidents-rows-per-page"
-                                type="text"
-                                name="per_page"
-                                list="incidents-row-size-options"
-                                value=""
-                                placeholder="{{ $perPage }}"
-                                class="w-24 rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
-                                aria-label="Rows per page"
-                                inputmode="numeric"
-                                autocomplete="off"
-                                pattern="[0-9]{1,3}"
-                                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)"
-                                onchange="if (this.value.trim() !== '') { this.form.requestSubmit(); }"
-                                onkeydown="if (event.key === 'Enter') { event.preventDefault(); if (this.value.trim() !== '') { this.form.requestSubmit(); } }"
-                            >
-                            <datalist id="incidents-row-size-options">
-                                <option value="10"></option>
-                                <option value="25"></option>
-                                <option value="50"></option>
-                                <option value="100"></option>
-                            </datalist>
-                        </form>
-                        @if ($incidents->onFirstPage())
-                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></span>
-                        @else
-                            <a href="{{ $incidents->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></a>
-                        @endif
-                        <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700">
-                            Page {{ $incidents->currentPage() }} of {{ max($incidents->lastPage(), 1) }}
-                        </span>
-                        @if ($incidents->hasMorePages())
-                            <a href="{{ $incidents->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></a>
-                        @else
-                            <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></span>
-                        @endif
-                    </div>
-                </div>
+                </x-scroll-list>
+
                 </div>{{-- /#incidents-results --}}
             </div>
 

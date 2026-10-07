@@ -43,14 +43,14 @@
         <div class="min-h-screen bg-transparent">
             @include('layouts.navigation')
 
-            <div class="lg:pl-72">
+            <div class="lg:pl-60 min-[1600px]:pl-72">
                 @isset($header)
                     <header class="border-b border-slate-200/80 bg-transparent">
-                        <div class="mx-auto flex max-w-7xl items-start justify-between gap-6 px-4 py-8 sm:px-6 lg:px-8">
+                        <div class="page-shell page-section flex items-start justify-between gap-4">
                             <div class="min-w-0 flex-1">
                                 {{ $header }}
                             </div>
-                            @if (auth()->user()?->isAdmin())
+                            @if (auth()->check())
                                 <div class="flex-none">
                                     @include('layouts.admin-visitor-notifications')
                                 </div>
@@ -59,7 +59,7 @@
                     </header>
                 @endisset
 
-                <main class="pb-10">
+                <main class="app-content" data-page-type="{{ request()->routeIs('dashboard') ? 'dashboard' : 'standard' }}">
                     {{ $slot }}
                 </main>
 

@@ -1,18 +1,18 @@
 <x-app-layout>
     <x-slot name="header">
-        <x-page-header title="Dashboard" subtitle="Overview of visitor approvals, resident response tracking, and incident monitoring activity." />
+        <x-page-header :compact="true" title="Dashboard" subtitle="Overview of visitor approvals, resident response tracking, and incident monitoring activity." />
     </x-slot>
 
-    <div class="py-10">
-        <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
+    <div class="page-section">
+        <div class="page-shell">
             @include('partials.alerts')
 
             @if ($isResidentDashboard)
                 <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <x-stat-card label="Your Subdivision" :value="$totalSubdivisions" />
-                    <x-stat-card label="Your Complaints" :value="$totalIncidents" />
-                    <x-stat-card label="Pending Complaints" :value="$residentOpenIncidents" tone="amber" />
-                    <x-stat-card label="Resolved Complaints" :value="$residentResolvedIncidents" tone="emerald" />
+                    <x-stat-card :compact="true" label="Your Subdivision" :value="$totalSubdivisions" />
+                    <x-stat-card :compact="true" label="Your Complaints" :value="$totalIncidents" />
+                    <x-stat-card :compact="true" label="Pending Complaints" :value="$residentOpenIncidents" tone="amber" />
+                    <x-stat-card :compact="true" label="Resolved Complaints" :value="$residentResolvedIncidents" tone="emerald" />
                 </div>
 
                 <div class="p-6 mt-8 bg-white border shadow-sm rounded-2xl border-slate-200">
@@ -33,219 +33,84 @@
                 @php
                     $canViewVisitorMonitoring = auth()->user()->isAdmin() || auth()->user()->isSecurity();
                 @endphp
-                <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-                    <x-stat-card :href="route('incidents.index', ['view' => 'all'])" label="Total Incidents" tone="rose" :tinted="true" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
-                    <x-stat-card :href="route('incidents.index', ['view' => 'history'])" label="Resolution Rate" tone="emerald" :tinted="true" :value="$summary['resolution_rate'] . '%'" :hint="$summary['resolved_incidents'] . ' resolved'" />
-                    <x-stat-card :href="route('incidents.index', ['view' => 'history'])" label="Avg. Resolution Time" tone="amber" :tinted="true" :value="$summary['avg_resolution_label']" hint="reported → resolved" />
-                    <x-stat-card :href="route('visitors.index', ['tab' => 'history', 'chart_filter' => 1])" label="Total Visitors" tone="brand" :tinted="true" :value="$summary['total_visitors']" :hint="$summary['visitors_inside'] . ' currently inside'" />
-                    <x-stat-card :href="route('residents.index')" label="Total Residents" tone="violet" :tinted="true" :value="$summary['total_residents']" />
-                    <x-stat-card :href="auth()->user()->isAdmin() ? route('houses.index') : route('residents.index')" label="Total Houses" tone="teal" :tinted="true" :value="$summary['total_houses']" />
+                <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <x-stat-card :compact="true" :href="route('incidents.index', ['view' => 'all'])" label="Total Incidents" tone="rose" :tinted="true" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
+                    <x-stat-card :compact="true" :href="route('visitors.index', ['tab' => 'history', 'chart_filter' => 1])" label="Total Visitors" tone="brand" :tinted="true" :value="$summary['total_visitors']" :hint="$summary['visitors_inside'] . ' currently inside'" />
+                    <x-stat-card :compact="true" :href="route('residents.index')" label="Total Residents" tone="violet" :tinted="true" :value="$summary['total_residents']" />
+                    <x-stat-card :compact="true" :href="auth()->user()->isAdmin() ? route('houses.index') : route('residents.index')" label="Total Houses" tone="teal" :tinted="true" :value="$summary['total_houses']" />
                 </div>
 
                 @php
                     $usesIncidentVisitorSplitLayout = $showPendingIncidentList && $canViewVisitorMonitoring;
                 @endphp
-                <div class="{{ $usesIncidentVisitorSplitLayout ? 'mt-8 grid gap-6 xl:grid-cols-[3fr_2fr] xl:items-start' : 'mt-8' }}">
+                <div data-dashboard-tables class="[--dashboard-bottom-space:16px] min-[1600px]:[--dashboard-bottom-space:24px] mt-4 grid gap-3 {{ $usesIncidentVisitorSplitLayout ? 'lg:grid-cols-[3fr_2fr]' : '' }}">
                 @if ($showPendingIncidentList)
-                    <div class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
-                            <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <h3 class="text-lg font-semibold text-slate-900">Pending Incidents</h3>
-                                    <p class="mt-1 text-sm text-slate-500">Active incident cases that still need handling.</p>
-                                </div>
+                    <div data-dashboard-table x-data="dashboardTable({ endpoint: @js(route('dashboard.records', ['table' => 'incidents'])), cursor: @js($dashboardPendingIncidentList->nextCursor()?->encode()), cursorName: 'incident_cursor', loaded: {{ $dashboardPendingIncidentList->count() }} })" class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+                        <div class="flex h-12 min-[1600px]:h-14 items-center px-4 border-b border-slate-200">
+                            <div>
+                                <h3 class="text-sm min-[1600px]:text-base font-semibold text-slate-900">Pending Incidents</h3>
                             </div>
+                        </div>
 
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-sm divide-y divide-slate-200">
-                                    <thead class="bg-slate-50">
-                                        <tr>
-                                            <th class="px-6 py-3 font-semibold text-left text-slate-600">Category</th>
-                                            <th class="px-6 py-3 font-semibold text-left text-slate-600">Location</th>
-                                            <th class="px-6 py-3 font-semibold text-left text-slate-600">Status</th>
-                                            <th class="px-6 py-3 font-semibold text-left text-slate-600">Reported</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-slate-100">
-                                        @forelse ($dashboardPendingIncidentList as $pendingIncident)
-                                            <tr
-                                                class="transition cursor-pointer hover:bg-slate-50"
-                                                onclick="window.location='{{ route('incidents.show', ['incidentId' => $pendingIncident->incident_id]) }}'"
-                                            >
-                                                <td class="px-6 py-4 font-medium text-slate-700">{{ $pendingIncident->category ?: '-' }}</td>
-                                                <td class="px-6 py-4 text-slate-600">{{ $pendingIncident->location ?: '-' }}</td>
-                                                <td class="px-6 py-4 text-slate-600">{{ \App\Enums\IncidentStatus::displayLabel($pendingIncident->status) }}</td>
-                                                <td class="px-6 py-4 text-slate-600">
-                                                    @if ($pendingIncident->reported_at)
-                                                        <div class="min-w-[9rem]">
-                                                            <div class="font-medium whitespace-nowrap text-slate-700">{{ $pendingIncident->reported_at->format('M j, Y') }}</div>
-                                                            <div class="mt-1 text-xs whitespace-nowrap text-slate-500">{{ $pendingIncident->reported_at->format('h:i A') }}</div>
-                                                        </div>
-                                                    @else
-                                                        -
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="5" class="px-6 py-10 text-center text-slate-500">No pending incidents right now.</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div x-ref="viewport" tabindex="0" role="region" aria-label="Pending incidents" class="h-[min(45dvh,24rem)] overflow-auto overscroll-contain focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
+                            @scroll.passive="onScroll()" @wheel.passive="if ($event.deltaY > 0) onScroll()"
+                            @touchstart.passive="touchY = $event.touches[0].clientY"
+                            @touchmove.passive="if ($event.touches[0].clientY < touchY) onScroll()"
+                            @keydown="if (['ArrowDown', 'PageDown', 'End', ' '].includes($event.key) && $event.target === $el) onScroll()">
+                            <table class="min-w-full text-sm min-[1600px]:text-base divide-y divide-slate-200">
+                                <thead class="sticky top-0 z-10 h-10 bg-slate-50">
+                                    <tr>
+                                        <th class="px-4 py-2 font-semibold text-left text-slate-600">Category</th>
+                                        <th class="px-4 py-2 font-semibold text-left text-slate-600">Location</th>
+                                        <th class="px-4 py-2 font-semibold text-left text-slate-600">Status</th>
+                                        <th class="px-4 py-2 font-semibold text-left text-slate-600">Reported</th>
+                                    </tr>
+                                </thead>
+                                <tbody x-ref="rows" class="bg-white divide-y divide-slate-100">
+                                    @include('dashboard.partials.incidents-rows', ['records' => $dashboardPendingIncidentList])
+                                </tbody>
+                            </table>
+                            <div x-show="cursor" class="h-px" aria-hidden="true"></div>
+                        </div>
 
-                            <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
-                                <p class="text-sm text-slate-500">
-                                    @if ($dashboardPendingIncidentList->total() > 0)
-                                        Showing {{ $dashboardPendingIncidentList->firstItem() }}-{{ $dashboardPendingIncidentList->lastItem() }} of {{ $dashboardPendingIncidentList->total() }}
-                                    @else
-                                        No pending incident records to paginate
-                                    @endif
-                                </p>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <form method="GET" action="{{ route('dashboard') }}" class="flex items-center gap-2">
-                                        <label for="pending-incidents-rows-per-page" class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
-                                        <input
-                                            id="pending-incidents-rows-per-page"
-                                            type="text"
-                                            name="pending_incidents_per_page"
-                                            list="pending-incidents-row-size-options"
-                                            value=""
-                                            placeholder="{{ $pendingIncidentsPerPage }}"
-                                            class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
-                                            aria-label="Rows per page"
-                                            inputmode="numeric"
-                                            autocomplete="off"
-                                            pattern="[0-9]{1,3}"
-                                            oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)"
-                                            onchange="if (this.value.trim() !== '') { this.form.requestSubmit(); }"
-                                            onkeydown="if (event.key === 'Enter') { event.preventDefault(); if (this.value.trim() !== '') { this.form.requestSubmit(); } }"
-                                        >
-                                        <datalist id="pending-incidents-row-size-options">
-                                            <option value="10"></option>
-                                            <option value="25"></option>
-                                            <option value="50"></option>
-                                            <option value="100"></option>
-                                        </datalist>
-                                    </form>
-                                    @if ($dashboardPendingIncidentList->onFirstPage())
-                                        <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></span>
-                                    @else
-                                        <a href="{{ $dashboardPendingIncidentList->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></a>
-                                    @endif
-                                    <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700" aria-label="Current page">
-                                        {{ $dashboardPendingIncidentList->currentPage() }}
-                                    </span>
-                                    @if ($dashboardPendingIncidentList->hasMorePages())
-                                        <a href="{{ $dashboardPendingIncidentList->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></a>
-                                    @else
-                                        <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></span>
-                                    @endif
-                                </div>
-                            </div>
+                        <div x-ref="footer" class="flex min-h-[32px] items-center justify-between border-t border-slate-200 px-4 py-1.5 text-[11px] min-[1600px]:text-xs text-slate-500" aria-live="polite">
+                            <span x-text="message()"></span>
+                            <button x-cloak x-show="error" type="button" @click="loadMore()" class="font-semibold text-brand-700 hover:underline">Retry</button>
+                        </div>
                     </div>
                 @endif
 
                 @if ($canViewVisitorMonitoring)
-                    <div class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                            <h3 class="text-lg font-semibold text-slate-900">Visitors Currently Checked In</h3>
-                            <p class="mt-1 text-sm text-slate-500">Compact live list. Click a visitor name to open the full details.</p>
+                    <div data-dashboard-table x-data="dashboardTable({ endpoint: @js(route('dashboard.records', ['table' => 'visitors'])), cursor: @js($insideVisitors->nextCursor()?->encode()), cursorName: 'visitor_cursor', loaded: {{ $insideVisitors->count() }} })" class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+                        <div class="flex h-12 min-[1600px]:h-14 items-center px-4 border-b border-slate-200">
+                            <div>
+                                <h3 class="text-sm min-[1600px]:text-base font-semibold text-slate-900">Visitors Currently Checked In</h3>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm divide-y divide-slate-200">
-                            <thead class="bg-slate-50">
-                                <tr>
-                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Visitor</th>
-                                    <th class="px-6 py-3 font-semibold text-right text-slate-600">Action</th>
-                                </tr>
-                            </thead>
-                        <tbody class="bg-white divide-y divide-slate-100">
-                            @forelse ($insideVisitors as $visitor)
-                                <tr class="transition hover:bg-slate-50 focus-within:bg-slate-50">
-                                    <td class="px-6 py-4">
-                                        <div class="min-w-[12rem]">
-                                            <a href="{{ route('visitors.show', $visitor) }}" class="font-medium text-slate-900 hover:text-brand-700 hover:underline">{{ $visitor->full_name }}</a>
-                                            <div class="mt-1 text-xs text-slate-500">
-                                                @if ($visitor->check_in)
-                                                    {{ $visitor->check_in->format('M j, Y') }} at {{ $visitor->check_in->format('h:i A') }}
-                                                @else
-                                                    No check-in time
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-6 py-4 text-right">
-                                        <form method="POST" action="{{ route('visitors.checkout', $visitor) }}">
-                                            @csrf
-                                            <input type="hidden" name="return_to" value="dashboard">
-                                            <button type="submit" class="whitespace-nowrap rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700" aria-label="Check out {{ $visitor->full_name }}">Check Out</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @empty
+                        <div x-ref="viewport" tabindex="0" role="region" aria-label="Visitors currently checked in" class="h-[min(45dvh,24rem)] overflow-auto overscroll-contain focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500"
+                            @scroll.passive="onScroll()" @wheel.passive="if ($event.deltaY > 0) onScroll()"
+                            @touchstart.passive="touchY = $event.touches[0].clientY"
+                            @touchmove.passive="if ($event.touches[0].clientY < touchY) onScroll()"
+                            @keydown="if (['ArrowDown', 'PageDown', 'End', ' '].includes($event.key) && $event.target === $el) onScroll()">
+                            <table class="min-w-full text-sm min-[1600px]:text-base divide-y divide-slate-200">
+                                <thead class="sticky top-0 z-10 h-10 bg-slate-50">
                                     <tr>
-                                        <td colspan="2" class="px-6 py-10 text-center text-slate-500">
-                                            No visitors are currently checked in.
-                                        </td>
+                                        <th class="px-4 py-2 font-semibold text-left text-slate-600">Visitor</th>
+                                        <th class="px-4 py-2 font-semibold text-right text-slate-600">Action</th>
                                     </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="flex flex-col gap-3 px-6 py-4 border-t border-slate-200 sm:flex-row sm:items-center sm:justify-between">
-                        <p class="text-sm text-slate-500">
-                            @if ($insideVisitors->total() > 0)
-                                Showing {{ $insideVisitors->firstItem() }}-{{ $insideVisitors->lastItem() }} of {{ $insideVisitors->total() }}
-                            @else
-                                No visitor records to paginate
-                            @endif
-                        </p>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <form method="GET" action="{{ route('dashboard') }}" class="flex items-center gap-2">
-                                <label for="dashboard-rows-per-page" class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Rows</label>
-                                <input
-                                    id="dashboard-rows-per-page"
-                                    type="text"
-                                    name="inside_per_page"
-                                    list="dashboard-row-size-options"
-                                    value=""
-                                    placeholder="{{ $insidePerPage }}"
-                                    class="w-24 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
-                                    aria-label="Rows per page"
-                                    inputmode="numeric"
-                                    autocomplete="off"
-                                    pattern="[0-9]{1,3}"
-                                    oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)"
-                                    onchange="if (this.value.trim() !== '') { this.form.requestSubmit(); }"
-                                    onkeydown="if (event.key === 'Enter') { event.preventDefault(); if (this.value.trim() !== '') { this.form.requestSubmit(); } }"
-                                >
-                                <datalist id="dashboard-row-size-options">
-                                    <option value="10"></option>
-                                    <option value="25"></option>
-                                    <option value="50"></option>
-                                    <option value="100"></option>
-                                </datalist>
-                            </form>
-                            @if ($insideVisitors->onFirstPage())
-                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></span>
-                            @else
-                                <a href="{{ $insideVisitors->previousPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&larr;</span><span class="sr-only">Previous</span></a>
-                            @endif
-                            <span class="px-3 py-2 text-sm font-semibold rounded-xl bg-slate-100 text-slate-700" aria-label="Current page">
-                                {{ $insideVisitors->currentPage() }}
-                            </span>
-                            @if ($insideVisitors->hasMorePages())
-                                <a href="{{ $insideVisitors->nextPageUrl() }}" class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></a>
-                            @else
-                                <span class="px-3 py-2 text-sm font-semibold border rounded-xl border-slate-200 text-slate-400"><span aria-hidden="true">&rarr;</span><span class="sr-only">Next</span></span>
-                            @endif
+                                </thead>
+                                <tbody x-ref="rows" class="bg-white divide-y divide-slate-100">
+                                    @include('dashboard.partials.visitors-rows', ['records' => $insideVisitors])
+                                </tbody>
+                            </table>
+                            <div x-show="cursor" class="h-px" aria-hidden="true"></div>
                         </div>
-                    </div>
+
+                        <div x-ref="footer" class="flex min-h-[32px] items-center justify-between border-t border-slate-200 px-4 py-1.5 text-[11px] min-[1600px]:text-xs text-slate-500" aria-live="polite">
+                            <span x-text="message()"></span>
+                            <button x-cloak x-show="error" type="button" @click="loadMore()" class="font-semibold text-brand-700 hover:underline">Retry</button>
+                        </div>
                     </div>
                 @endif
                 </div>

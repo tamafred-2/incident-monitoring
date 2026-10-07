@@ -4,8 +4,8 @@
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">{{ $house->display_address }}</h2>
-                <p class="mt-1 text-sm text-slate-500">{{ $house->subdivision?->subdivision_name ?? '-' }}</p>
+                <h2 class="page-title">{{ $house->display_address }}</h2>
+                <p class="page-subtitle">{{ $house->subdivision?->subdivision_name ?? '-' }}</p>
             </div>
             @if ($house->subdivision)
                 <div class="flex items-center gap-2">
@@ -22,8 +22,8 @@
         </div>
     </x-slot>
 
-    <div class="py-10">
-        <div class="mx-auto flex max-w-3xl flex-col gap-5 px-4 sm:px-6 lg:px-8">
+    <div class="page-section">
+        <div class="page-shell flex flex-col gap-5">
             @include('partials.alerts')
 
             {{-- Details --}}

@@ -1,11 +1,14 @@
+@php
+    $notificationRoutePrefix = auth()->user()->isAdmin() ? 'admin.visitor-notifications.' : 'incident-notifications.';
+@endphp
 <div
     x-data="adminVisitorNotifications({
         notifications: {{ \Illuminate\Support\Js::from(($adminVisitorNotifications ?? collect())->values()) }},
         unreadCount: {{ \Illuminate\Support\Js::from($adminVisitorUnreadCount ?? 0) }},
-        notificationEndpoint: {{ \Illuminate\Support\Js::from(route('admin.visitor-notifications.index')) }},
-        markReadEndpoint: {{ \Illuminate\Support\Js::from(route('admin.visitor-notifications.read-all')) }},
-        markSingleReadEndpoint: {{ \Illuminate\Support\Js::from(route('admin.visitor-notifications.read-one')) }},
-        clearAllEndpoint: {{ \Illuminate\Support\Js::from(route('admin.visitor-notifications.clear-all')) }}
+        notificationEndpoint: {{ \Illuminate\Support\Js::from(route($notificationRoutePrefix.'index')) }},
+        markReadEndpoint: {{ \Illuminate\Support\Js::from(route($notificationRoutePrefix.'read-all')) }},
+        markSingleReadEndpoint: {{ \Illuminate\Support\Js::from(route($notificationRoutePrefix.'read-one')) }},
+        clearAllEndpoint: {{ \Illuminate\Support\Js::from(route($notificationRoutePrefix.'clear-all')) }}
     })"
     @click.away="open = false"
     class="relative z-20"
@@ -13,7 +16,7 @@
     <button
         type="button"
         @click="toggleDropdown()"
-        class="relative inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-3 text-slate-700 shadow-sm transition hover:border-brand-200 hover:text-brand-700"
+        class="relative inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white p-2.5 text-slate-700 shadow-sm transition hover:border-brand-200 hover:text-brand-700"
         aria-label="Open notifications"
         :aria-label="unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Open notifications'"
     >

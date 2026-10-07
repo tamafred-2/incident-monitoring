@@ -16,13 +16,13 @@
 
     <x-slot name="header">
         <div>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Report Incident</h2>
-            <p class="mt-1 text-sm text-slate-500">Submit an incident manually or through the system, then move it from pending to resolved.</p>
+            <h2 class="page-title">Report Incident</h2>
+            <p class="page-subtitle">Submit an incident manually or through the system, then move it from pending to resolved.</p>
         </div>
     </x-slot>
 
-    <div class="py-10">
-        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+    <div class="page-section">
+        <div class="page-shell">
             @include('partials.alerts')
 
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

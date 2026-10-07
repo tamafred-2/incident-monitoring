@@ -3,7 +3,7 @@
         <div class="flex items-start justify-between gap-4">
             <div>
                 <h3 class="text-lg font-semibold text-slate-900">Report Incident</h3>
-                <p class="mt-1 text-sm text-slate-500">Submit an incident manually or through the system, then track status from pending to resolved.</p>
+                <p class="mt-1 text-sm text-slate-500">{{ auth()->user()->isResident() ? 'Submit an incident and track its progress.' : 'Report a new incident or record a completed incident for history.' }}</p>
             </div>
 
             <button
@@ -16,7 +16,7 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4 md:grid-cols-2">
+        <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4 md:grid-cols-2" x-data="{ reportStatus: @js(old('status', 'Open')), reportDate: @js(old('reported_at', now()->format('Y-m-d\TH:i'))) }">
             @csrf
             <input type="hidden" name="_submission_token" value="{{ bin2hex(random_bytes(16)) }}">
             @php
@@ -48,9 +48,9 @@
             @endphp
 
             <input type="hidden" name="subdivision_id" id="report_subdivision_id" value="{{ $autoSubdivisionId }}">
-            <input type="hidden" name="status" value="Open">
 
             @if ($residentUser)
+                <input type="hidden" name="status" value="Open">
                 <input type="hidden" name="reported_at" value="{{ now()->format('Y-m-d\TH:i') }}">
             @endif
 
@@ -59,7 +59,7 @@
                 $customCategory = old('category_other');
             @endphp
             <div class="md:col-span-2" data-category-root>
-                <label class="block text-sm font-medium text-slate-700">Category <span class="text-rose-500">*</span></label>
+                <label class="block text-sm font-medium text-slate-700">Category</label>
                 <select name="category" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500" data-category-select>
                     <option value="">Select category</option>
                     @foreach ($incidentCategories as $category)
@@ -78,7 +78,7 @@
                 </div>
             </div>
             <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-slate-700">Description <span class="text-rose-500">*</span></label>
+                <label class="block text-sm font-medium text-slate-700">Description</label>
                 <textarea name="description" rows="4" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">{{ old('description') }}</textarea>
             </div>
             <div
@@ -132,12 +132,37 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700">Incident Date & Time</label>
-                <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" @if (auth()->user()->isStaff()) :min="reportDate" @endif required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                <x-input-error class="mt-1" :messages="$errors->get('incident_date')" />
             </div>
             @if (!$residentUser)
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Date Reported</label>
-                    <input type="datetime-local" name="reported_at" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                    <input type="datetime-local" name="reported_at" x-model="reportDate" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                    <x-input-error class="mt-1" :messages="$errors->get('reported_at')" />
+                </div>
+                <div class="md:col-span-2">
+                    <label for="report-status" class="block text-sm font-medium text-slate-700">Status</label>
+                    <select id="report-status" name="status" x-model="reportStatus" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                        <option value="Open" @selected(old('status', 'Open') === 'Open')>Pending</option>
+                        <option value="Under Investigation" @selected(old('status') === 'Under Investigation')>Investigation</option>
+                        <option value="Resolved" @selected(in_array(old('status'), ['Resolved', 'Closed'], true))>Resolved</option>
+                    </select>
+                    <p class="mt-1 text-xs text-slate-500">Choose Resolved if the incident is already done. It will be saved to History.</p>
+                    <x-input-error class="mt-1" :messages="$errors->get('status')" />
+                </div>
+                <div class="md:col-span-2 space-y-4" x-cloak x-show="['Resolved', 'Closed'].includes(reportStatus)">
+                    <div>
+                        <label for="report-resolved-at" class="block text-sm font-medium text-slate-700">Date Resolved</label>
+                        <input id="report-resolved-at" type="datetime-local" name="resolved_at" value="{{ old('resolved_at', now()->format('Y-m-d\TH:i')) }}" :required="['Resolved', 'Closed'].includes(reportStatus)" :disabled="!['Resolved', 'Closed'].includes(reportStatus)" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                        <x-input-error class="mt-1" :messages="$errors->get('resolved_at')" />
+                    </div>
+                    <div>
+                        <label for="report-resolution-photos" class="block text-sm font-medium text-slate-700">Resolution Photos</label>
+                        <input id="report-resolution-photos" type="file" name="proof_photos[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple :disabled="!['Resolved', 'Closed'].includes(reportStatus)" class="mt-1 block w-full text-sm text-slate-600">
+                        <p class="mt-1 text-xs text-slate-500">Attach available photos showing the completed work. Up to 10 images, 5 MB each.</p>
+                        <x-input-error class="mt-1" :messages="array_merge($errors->get('proof_photos'), collect($errors->get('proof_photos.*'))->flatten()->all())" />
+                    </div>
                 </div>
             @endif
             <div class="md:col-span-2 flex flex-wrap justify-end gap-3">

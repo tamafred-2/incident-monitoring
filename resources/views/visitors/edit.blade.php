@@ -11,8 +11,8 @@
         </div>
     </x-slot>
 
-    <div class="py-10">
-        <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+    <div class="page-section">
+        <div class="page-shell">
             @include('partials.alerts')
 
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

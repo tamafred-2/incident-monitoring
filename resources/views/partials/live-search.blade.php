@@ -84,7 +84,7 @@
                     params.set(key, v);
                 }
             });
-            params.delete('page'); // a new query always starts at page 1
+            ['page', 'history_page', 'check_out_page', 'pending_page'].forEach((key) => params.delete(key)); // reset every list for a new query
 
             const qs = params.toString();
             const url = form.getAttribute('action') + (qs ? '?' + qs : '');

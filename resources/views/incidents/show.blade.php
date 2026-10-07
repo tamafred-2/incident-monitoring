@@ -21,7 +21,7 @@
         </div>
     </x-slot>
 
-    <div class="py-10">
+    <div class="page-section">
         <div
             x-data="{
                 previewImage: null,
@@ -35,7 +35,7 @@
                     this.previewLabel = '';
                 }
             }"
-            class="flex flex-col max-w-6xl gap-6 px-4 mx-auto sm:px-6 lg:px-8"
+            class="page-shell flex flex-col gap-4 min-[1600px]:gap-6"
         >
             @include('partials.alerts')
             @php

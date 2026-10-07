@@ -93,15 +93,17 @@
     sectionOpenState: {{ \Illuminate\Support\Js::from($sectionOpenState) }}
 })">
     <div class="sticky top-0 z-30 border-b border-white/10 bg-[var(--shell-sidebar)] text-white lg:hidden">
-        <div class="flex items-center justify-between gap-3 px-4 py-4">
+        <div class="flex items-center justify-between gap-3 px-4 py-2">
             <a href="{{ route('dashboard') }}" class="sidebar-brand sidebar-brand-mobile">
-                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" width="48" height="48" class="h-12 w-12 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
+                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" width="40" height="40" class="h-10 w-10 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
                 <span class="sidebar-brand-text">{{ $brandNameUpper }}</span>
             </a>
 
             <button
                 type="button"
                 @click="open = ! open"
+                aria-label="Toggle navigation"
+                :aria-expanded="open"
                 class="rounded-xl bg-white/5 p-2 text-[var(--shell-sidebar-text)] ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white"
             >
                 <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
@@ -122,16 +124,16 @@
 
     <aside
         :class="open ? 'translate-x-0' : '-translate-x-full'"
-        class="sidebar-panel fixed inset-y-0 left-0 z-40 flex w-72 transform flex-col transition duration-200 ease-out lg:translate-x-0"
+        class="sidebar-panel fixed inset-y-0 left-0 z-40 flex w-60 min-[1600px]:w-72 transform flex-col transition duration-200 ease-out lg:translate-x-0"
     >
-        <div class="flex items-center justify-center border-b border-white/10 px-6 py-4">
+        <div class="flex items-center justify-center border-b border-white/10 px-4 py-3 min-[1600px]:py-4">
             <a href="{{ route('dashboard') }}" class="sidebar-brand sidebar-brand-desktop">
-                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" width="64" height="64" class="h-16 w-16 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
+                <img src="{{ $brandLogo }}" alt="{{ $brandName }} logo" width="48" height="48" class="h-12 w-12 min-[1600px]:h-16 min-[1600px]:w-16 flex-none rounded-full object-cover bg-transparent p-0 shadow-none ring-0">
                 <span class="sidebar-brand-text sidebar-brand-text-desktop">{{ $brandNameUpper }}</span>
             </a>
         </div>
 
-        <div class="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+        <div class="flex-1 space-y-3 overflow-y-auto px-3 py-3 min-[1600px]:px-4 min-[1600px]:py-4">
             @foreach ($sections as $section)
                 @if (count($section['items']) > 0)
                     <section>
@@ -151,7 +153,7 @@
                                 <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
                             </svg>
                         </button>
-                        <div x-cloak x-show="sections['{{ $section['key'] }}']" x-transition.origin.top.duration.200ms class="mt-3 space-y-1.5">
+                        <div x-cloak x-show="sections['{{ $section['key'] }}']" x-transition.origin.top.duration.200ms class="mt-2 space-y-1">
                             @foreach ($section['items'] as $item)
                                 @php
                                     $itemChildren = $item['children'] ?? [];
@@ -201,8 +203,8 @@
             @endforeach
         </div>
 
-        <div class="border-t border-white/10 px-4 py-4">
-            <div @click.away="accountOpen = false" class="rounded-2xl bg-white/5 px-4 py-4 ring-1 ring-white/10">
+        <div class="border-t border-white/10 px-3 py-3">
+            <div @click.away="accountOpen = false" class="rounded-2xl bg-white/5 px-3 py-3 ring-1 ring-white/10">
                 <div class="flex items-center justify-between gap-3">
                     <p class="truncate text-sm font-semibold text-white">{{ $user->full_name }}</p>
 

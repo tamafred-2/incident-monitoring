@@ -3,8 +3,8 @@
         <x-page-header title="Analytics" :subtitle="'Incident, visitor, and community trends — ' . $scopeLabel . '.'" />
     </x-slot>
 
-    <div class="py-5">
-        <div class="mx-auto max-w-7xl space-y-5 px-4 sm:px-6 lg:px-8">
+    <div class="page-section">
+        <div class="page-shell space-y-5">
             @include('partials.alerts')
 
             {{-- Granularity + date range. Scopes the trend, By Status, and By Category. --}}

@@ -12,8 +12,8 @@
         </div>
     </x-slot>
 
-    <div class="py-10">
-        <div class="flex flex-col max-w-5xl gap-6 px-4 mx-auto sm:px-6 lg:px-8">
+    <div class="page-section">
+        <div class="page-shell flex flex-col gap-4 min-[1600px]:gap-6">
             @include('partials.alerts')
 
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
