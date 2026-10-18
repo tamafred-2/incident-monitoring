@@ -16,7 +16,7 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4 md:grid-cols-2" x-data="{ reportStatus: @js(old('status', 'Open')), reportDate: @js(old('reported_at', now()->format('Y-m-d\TH:i'))) }">
+        <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4 md:grid-cols-2" x-data="{ reportStatus: @js(old('status', 'Open')) }">
             @csrf
             <input type="hidden" name="_submission_token" value="{{ bin2hex(random_bytes(16)) }}">
             @php
@@ -127,15 +127,10 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700">Incident Date & Time</label>
-                <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" @if (auth()->user()->isStaff()) :min="reportDate" @endif required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 <x-input-error class="mt-1" :messages="$errors->get('incident_date')" />
             </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700">Date Reported</label>
-                    <input type="datetime-local" name="reported_at" x-model="reportDate" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
-                    <x-input-error class="mt-1" :messages="$errors->get('reported_at')" />
-                </div>
-                <div class="md:col-span-2">
                     <label for="report-status" class="block text-sm font-medium text-slate-700">Status</label>
                     <select id="report-status" name="status" x-model="reportStatus" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                         <option value="Open" @selected(old('status', 'Open') === 'Open')>Pending</option>
