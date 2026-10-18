@@ -20,7 +20,7 @@
 
 Incident Monitoring System is a comprehensive platform for subdivision properties, neighborhood safety tracking, and visitor check-in logs.
 
-Instead of manual paper logbooks, it provides a centralized platform for managing subdivision details, tracking neighborhood incidents with photo attachments, and regulating visitor access. It ensures seamless coordination between Admins, Staff, Security Guards, and Residents through role-based access control and real-time dashboard analytics.
+Instead of manual paper logbooks, it provides a centralized platform for managing subdivision details, tracking neighborhood incidents with photo attachments, and regulating visitor access. It ensures seamless coordination between Admins, Staff, and Security Guards through role-based access control and real-time dashboard analytics.
 
 Built with Laravel 12, the application features an elegant web interface styled with Tailwind CSS, a robust SQLite database back-end, and support for automated PDF report generation.
 
@@ -66,7 +66,7 @@ Presentation (Frontend)
 │   ├── auth / layouts / components
 │   ├── subdivisions / houses / residents
 │   ├── incidents / incident-photos
-│   ├── visitors / resident-visitors
+│   ├── visitors
 │   └── analytics / dashboard / profile
 └── Assets (Vite & Tailwind CSS compilation)
 
@@ -136,7 +136,6 @@ To test the application, use any of the seeded accounts below. All accounts use 
 | `staff2@example.com` | Staff | Erin Ramos — Dona Maria Dizon Subdivision |
 | `security@example.com` | Security | Sam Navarro — Dona Maria Dizon Subdivision |
 | `security2@example.com` | Security | Leo Cortez — Dona Maria Dizon Subdivision |
-| `resident.portal@example.com` | Resident | Rina Dela Cruz — House 1 (Dona Maria Dizon) |
 
 ---
 
@@ -146,7 +145,7 @@ The default seed database contains pre-configured records to instantly explore t
 - **1 Subdivision:** Dona Maria Dizon, Calasiao Pangasinan (with subdivision profile & logo)
 - **2 Houses:** Registered within the subdivision
 - **9 Residents:** Registered and mapped to houses
-- **6 User Accounts:** Pre-seeded for testing roles (see table above)
+- **5 User Accounts:** Pre-seeded for testing roles (see table above)
 - **4 Visitor Requests:** 1 pending, 2 approved, 1 declined
 - **2 Visitors:** 1 currently checked-in, 1 checked-out
 - **4 Incidents:** 2 open/under investigation, 2 resolved with photo attachments
@@ -156,10 +155,10 @@ The default seed database contains pre-configured records to instantly explore t
 ## 🚀 Features & Capabilities
 
 ### 🛡️ Access Control & Portals
-- **Multi-tenant Role-Based Access (RBAC):** Admin, Staff, Security Guard, and Resident roles.
-- **Dedicated Portals:** Tailored user interfaces for each role (e.g., Security Guard gate interface, Resident visitor portal).
+- **Multi-tenant Role-Based Access (RBAC):** Admin, Staff, and Security Guard roles. Residents are records only and have no login accounts. The resident portal has been removed.
+- **Dedicated Portals:** Tailored user interfaces for each role (e.g., Security Guard gate interface).
 - **Password Enforcement:** Force password change on initial login for security.
-- **Subdivision Scoping:** Staff, Security, and Residents are scoped to their respective subdivisions.
+- **Subdivision Scoping:** Staff and Security are scoped to their respective subdivisions.
 
 ### 📋 Incident Management
 - **Incident Reporting:** File incidents with titles, descriptions, status, and priority levels.
@@ -168,9 +167,9 @@ The default seed database contains pre-configured records to instantly explore t
 - **Incident Status Flow:** Follow incidents from Open, Investigating, to Resolved.
 
 ### 🚗 Visitor Access Control
-- **Resident Pre-Approval:** Residents can request or pre-approve visitor entries from their portal.
+- **Owner Permission:** Security guards contact the house owner and record permission before visitor entry.
 - **Security Check-in/Check-out:** Security guards log visitors at the gate, capture ID photos, and record check-out times.
-- **Notifications:** Admins and Residents receive notifications of visitor status updates.
+- **Notifications:** Admins receive notifications of visitor status updates.
 - **Visitor Logs Export:** Export and print comprehensive visitor logbooks to PDF.
 
 ### 📊 Analytics & Administration
@@ -188,11 +187,11 @@ The default seed database contains pre-configured records to instantly explore t
 - [x] SQLite & Database Migration Configuration
 - [x] Setup script for one-click environment configuration
 - [x] Subdivision & House Registry Management
-- [x] Resident Profile & Account Provisioning
+- [x] Resident Profile Management
 - [x] Incident Report Submission & Status Flow
 - [x] Incident Photo Uploads & Local Storage Handler
 - [x] Visitor Check-in & Check-out logs
-- [x] Resident Pre-Approval / Visitor Request System
+- [x] Owner Permission Recording
 - [x] Soft Deletes & Admin Restore Utilities
 - [x] PDF Export engine for Incidents & Visitors
 - [x] Real-time Admin visitor notifications
@@ -207,3 +206,24 @@ The default seed database contains pre-configured records to instantly explore t
 This project was developed as a capstone/thesis system designed to solve real-world security challenges in residential subdivisions. 
 
 It marks a significant learning and development milestone—taking theoretical software engineering concepts from the classroom and applying them to build a functional, secure, and production-ready application that replaces traditional paper logbooks with a modern digital registry.
+
+Existing installations must run `php artisan migrate` to retire old resident logins and remove account links. Former login identities remain archived without a role or usable credentials solely to preserve reporter names on existing incident reports. They cannot be restored through user management.
+
+Adding a house requires its owner?s surname, first name, phone, and email; middle name and extension are optional. The house and an active Owner resident are saved together. Add or assign additional household members through Residents. Editing an existing house does not create another owner.
+
+The dashboard has independent searches for pending incidents (category, location, description) and checked-in visitors (name, resident being visited, phone, plate, house, purpose). The resident's name appears below the visitor's name as “Visiting: …” when provided. Search filters the full permitted list and remains active while scrolling; dashboard summary counts remain unchanged.
+
+
+## Visitor profiles and visits
+
+Use **Visitors** in the sidebar to search profiles by visitor number, name, or phone. **Add Visitor** saves identity, phone, and an ID photo without checking anyone in. Open a profile to edit those details, review all visits, or choose **Add Visit**. **Gate Monitoring** retains the Currently Inside and Visit History lists, search, checkout, duration, and exports.
+
+The visitor directory uses the shared scroll list instead of pagination controls. It loads ten records at a time as needed, fits the available space, and preserves the current search when fetching more profiles.
+
+Adding or editing a visitor profile rejects an existing full name within the subdivision, regardless of phone number or capitalization. Middle names/initials and extensions distinguish names. Existing duplicate profiles remain intact.
+
+Every visit stores a snapshot of the visitor?s identity plus its own destination, purpose, optional vehicle and passenger details, entry time, exit time, and duration. Profile edits apply to future visits and leave previous visit snapshots unchanged. The saved ID photo is reused; a replacement uploaded during check-in becomes the saved photo for subsequent visits. A visitor already inside cannot start another visit until checkout.
+
+Choose **Resident Visit** for a specific household, including household deliveries. Select the resident, call the active house owner using the registered phone number, select the approving owner, and confirm permission before entry. This is required on every Resident Visit, even when visiting the owner directly. The owner name, phone, approving time, host resident, and recording guard are saved with that visit. **Walk-in** is for deliveries without a resident destination or amenity access: record the destination and purpose, with no resident selection or owner permission.
+
+Run `php artisan migrate` on an existing installation. Migration `2026_10_11_010000_create_visitor_profiles.php` links existing visit records to profiles without changing their check-in/out times, approval data, photos, or archived state. It groups only matching full names and nonempty phone numbers within the same subdivision. Names with different or missing phone numbers remain separate profiles. The existing `visitors` table continues to hold individual visit records; `visitor_profiles` holds the reusable identity. Profiles and ID-photo routes enforce subdivision access; staff can view profiles, while security and admins can register, edit, and check in visitors.
