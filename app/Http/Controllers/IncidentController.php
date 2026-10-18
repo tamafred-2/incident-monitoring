@@ -201,13 +201,9 @@ class IncidentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $rules = $this->incidentValidationRules();
-        if ($request->user()->isStaff()) {
-            $rules['incident_date'][] = 'after_or_equal:reported_at';
-        }
-        $rules['resolved_at'] = ['required_if:status,Resolved,Closed', 'nullable', 'date', 'after_or_equal:reported_at', 'before_or_equal:now'];
-        $data = $request->validate($rules, [
-            'incident_date.after_or_equal' => 'The incident date and time cannot be earlier than the date reported.',
-        ]);
+        unset($rules['reported_at']);
+        $rules['resolved_at'] = ['required_if:status,Resolved,Closed', 'nullable', 'date', 'after_or_equal:incident_date', 'before_or_equal:now'];
+        $data = $request->validate($rules);
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
         if (! $subdivisionId) {
@@ -221,7 +217,7 @@ class IncidentController extends Controller
             ])->withInput();
         }
 
-        $reportedAt = $data['reported_at'];
+        $reportedAt = now()->toDateTimeString();
         $status = $this->mapIncidentStatusForStorage((string) $data['status']);
 
         $proofPhotoPaths = $this->storeProofPhotos($request);

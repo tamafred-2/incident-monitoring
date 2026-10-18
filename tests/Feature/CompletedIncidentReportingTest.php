@@ -32,6 +32,7 @@ class CompletedIncidentReportingTest extends TestCase
 
     public function test_completed_report_saves_historical_dates_and_goes_directly_to_history(): void
     {
+        $this->freezeTime();
         Notification::fake();
         $payload = $this->reportPayload();
         $admin = User::factory()->create();
@@ -43,7 +44,7 @@ class CompletedIncidentReportingTest extends TestCase
         $incident = Incident::sole();
         $this->assertSame('Resolved', $incident->status);
         $this->assertSame($payload['resolved_at'], $incident->resolved_at->toDateTimeString());
-        $this->assertSame($payload['reported_at'], $incident->reported_at->toDateTimeString());
+        $this->assertSame(now()->toDateTimeString(), $incident->reported_at->toDateTimeString());
         $this->assertNull($incident->assigned_to);
         $history = $this->get(route('incidents.index', ['view' => 'history']))->assertOk();
         $this->assertTrue($history->viewData('incidents')->contains('incident_id', $incident->getKey()));
@@ -64,7 +65,7 @@ class CompletedIncidentReportingTest extends TestCase
         Storage::disk('public')->assertExists($photo->photo_path);
     }
 
-    public function test_completion_date_is_required_and_must_be_between_report_date_and_now(): void
+    public function test_completion_date_is_required_and_must_be_between_incident_date_and_now(): void
     {
         $payload = $this->reportPayload();
         $this->actingAs(User::factory()->create());
@@ -76,23 +77,19 @@ class CompletedIncidentReportingTest extends TestCase
         $this->assertDatabaseCount('incidents', 0);
     }
 
-    public function test_staff_incident_date_cannot_be_earlier_than_reported_date(): void
+    public function test_staff_can_report_a_past_incident_without_supplying_a_reported_date(): void
     {
+        $this->freezeTime();
         $payload = $this->reportPayload();
+        unset($payload['reported_at']);
+        $payload['status'] = 'Open';
+        unset($payload['resolved_at']);
         $staff = User::factory()->create(['role' => 'staff', 'subdivision_id' => $payload['subdivision_id']]);
-        $payload['incident_date'] = now()->subDays(4)->toDateTimeString();
-        $this->actingAs($staff)->from(route('incidents.index'))->post(route('incidents.store'), $payload)
-            ->assertSessionHasErrors('incident_date');
-        $this->get(route('incidents.index'))->assertOk()
-            ->assertSee('The incident date and time cannot be earlier than the date reported.')
-            ->assertSee(':min="reportDate"', false);
-        $this->assertDatabaseCount('incidents', 0);
-
-        $payload['incident_date'] = $payload['reported_at'];
-        $this->post(route('incidents.store'), $payload)->assertSessionHasNoErrors();
-        $payload['incident_date'] = now()->subDays(3)->addHour()->toDateTimeString();
-        $this->post(route('incidents.store'), $payload)->assertSessionHasNoErrors();
-        $this->assertDatabaseCount('incidents', 2);
+        $this->actingAs($staff)->post(route('incidents.store'), $payload)->assertSessionHasNoErrors();
+        $incident = Incident::sole();
+        $this->assertSame(now()->toDateTimeString(), $incident->reported_at->toDateTimeString());
+        $this->assertSame($payload['incident_date'], $incident->incident_date->toDateTimeString());
+        $this->assertNull($incident->resolved_at);
     }
 
 }
