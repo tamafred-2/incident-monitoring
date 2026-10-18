@@ -25,71 +25,27 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $allowedId = $user->allowedSubdivisionId();
-        $isResidentDashboard = $user->isResident();
-        $isStaffDashboard = ! $isResidentDashboard && $user->isStaff();
-        $showPendingIncidentList = ! $isResidentDashboard && ($isStaffDashboard || $user->isAdmin());
+        $isStaffDashboard = $user->isStaff();
+        $showPendingIncidentList = ($isStaffDashboard || $user->isAdmin());
 
         $scope = fn (Builder $query): Builder => $query->when(
             ! $user->isAdmin(),
             fn (Builder $inner) => $inner->where('subdivision_id', $allowedId)
         );
 
-        $summary = $isResidentDashboard ? null : $this->buildSummary($scope);
+        $summary = $this->buildSummary($scope);
 
         $totalSubdivisions = $user->isAdmin()
             ? Subdivision::count()
             : ($allowedId ? 1 : 0);
 
-        $totalIncidents = Incident::when(
-            $isResidentDashboard,
-            fn ($query) => $query->where('reported_by', $user->user_id),
-            fn ($query) => $query->when(
-                ! $user->isAdmin(),
-                fn ($innerQuery) => $innerQuery->where('subdivision_id', $allowedId)
-            )
-        )->count();
-
-        $totalResidents = $isResidentDashboard
-            ? ($user->resident ? 1 : 0)
-            : Resident::when(
-                ! $user->isAdmin(),
-                fn ($query) => $query->where('subdivision_id', $allowedId)
-            )->count();
-
-        $totalHouses = $isResidentDashboard
-            ? ($user->resident?->house_id ? 1 : 0)
-            : House::when(
-                ! $user->isAdmin(),
-                fn ($query) => $query->where('subdivision_id', $allowedId)
-            )->count();
-
-        $visitorsToday = $isResidentDashboard
-            ? 0
-            : Visitor::when(
-                ! $user->isAdmin(),
-                fn ($query) => $query->where('subdivision_id', $allowedId)
-            )->whereDate('check_in', now()->toDateString())->count();
-
-        $visitorsInside = $isResidentDashboard
-            ? 0
-            : Visitor::when(
-                ! $user->isAdmin(),
-                fn ($query) => $query->where('subdivision_id', $allowedId)
-            )->where('status', VisitorStatus::Inside)->count();
+        $totalIncidents = $scope(Incident::query())->count();
+        $totalResidents = $scope(Resident::query())->count();
+        $totalHouses = $scope(House::query())->count();
+        $visitorsToday = $scope(Visitor::query())->whereDate('check_in', now()->toDateString())->count();
+        $visitorsInside = $scope(Visitor::query())->where('status', VisitorStatus::Inside)->count();
 
         $insideVisitors = $this->dashboardRecords($request, 'visitors');
-
-        $residentOpenIncidents = $isResidentDashboard
-            ? Incident::where('reported_by', $user->user_id)
-                ->whereIn('status', $this->pendingIncidentStatuses())
-                ->count()
-            : 0;
-
-        $residentResolvedIncidents = $isResidentDashboard
-            ? Incident::where('reported_by', $user->user_id)
-                ->whereIn('status', $this->resolvedIncidentStatuses())
-                ->count()
-            : 0;
 
         $staffActiveIncidents = $isStaffDashboard
             ? Incident::query()
@@ -114,7 +70,6 @@ class DashboardController extends Controller
         $dashboardPendingIncidentList = $this->dashboardRecords($request, 'incidents');
 
         return view('dashboard', compact(
-            'isResidentDashboard',
             'isStaffDashboard',
             'showPendingIncidentList',
             'summary',
@@ -125,8 +80,6 @@ class DashboardController extends Controller
             'visitorsToday',
             'visitorsInside',
             'insideVisitors',
-            'residentOpenIncidents',
-            'residentResolvedIncidents',
             'staffActiveIncidents',
             'staffPendingIncidents',
             'dashboardPendingIncidentList',
@@ -161,6 +114,18 @@ class DashboardController extends Controller
         $query = $isIncident ? Incident::query() : Visitor::query();
         $query->when(! $this->canViewRecords($user, $table), fn ($q) => $q->whereRaw('1 = 0'))
             ->when(! $user->isAdmin(), fn ($q) => $q->where('subdivision_id', $user->allowedSubdivisionId()));
+
+        $search = trim((string) $request->query($isIncident ? 'incident_q' : 'visitor_q', ''));
+        if ($search !== '') {
+            $columns = $isIncident
+                ? ['category', 'location', 'description']
+                : ['full_name', 'phone', 'plate_number', 'host_employee', 'house_address_or_unit', 'purpose'];
+            $query->where(function (Builder $query) use ($columns, $search): void {
+                foreach ($columns as $column) {
+                    $query->orWhere($column, 'like', '%'.$search.'%');
+                }
+            });
+        }
 
         if ($isIncident) {
             $query->whereIn('status', $this->pendingIncidentStatuses())

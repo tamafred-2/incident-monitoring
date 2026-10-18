@@ -19,6 +19,6 @@
     </tr>
 @empty
     <tr>
-        <td colspan="4" class="px-6 py-10 text-center text-slate-500">No pending incidents right now.</td>
+        <td colspan="4" class="px-6 py-10 text-center text-slate-500">{{ trim((string) request('incident_q', '')) !== '' ? 'No pending incidents match your search.' : 'No pending incidents right now.' }}</td>
     </tr>
 @endforelse

@@ -115,3 +115,55 @@ test('larger viewports fetch only the batch needed to fill visible space', async
     assert.equal(state.loaded, 10);
     assert.equal(state.cursor, 'second');
 });
+
+test('search resets the cursor and scrolling retains its query', async () => {
+    const state = table();
+    state.query = 'Ana';
+    const requests = [];
+    globalThis.fetch = async (url) => {
+        requests.push(url);
+        return { ok: true, json: async () => ({ html: '<tr>Ana</tr>', count: 1, next_cursor: 'filtered' }) };
+    };
+    await state.reload();
+    assert.equal(requests[0].searchParams.has('visitor_cursor'), false);
+    assert.equal(state.loaded, 1);
+    assert.equal(state.$refs.rows.innerHTML, '<tr>Ana</tr>');
+    await state.loadMore();
+    assert.equal(requests[1].searchParams.get('visitor_q'), 'Ana');
+    assert.equal(requests[1].searchParams.get('visitor_cursor'), 'filtered');
+});
+
+test('a stale scroll response cannot overwrite newer search results', async () => {
+    const state = table();
+    let completeOld;
+    globalThis.fetch = () => new Promise((resolve) => { completeOld = resolve; });
+    const pending = state.loadMore();
+    state.query = 'New';
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ html: '<tr>New</tr>', count: 1, next_cursor: null }) });
+    await state.reload();
+    completeOld({ ok: true, json: async () => ({ html: '<tr>Old</tr>', count: 5, next_cursor: 'old' }) });
+    await pending;
+    assert.equal(state.loaded, 1);
+    assert.equal(state.cursor, null);
+    assert.equal(state.$refs.rows.innerHTML, '<tr>New</tr>');
+});
+
+test('a failed search can retry its first batch and clearing search removes the filter', async () => {
+    const state = table();
+    state.query = 'Missing';
+    globalThis.fetch = async () => ({ ok: false });
+    await state.reload();
+    assert.equal(state.error, true);
+    let request;
+    globalThis.fetch = async (url) => {
+        request = url;
+        return { ok: true, json: async () => ({ html: '<tr>No matches</tr>', count: 0, next_cursor: null }) };
+    };
+    await state.retry();
+    assert.equal(request.searchParams.has('visitor_cursor'), false);
+    assert.equal(state.error, false);
+    assert.equal(state.message(), 'No matching records.');
+    state.query = '';
+    await state.reload();
+    assert.equal(request.searchParams.get('visitor_q'), '');
+});

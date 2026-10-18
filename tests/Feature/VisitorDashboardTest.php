@@ -99,7 +99,7 @@ class VisitorDashboardTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Visitor Details')
+            ->assertSee('Visit Details')
             ->assertSee('Jose P. Santos Jr.')
             ->assertSee('Delivery');
     }
@@ -401,7 +401,6 @@ class VisitorDashboardTest extends TestCase
         $other = Subdivision::create(['subdivision_name' => 'Other Scroll', 'status' => 'Active']);
         $staff = User::factory()->create(['role' => 'staff', 'subdivision_id' => $home->subdivision_id]);
         $security = User::factory()->create(['role' => 'security', 'subdivision_id' => $home->subdivision_id]);
-        $resident = User::factory()->create(['role' => 'resident', 'subdivision_id' => $home->subdivision_id]);
         foreach ([$home, $other] as $subdivision) {
             foreach (['Open', 'Resolved'] as $status) {
                 Incident::create([
@@ -424,8 +423,6 @@ class VisitorDashboardTest extends TestCase
         $this->getJson($visitors)->assertForbidden();
         $this->actingAs($security)->getJson($visitors)->assertOk()->assertJsonPath('count', 1)
             ->assertSee('Home Scroll Visitor')->assertDontSee('Other Scroll');
-        $this->getJson($incidents)->assertForbidden();
-        $this->actingAs($resident)->getJson($visitors)->assertForbidden();
         $this->getJson($incidents)->assertForbidden();
     }
 
@@ -454,4 +451,39 @@ class VisitorDashboardTest extends TestCase
         ]))->assertOk()->assertJsonPath('count', 1)->assertJsonPath('next_cursor', null)
             ->assertSee('ScrollIncident1');
     }
+    public function test_dashboard_searches_filter_the_full_lists_and_keep_scope_during_scrolling(): void
+    {
+        $home = Subdivision::create(['subdivision_name' => 'Search Home', 'status' => 'Active']);
+        $other = Subdivision::create(['subdivision_name' => 'Other', 'status' => 'Active']);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $staff = User::factory()->create(['role' => 'staff', 'subdivision_id' => $home->getKey()]);
+        $security = User::factory()->create(['role' => 'security', 'subdivision_id' => $home->getKey()]);
+        foreach ([$home, $other] as $subdivision) {
+            for ($i = 1; $i <= 8; $i++) {
+                $name = $i <= 6 ? 'Needle '.$i : 'Unrelated '.$i;
+                Incident::create([
+                    'subdivision_id' => $subdivision->getKey(), 'description' => $name,
+                    'location' => $subdivision->subdivision_name.' '.$name, 'category' => 'Noise',
+                    'status' => $i === 8 ? 'Resolved' : 'Open', 'incident_date' => now(), 'reported_by' => $admin->getKey(),
+                ]);
+                Visitor::create([
+                    'subdivision_id' => $subdivision->getKey(), 'first_name' => $name, 'surname' => 'Visitor',
+                    'host_employee' => $subdivision->subdivision_name,
+                    'check_in' => now(), 'status' => $i === 8 ? 'Checked Out' : 'Inside',
+                ]);
+            }
+        }
+        $page = $this->actingAs($admin)->get(route('dashboard', ['incident_q' => 'Needle', 'visitor_q' => 'Unrelated']));
+        $page->assertOk()->assertViewHas('dashboardPendingIncidentList', fn ($rows) => $rows->every(fn ($row) => str_contains($row->description, 'Needle')))
+            ->assertViewHas('insideVisitors', fn ($rows) => $rows->count() === 2 && $rows->every(fn ($row) => str_contains($row->full_name, 'Unrelated')));
+        foreach ([['incidents', 'incident_q', 'incident_cursor', $staff], ['visitors', 'visitor_q', 'visitor_cursor', $security]] as [$table, $key, $cursor, $user]) {
+            $first = $this->actingAs($user)->getJson(route('dashboard.records', ['table' => $table, $key => 'Needle']))
+                ->assertOk()->assertJsonPath('count', 5)->assertDontSee('Other')->assertDontSee('Unrelated');
+            $this->getJson(route('dashboard.records', ['table' => $table, $key => 'Needle', $cursor => $first->json('next_cursor')]))
+                ->assertOk()->assertJsonPath('count', 1)->assertJsonPath('next_cursor', null)->assertSee('Needle 1')->assertDontSee('Other');
+            $this->getJson(route('dashboard.records', ['table' => $table, $key => 'Missing']))
+                ->assertOk()->assertJsonPath('count', 0)->assertJsonPath('next_cursor', null)->assertSee('match your search');
+        }
+    }
+
 }

@@ -7,35 +7,12 @@
         <div class="page-shell">
             @include('partials.alerts')
 
-            @if ($isResidentDashboard)
-                <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <x-stat-card :compact="true" label="Your Subdivision" :value="$totalSubdivisions" />
-                    <x-stat-card :compact="true" label="Your Complaints" :value="$totalIncidents" />
-                    <x-stat-card :compact="true" label="Pending Complaints" :value="$residentOpenIncidents" tone="amber" />
-                    <x-stat-card :compact="true" label="Resolved Complaints" :value="$residentResolvedIncidents" tone="emerald" />
-                </div>
-
-                <div class="p-6 mt-8 bg-white border shadow-sm rounded-2xl border-slate-200">
-                    <h3 class="text-lg font-semibold text-slate-900">Resident Overview</h3>
-                    <p class="mt-2 text-sm text-slate-500">Use the Incidents page to track pending or resolved reports tied to your account.</p>
-                    <div class="grid gap-4 mt-6 md:grid-cols-2">
-                        <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
-                            <p class="text-sm text-slate-500">Linked Resident Record</p>
-                            <p class="mt-2 text-lg font-semibold text-slate-900">{{ auth()->user()->resident?->full_name ?? 'Not linked' }}</p>
-                        </div>
-                        <div class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
-                            <p class="text-sm text-slate-500">Linked House</p>
-                            <p class="mt-2 text-lg font-semibold text-slate-900">{{ auth()->user()->resident?->house?->display_address ?? 'Not assigned' }}</p>
-                        </div>
-                    </div>
-                </div>
-            @else
                 @php
                     $canViewVisitorMonitoring = auth()->user()->isAdmin() || auth()->user()->isSecurity();
                 @endphp
                 <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     <x-stat-card :compact="true" :href="route('incidents.index', ['view' => 'all'])" label="Total Incidents" tone="rose" :tinted="true" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
-                    <x-stat-card :compact="true" :href="route('visitors.index', ['tab' => 'history', 'chart_filter' => 1])" label="Total Visitors" tone="brand" :tinted="true" :value="$summary['total_visitors']" :hint="$summary['visitors_inside'] . ' currently inside'" />
+                    <x-stat-card :compact="true" :href="route('visitors.index', ['tab' => 'history', 'chart_filter' => 1, 'date_from' => now()->startOfDay()->format('Y-m-d\TH:i'), 'date_to' => now()->endOfDay()->format('Y-m-d\TH:i')])" label="Today's Visitors" tone="brand" :tinted="true" :value="$visitorsToday" :hint="$summary['visitors_inside'] . ' currently inside'" />
                     <x-stat-card :compact="true" :href="route('residents.index')" label="Total Residents" tone="violet" :tinted="true" :value="$summary['total_residents']" />
                     <x-stat-card :compact="true" :href="auth()->user()->isAdmin() ? route('houses.index') : route('residents.index')" label="Total Houses" tone="teal" :tinted="true" :value="$summary['total_houses']" />
                 </div>
@@ -45,10 +22,12 @@
                 @endphp
                 <div data-dashboard-tables class="[--dashboard-bottom-space:16px] min-[1600px]:[--dashboard-bottom-space:24px] mt-4 grid gap-3 {{ $usesIncidentVisitorSplitLayout ? 'lg:grid-cols-[3fr_2fr]' : '' }}">
                 @if ($showPendingIncidentList)
-                    <div data-dashboard-table x-data="dashboardTable({ endpoint: @js(route('dashboard.records', ['table' => 'incidents'])), cursor: @js($dashboardPendingIncidentList->nextCursor()?->encode()), cursorName: 'incident_cursor', loaded: {{ $dashboardPendingIncidentList->count() }} })" class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <div class="flex h-12 min-[1600px]:h-14 items-center px-4 border-b border-slate-200">
-                            <div>
-                                <h3 class="text-sm min-[1600px]:text-base font-semibold text-slate-900">Pending Incidents</h3>
+                    <div data-dashboard-table x-data="dashboardTable({ endpoint: @js(route('dashboard.records', ['table' => 'incidents'])), cursor: @js($dashboardPendingIncidentList->nextCursor()?->encode()), cursorName: 'incident_cursor', searchKey: 'incident_q', query: @js((string) request('incident_q', '')), loaded: {{ $dashboardPendingIncidentList->count() }} })" class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+                        <div class="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <h3 class="text-sm min-[1600px]:text-base font-semibold text-slate-900 sm:max-w-[45%]">Pending Incidents</h3>
+                            <div class="w-full sm:min-w-0 sm:max-w-sm sm:flex-1">
+                            <label class="sr-only" for="dashboard-incident-search">Search pending incidents</label>
+                            <input id="dashboard-incident-search" type="search" x-model="query" @input="scheduleSearch()" @keydown.enter.prevent="reload()" placeholder="Search category, location, or description" class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                             </div>
                         </div>
 
@@ -75,16 +54,18 @@
 
                         <div x-ref="footer" class="flex min-h-[32px] items-center justify-between border-t border-slate-200 px-4 py-1.5 text-[11px] min-[1600px]:text-xs text-slate-500" aria-live="polite">
                             <span x-text="message()"></span>
-                            <button x-cloak x-show="error" type="button" @click="loadMore()" class="font-semibold text-brand-700 hover:underline">Retry</button>
+                            <button x-cloak x-show="error" type="button" @click="retry()" class="font-semibold text-brand-700 hover:underline">Retry</button>
                         </div>
                     </div>
                 @endif
 
                 @if ($canViewVisitorMonitoring)
-                    <div data-dashboard-table x-data="dashboardTable({ endpoint: @js(route('dashboard.records', ['table' => 'visitors'])), cursor: @js($insideVisitors->nextCursor()?->encode()), cursorName: 'visitor_cursor', loaded: {{ $insideVisitors->count() }} })" class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
-                        <div class="flex h-12 min-[1600px]:h-14 items-center px-4 border-b border-slate-200">
-                            <div>
-                                <h3 class="text-sm min-[1600px]:text-base font-semibold text-slate-900">Visitors Currently Checked In</h3>
+                    <div data-dashboard-table x-data="dashboardTable({ endpoint: @js(route('dashboard.records', ['table' => 'visitors'])), cursor: @js($insideVisitors->nextCursor()?->encode()), cursorName: 'visitor_cursor', searchKey: 'visitor_q', query: @js((string) request('visitor_q', '')), loaded: {{ $insideVisitors->count() }} })" class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
+                        <div class="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <h3 class="text-sm min-[1600px]:text-base font-semibold text-slate-900 sm:max-w-[45%]">Visitors Currently Checked In</h3>
+                            <div class="w-full sm:min-w-0 sm:max-w-sm sm:flex-1">
+                            <label class="sr-only" for="dashboard-visitor-search">Search checked-in visitors</label>
+                            <input id="dashboard-visitor-search" type="search" x-model="query" @input="scheduleSearch()" @keydown.enter.prevent="reload()" placeholder="Search visitor, resident, phone, or plate" class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                             </div>
                         </div>
 
@@ -97,6 +78,7 @@
                                 <thead class="sticky top-0 z-10 h-10 bg-slate-50">
                                     <tr>
                                         <th class="px-4 py-2 font-semibold text-left text-slate-600">Visitor</th>
+                                        <th class="px-4 py-2 font-semibold text-left text-slate-600">Plate Number</th>
                                         <th class="px-4 py-2 font-semibold text-right text-slate-600">Action</th>
                                     </tr>
                                 </thead>
@@ -109,12 +91,11 @@
 
                         <div x-ref="footer" class="flex min-h-[32px] items-center justify-between border-t border-slate-200 px-4 py-1.5 text-[11px] min-[1600px]:text-xs text-slate-500" aria-live="polite">
                             <span x-text="message()"></span>
-                            <button x-cloak x-show="error" type="button" @click="loadMore()" class="font-semibold text-brand-700 hover:underline">Retry</button>
+                            <button x-cloak x-show="error" type="button" @click="retry()" class="font-semibold text-brand-700 hover:underline">Retry</button>
                         </div>
                     </div>
                 @endif
                 </div>
-            @endif
         </div>
     </div>
 </x-app-layout>
