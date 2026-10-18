@@ -61,10 +61,6 @@
                                 <dd class="text-right font-medium text-slate-900">{{ $managedUser->role?->label() }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Linked Resident</dt>
-                                <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $managedUser->resident?->full_name ?? 'Not linked' }}</dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Subdivision</dt>
                                 <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $managedUser->isAdmin() ? 'All' : ($managedUser->subdivision?->subdivision_name ?? 'Unassigned') }}</dd>
                             </div>
@@ -73,10 +69,6 @@
                                 <dd class="text-right font-medium {{ $managedUser->is_active ? 'text-emerald-700' : 'text-amber-700' }}">
                                     {{ $managedUser->is_active ? 'Active' : 'Inactive' }}
                                 </dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Resident House</dt>
-                                <dd class="max-w-[16rem] text-right font-medium text-slate-900 break-words">{{ $managedUser->resident?->house?->display_address ?? 'Not linked' }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-4">
                                 <dt class="text-slate-500">Archived</dt>

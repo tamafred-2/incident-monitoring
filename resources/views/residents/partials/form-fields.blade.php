@@ -2,7 +2,6 @@
     'resident' => null,
     'subdivisions' => collect(),
     'houses' => collect(),
-    'withAccount' => false,
 ])
 
 @php
@@ -266,58 +265,4 @@
         </div>
     </section>
 
-    @if ($withAccount)
-        <section class="rounded-2xl border border-slate-200 bg-white p-5">
-            <div class="mb-4">
-                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Account Access</h4>
-                @if ($resident?->user)
-                    <p class="mt-1 text-sm text-slate-500">Linked account: <span class="font-medium text-slate-700">{{ $resident->user->email }}</span></p>
-                @else
-                    <p class="mt-1 text-sm text-slate-500">Optionally create a login account for this resident.</p>
-                @endif
-            </div>
-
-            @if (!$resident?->user)
-                <div
-                    x-data="{ createAccount: {{ $fieldValue('account_email') ? 'true' : 'false' }} }"
-                    class="space-y-4"
-                >
-                    <label class="flex cursor-pointer items-center gap-3">
-                        <input type="checkbox" x-model="createAccount" class="rounded border-slate-300 text-brand-600 shadow-sm focus:ring-brand-500">
-                        <span class="text-sm font-medium text-slate-700">Create login account</span>
-                    </label>
-
-                    <div x-show="createAccount" x-cloak class="grid gap-4 md:grid-cols-2">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Login Email</label>
-                            <input
-                                type="email"
-                                name="account_email"
-                                value="{{ $fieldValue('account_email') }}"
-                                :required="createAccount"
-                                class="mt-1 w-full rounded-xl text-sm shadow-sm focus:ring-brand-500 @if ($formErrors->has('account_email')) border-rose-300 focus:border-rose-500 @else border-slate-300 focus:border-brand-500 @endif"
-                            >
-                            @if ($formErrors->has('account_email'))
-                                <p data-validation-error class="mt-1 text-xs text-rose-600">{{ $formErrors->first('account_email') }}</p>
-                            @endif
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Password</label>
-                            <input
-                                type="password"
-                                name="account_password"
-                    aria-invalid="{{ $formErrors->has('account_password') ? 'true' : 'false' }}"
-                    aria-describedby="{{ $fieldPrefix }}-account_password-error"
-                                :required="createAccount"
-                                class="mt-1 w-full rounded-xl {{ $formErrors->has('account_password') ? 'border-rose-300' : 'border-slate-300' }} text-sm shadow-sm {{ $formErrors->has('account_password') ? 'focus:border-rose-500' : 'focus:border-brand-500' }} focus:ring-brand-500"
-                            >
-                @if ($formErrors->has('account_password'))
-                    <p id="{{ $fieldPrefix }}-account_password-error" data-validation-error class="mt-1 text-xs text-rose-600">{{ $formErrors->first('account_password') }}</p>
-                @endif
-                        </div>
-                    </div>
-                </div>
-            @endif
-        </section>
-    @endif
 </div>

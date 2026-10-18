@@ -76,9 +76,7 @@ class IncidentController extends Controller
 
         $this->applyHistoryViewScope($query, $historyView);
 
-        if ($user->isResident()) {
-            $query->where('reported_by', $user->user_id);
-        } elseif (! $user->isAdmin()) {
+        if (! $user->isAdmin()) {
             $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
             $query->where('subdivision_id', $filterSubdivision);
@@ -202,14 +200,11 @@ class IncidentController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $isResident = $request->user()->isResident();
-        $rules = $this->incidentValidationRules($isResident);
+        $rules = $this->incidentValidationRules();
         if ($request->user()->isStaff()) {
             $rules['incident_date'][] = 'after_or_equal:reported_at';
         }
-        if (! $isResident) {
-            $rules['resolved_at'] = ['required_if:status,Resolved,Closed', 'nullable', 'date', 'after_or_equal:reported_at', 'before_or_equal:now'];
-        }
+        $rules['resolved_at'] = ['required_if:status,Resolved,Closed', 'nullable', 'date', 'after_or_equal:reported_at', 'before_or_equal:now'];
         $data = $request->validate($rules, [
             'incident_date.after_or_equal' => 'The incident date and time cannot be earlier than the date reported.',
         ]);
@@ -226,10 +221,8 @@ class IncidentController extends Controller
             ])->withInput();
         }
 
-        $reportedAt = $isResident ? now()->format('Y-m-d H:i:s') : $data['reported_at'];
-        $status = $isResident
-            ? $this->mapIncidentStatusForStorage('Open')
-            : $this->mapIncidentStatusForStorage((string) $data['status']);
+        $reportedAt = $data['reported_at'];
+        $status = $this->mapIncidentStatusForStorage((string) $data['status']);
 
         $proofPhotoPaths = $this->storeProofPhotos($request);
 
@@ -287,7 +280,7 @@ class IncidentController extends Controller
         $isFullEditor = $request->user()->isAdmin();
         $previousStatus = $incident->status;
         $data = $request->validate($isFullEditor
-            ? $this->incidentValidationRules(false)
+            ? $this->incidentValidationRules()
             : $this->incidentStatusValidationRules()
         );
         $status = $this->mapIncidentStatusForStorage((string) $data['status']);
@@ -461,7 +454,7 @@ class IncidentController extends Controller
         return response()->file($absolutePath);
     }
 
-    private function incidentValidationRules(bool $forResident = false): array
+    private function incidentValidationRules(): array
     {
         $rules = [
             'subdivision_id' => ['nullable', 'integer'],
@@ -480,10 +473,6 @@ class IncidentController extends Controller
             'remove_proof_photos' => ['nullable', 'array'],
             'remove_proof_photos.*' => ['string'],
         ];
-
-        if ($forResident) {
-            return $rules;
-        }
 
         $rules['reported_at'] = ['required', 'date', 'before_or_equal:now'];
         $rules['resolved_at'] = ['nullable', 'date', 'after_or_equal:reported_at'];
@@ -819,12 +808,6 @@ class IncidentController extends Controller
             return;
         }
 
-        if ($user->isResident()) {
-            abort_unless((int) $incident->reported_by === (int) $user->user_id, 403);
-
-            return;
-        }
-
         abort_unless($user->canAccessSubdivision($incident->subdivision_id), 403);
     }
 
@@ -1123,9 +1106,7 @@ class IncidentController extends Controller
         );
         $this->applyHistoryViewScope($query, $historyView);
 
-        if ($user->isResident()) {
-            $query->where('reported_by', $user->user_id);
-        } elseif (! $user->isAdmin()) {
+        if (! $user->isAdmin()) {
             $query->where('subdivision_id', $user->allowedSubdivisionId());
         } elseif ($filterSubdivision) {
             $query->where('subdivision_id', $filterSubdivision);

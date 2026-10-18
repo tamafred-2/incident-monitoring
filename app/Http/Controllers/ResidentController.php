@@ -28,7 +28,7 @@ class ResidentController extends Controller
         $perPage = 10;
 
         $query = Resident::query()
-            ->with(['subdivision', 'house', 'user'])
+            ->with(['subdivision', 'house'])
             ->orderBy('full_name');
 
         if ($request->filled('relation_to_owner')) {
@@ -68,7 +68,7 @@ class ResidentController extends Controller
             ->withQueryString();
         $modalResidents = collect($residents->items());
         if ($user->isAdmin() && $request->session()->has('errors') && $request->old('edit_resident_id')) {
-            $editingResident = Resident::with(['subdivision', 'house', 'user'])->find($request->old('edit_resident_id'));
+            $editingResident = Resident::with(['subdivision', 'house'])->find($request->old('edit_resident_id'));
             if ($editingResident && ! $modalResidents->contains('resident_id', $editingResident->resident_id)) {
                 $modalResidents = $modalResidents->push($editingResident);
             }
@@ -113,40 +113,9 @@ class ResidentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validateResident($request);
-        // Resident account auto-creation is temporarily disabled.
-        /*
-        $shouldCreateAccount = $request->filled('account_email') || $request->filled('account_password');
-        $accountData = null;
-
-        if ($shouldCreateAccount) {
-            $accountData = $request->validate([
-                'account_email' => ['required', 'email', 'max:100', 'unique:users,email'],
-                'account_password' => ['required', 'string', 'min:8'],
-            ]);
-        }
-        */
 
         DB::transaction(function () use ($data): void {
             Resident::create($data);
-
-            /*
-            if ($shouldCreateAccount && $accountData !== null) {
-                $nameParts = $resident->name_parts;
-
-                User::create([
-                    'surname' => $nameParts['surname'],
-                    'first_name' => $nameParts['first_name'],
-                    'middle_name' => $nameParts['middle_name'],
-                    'extension' => $nameParts['extension'],
-                    'email' => $accountData['account_email'],
-                    'password' => $accountData['account_password'],
-                    'requires_password_change' => true,
-                    'role' => 'resident',
-                    'subdivision_id' => $resident->subdivision_id,
-                    'resident_id' => $resident->resident_id,
-                ]);
-            }
-            */
         });
 
         return redirect()->route('residents.index')
@@ -156,40 +125,9 @@ class ResidentController extends Controller
     public function update(Request $request, Resident $resident): RedirectResponse
     {
         $data = $this->validateResident($request, $resident);
-        // Resident account auto-creation is temporarily disabled.
-        /*
-        $shouldCreateAccount = !$resident->user && ($request->filled('account_email') || $request->filled('account_password'));
-        $accountData = null;
-
-        if ($shouldCreateAccount) {
-            $accountData = $request->validate([
-                'account_email'    => ['required', 'email', 'max:100', 'unique:users,email'],
-                'account_password' => ['required', 'string', 'min:8'],
-            ]);
-        }
-        */
 
         DB::transaction(function () use ($data, $resident): void {
             $resident->update($data);
-
-            /*
-            if ($shouldCreateAccount && $accountData !== null) {
-                $nameParts = $resident->fresh()->name_parts;
-
-                User::create([
-                    'surname'                  => $nameParts['surname'],
-                    'first_name'               => $nameParts['first_name'],
-                    'middle_name'              => $nameParts['middle_name'],
-                    'extension'                => $nameParts['extension'],
-                    'email'                    => $accountData['account_email'],
-                    'password'                 => $accountData['account_password'],
-                    'requires_password_change' => true,
-                    'role'                     => 'resident',
-                    'subdivision_id'           => $resident->subdivision_id,
-                    'resident_id'              => $resident->resident_id,
-                ]);
-            }
-            */
         });
 
         return redirect()->route('residents.index')
@@ -199,20 +137,11 @@ class ResidentController extends Controller
     public function destroy(Request $request, Resident $resident): RedirectResponse
     {
         DB::transaction(function () use ($resident): void {
-            User::withTrashed()
-                ->where('resident_id', $resident->resident_id)
-                ->get()
-                ->each(function (User $linkedUser): void {
-                    if (! $linkedUser->trashed()) {
-                        $linkedUser->delete();
-                    }
-                });
-
             $resident->delete();
         });
 
         return redirect()->route('residents.index', $this->indexContext($request))
-            ->with('success', 'Resident deleted successfully. Linked resident account(s) were archived.');
+            ->with('success', 'Resident deleted successfully.');
     }
 
     private function validateResident(Request $request, ?Resident $resident = null): array

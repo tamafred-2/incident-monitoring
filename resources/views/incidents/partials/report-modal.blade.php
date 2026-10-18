@@ -3,7 +3,7 @@
         <div class="flex items-start justify-between gap-4">
             <div>
                 <h3 class="text-lg font-semibold text-slate-900">Report Incident</h3>
-                <p class="mt-1 text-sm text-slate-500">{{ auth()->user()->isResident() ? 'Submit an incident and track its progress.' : 'Report a new incident or record a completed incident for history.' }}</p>
+                <p class="mt-1 text-sm text-slate-500">Report a new incident or record a completed incident for history.</p>
             </div>
 
             <button
@@ -20,7 +20,6 @@
             @csrf
             <input type="hidden" name="_submission_token" value="{{ bin2hex(random_bytes(16)) }}">
             @php
-                $residentUser = auth()->user()?->isResident();
                 $autoSubdivisionId = (int) old('subdivision_id', $effectiveSubdivision);
                 $selectedHouseId = (int) old('house_id', 0);
                 $selectedHouse = $selectedHouseId > 0
@@ -49,10 +48,6 @@
 
             <input type="hidden" name="subdivision_id" id="report_subdivision_id" value="{{ $autoSubdivisionId }}">
 
-            @if ($residentUser)
-                <input type="hidden" name="status" value="Open">
-                <input type="hidden" name="reported_at" value="{{ now()->format('Y-m-d\TH:i') }}">
-            @endif
 
             @php
                 $selectedCategory = old('category');
@@ -135,7 +130,6 @@
                 <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" @if (auth()->user()->isStaff()) :min="reportDate" @endif required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 <x-input-error class="mt-1" :messages="$errors->get('incident_date')" />
             </div>
-            @if (!$residentUser)
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Date Reported</label>
                     <input type="datetime-local" name="reported_at" x-model="reportDate" value="{{ old('reported_at', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
@@ -164,7 +158,6 @@
                         <x-input-error class="mt-1" :messages="array_merge($errors->get('proof_photos'), collect($errors->get('proof_photos.*'))->flatten()->all())" />
                     </div>
                 </div>
-            @endif
             <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
                 <button
                     type="button"

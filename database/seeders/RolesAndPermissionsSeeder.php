@@ -40,11 +40,6 @@ class RolesAndPermissionsSeeder extends Seeder
             'manage-visitors',
             'view-incidents',
         ],
-        'resident' => [
-            'report-incidents',
-            'view-incidents',
-            'approve-visitor-requests',
-        ],
     ];
 
     public function run(): void

@@ -177,18 +177,6 @@ class SqliteDemoSeeder extends Seeder
                 $residents[] = $resident;
             }
 
-            User::create([
-                'surname' => 'Dela Cruz',
-                'first_name' => 'Rina',
-                'middle_name' => 'M.',
-                'extension' => null,
-                'email' => 'resident.portal@example.com',
-                'password' => 'password',
-                'role' => UserRole::Resident->value,
-                'subdivision_id' => $subdivision->subdivision_id,
-                'resident_id' => $residents[0]->resident_id,
-            ]);
-
             $visitorRequests = [
                 [
                     'visitor_name' => 'Elena Cruz',

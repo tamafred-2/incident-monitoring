@@ -1,12 +1,11 @@
 @php
-    $isResidentViewer = auth()->user()->isResident();
     $activeIncidentTab = $historyView === 'history' ? 'history' : 'incident';
     $sharedFilters = array_filter([
         ...request()->only(['chart_filter', 'category', 'status', 'house_id']),
         'date_from' => $filterDateFrom ?: null,
         'date_to' => $filterDateTo ?: null,
     ]);
-    $emptyStateColspan = ($isResidentViewer ? 0 : 1) + ($activeIncidentTab === 'history' ? 5 : 4);
+    $emptyStateColspan = 1 + ($activeIncidentTab === 'history' ? 5 : 4);
 @endphp
 @forelse ($incidents as $incident)
     <tr data-record-key="{{ $incident->getKey() }}">
@@ -37,13 +36,11 @@
             @endphp
             {{ $incident->trashed() ? 'Archived' : $statusLabel }}
         </td>
-        @unless ($isResidentViewer)
             <td class="px-6 py-4 text-slate-600">
                 <div class="max-w-[13rem] truncate" title="{{ $incident->reporter?->full_name ?? '-' }}">
                     {{ $incident->reporter?->full_name ?? '-' }}
                 </div>
             </td>
-        @endunless
         <td class="px-6 py-4 text-slate-600">
             @if ($incident->reported_at)
                 <div class="min-w-[9rem]">

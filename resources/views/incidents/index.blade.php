@@ -1,12 +1,8 @@
 <x-app-layout>
-    @php
-        $isResidentViewer = auth()->user()->isResident();
-    @endphp
-
     <x-slot name="header">
         <x-page-header
-            :title="$isResidentViewer ? 'My Incidents' : 'Incidents'"
-            :subtitle="$isResidentViewer ? 'Track your submitted incident reports and their current status.' : 'Incident reporting supports manual or system submission, then tracks each case from pending handling to resolved status.'"
+            title="Incidents"
+            subtitle="Incident reporting supports manual or system submission, then tracks each case from pending handling to resolved status."
         />
     </x-slot>
 
@@ -27,7 +23,7 @@
             'date_to' => $filterDateTo ?: null,
         ]);
         $exportPreviewUrl = route('incidents.print', $reportQuery + ['view' => 'history', 'preview' => 1, 'embed' => 1]);
-        $emptyStateColspan = ($isResidentViewer ? 0 : 1)
+        $emptyStateColspan = 1
             + ($activeIncidentTab === 'history' ? 5 : 4);
     @endphp
 
@@ -224,9 +220,7 @@
                             <tr>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Category</th>
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">Incident Status</th>
-                                @unless ($isResidentViewer)
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Reporter</th>
-                                @endunless
                                 <th class="px-6 py-3 font-semibold text-left text-slate-600">
                                     <a
                                         href="{{ route('incidents.index', array_filter([

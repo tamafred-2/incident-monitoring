@@ -197,7 +197,7 @@ class ResidentManagementTest extends TestCase
 
         $response
             ->assertRedirect(route('residents.index', ['per_page' => 10]))
-            ->assertSessionHas('success', 'Resident deleted successfully. Linked resident account(s) were archived.');
+            ->assertSessionHas('success', 'Resident deleted successfully.');
 
         $this->assertDatabaseMissing('residents', [
             'resident_id' => $resident->resident_id,
@@ -245,7 +245,7 @@ class ResidentManagementTest extends TestCase
 
         $response
             ->assertRedirect(route('residents.index', ['per_page' => 10]))
-            ->assertSessionHas('success', 'Resident deleted successfully. Linked resident account(s) were archived.');
+            ->assertSessionHas('success', 'Resident deleted successfully.');
 
         $this->assertDatabaseMissing('residents', [
             'resident_id' => $resident->resident_id,

@@ -51,7 +51,6 @@ class User extends Authenticatable
         'role',
         'is_active',
         'subdivision_id',
-        'resident_id',
     ];
 
     /**
@@ -160,11 +159,6 @@ class User extends Authenticatable
         return $this->belongsTo(Subdivision::class, 'subdivision_id', 'subdivision_id')->withTrashed();
     }
 
-    public function resident(): BelongsTo
-    {
-        return $this->belongsTo(Resident::class, 'resident_id', 'resident_id');
-    }
-
     public function reportedIncidents(): HasMany
     {
         return $this->hasMany(Incident::class, 'reported_by', 'user_id');
@@ -173,11 +167,6 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === UserRole::Admin;
-    }
-
-    public function isResident(): bool
-    {
-        return $this->role === UserRole::Resident;
     }
 
     public function isStaff(): bool

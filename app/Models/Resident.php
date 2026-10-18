@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Enums\ActiveStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Resident extends Model
 {
@@ -59,11 +58,6 @@ class Resident extends Model
     public function house(): BelongsTo
     {
         return $this->belongsTo(House::class, 'house_id', 'house_id');
-    }
-
-    public function user(): HasOne
-    {
-        return $this->hasOne(User::class, 'resident_id', 'resident_id');
     }
 
     public function getDisplayAddressAttribute(): ?string

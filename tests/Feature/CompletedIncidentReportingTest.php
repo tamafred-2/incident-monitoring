@@ -95,14 +95,4 @@ class CompletedIncidentReportingTest extends TestCase
         $this->assertDatabaseCount('incidents', 2);
     }
 
-    public function test_resident_cannot_choose_completed_status_and_pending_dates_are_not_saved_as_resolved(): void
-    {
-        $payload = $this->reportPayload();
-        $resident = User::factory()->create(['role' => 'resident', 'subdivision_id' => $payload['subdivision_id']]);
-        $this->actingAs($resident)->get(route('incidents.index'))->assertOk()->assertDontSee('id="report-status"', false);
-        $this->post(route('incidents.store'), $payload)->assertSessionHasNoErrors();
-        $incident = Incident::sole();
-        $this->assertContains($incident->status, ['Open', 'Reported']);
-        $this->assertNull($incident->resolved_at);
-    }
 }

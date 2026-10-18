@@ -11,7 +11,6 @@ enum UserRole: string
     case Admin = 'admin';
     case Security = 'security';
     case Staff = 'staff';
-    case Resident = 'resident';
 
     public function label(): string
     {
@@ -20,7 +19,6 @@ enum UserRole: string
 
     /**
      * Roles that can be assigned through the user-management screens.
-     * Residents are provisioned via the resident workflow, not the user form.
      *
      * @return array<int, self>
      */

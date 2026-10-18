@@ -106,7 +106,6 @@
                                 'resident' => null,
                                 'subdivisions' => $subdivisions,
                                 'houses' => $houses,
-                                'withAccount' => false,
                             ])
 
                             <div class="flex flex-wrap gap-3 pt-2">
