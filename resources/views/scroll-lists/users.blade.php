@@ -47,18 +47,14 @@
                         Edit
                     </button>
                     @if (auth()->id() !== $user->user_id)
-                        <form method="POST" action="{{ route('users.status', $user) }}">
-                            @csrf
-                            @method('PATCH')
-                            <input type="hidden" name="is_active" value="{{ $user->is_active ? '0' : '1' }}">
-                            <input type="hidden" name="q" value="{{ $filterQ }}">
-                            <input type="hidden" name="role" value="{{ $filterRole }}">
-                            <input type="hidden" name="view" value="{{ $filterView }}">
-                            <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
-                            <button type="submit" class="inline-flex items-center rounded-xl border px-3 py-1.5 text-sm font-semibold transition {{ $user->is_active ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }}">
-                                {{ $user->is_active ? 'Deactivate' : 'Activate' }}
-                            </button>
-                        </form>
+                        <button
+                            type="button"
+                            x-data
+                            x-on:click="$dispatch('open-modal', 'confirm-user-status-{{ $user->user_id }}')"
+                            class="inline-flex items-center rounded-xl border px-3 py-1.5 text-sm font-semibold transition {{ $user->is_active ? 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100' : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' }}"
+                        >
+                            {{ $user->is_active ? 'Deactivate' : 'Activate' }}
+                        </button>
                     @endif
                 @else
                     <form method="POST" action="{{ route('users.restore', $user->user_id) }}">

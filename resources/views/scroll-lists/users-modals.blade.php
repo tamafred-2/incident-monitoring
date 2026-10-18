@@ -1,5 +1,35 @@
 @foreach ($users as $user)
 <div data-record-modal="{{ $user->getKey() }}">
+    @if (!$user->trashed() && auth()->id() !== $user->user_id)
+        <x-modal name="confirm-user-status-{{ $user->user_id }}" maxWidth="md" focusable>
+            <div class="p-6" role="alertdialog" aria-modal="true" aria-labelledby="user-status-title-{{ $user->user_id }}" aria-describedby="user-status-description-{{ $user->user_id }}">
+                <h3 id="user-status-title-{{ $user->user_id }}" class="text-lg font-semibold text-slate-900">
+                    {{ $user->is_active ? 'Deactivate' : 'Activate' }} user?
+                </h3>
+                <p id="user-status-description-{{ $user->user_id }}" class="mt-3 text-sm text-slate-600">
+                    @if ($user->is_active)
+                        Are you sure you want to deactivate <strong>{{ $user->full_name }}</strong>? They will no longer be able to access their account until it is activated again.
+                    @else
+                        Are you sure you want to activate <strong>{{ $user->full_name }}</strong>? They will be able to sign in and access their account.
+                    @endif
+                </p>
+                <form method="POST" action="{{ route('users.status', $user) }}" class="mt-6 flex justify-end gap-3">
+                    @csrf
+                    @method('PATCH')
+                    <input type="hidden" name="is_active" value="{{ $user->is_active ? '0' : '1' }}">
+                    <input type="hidden" name="q" value="{{ $filterQ }}">
+                    <input type="hidden" name="role" value="{{ $filterRole }}">
+                    <input type="hidden" name="view" value="{{ $filterView }}">
+                    <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                    <button type="button" x-on:click="$dispatch('close')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+                    <button type="submit" class="rounded-xl px-4 py-2 text-sm font-semibold text-white {{ $user->is_active ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700' }}">
+                        {{ $user->is_active ? 'Deactivate User' : 'Activate User' }}
+                    </button>
+                </form>
+            </div>
+        </x-modal>
+    @endif
+
                 <x-modal name="edit-user-{{ $user->user_id }}" :show="(string) old('edit_user_id') === (string) $user->user_id" maxWidth="2xl" focusable>
                     <div class="bg-white p-6 sm:p-8">
                         <div class="flex items-start justify-between gap-4">
