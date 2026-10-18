@@ -3,10 +3,13 @@
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h2 class="page-title">Visitor Details</h2>
+                <h2 class="page-title">Visit Details</h2>
                 <p class="page-subtitle">Full record for the selected checked-in or historical visitor entry.</p>
             </div>
             <div class="flex flex-wrap gap-3">
+                @if ($visitor->visitor_profile_id)
+                    <a href="{{ route('visitor-profiles.show', $visitor->visitor_profile_id) }}" class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white">Visitor Profile / All Visits</a>
+                @endif
                 <a
                     href="{{ route('visitors.index', auth()->user()->isAdmin() && $visitor->subdivision_id ? ['subdivision_id' => $visitor->subdivision_id] : []) }}"
                     class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -20,8 +23,15 @@
     <div class="page-section">
         @if ($visitor->owner_approval)
             <div class="mx-4 mb-4 sm:mx-6 lg:mx-8 rounded-2xl border border-slate-200 bg-white p-5">
-                <h3 class="font-semibold text-slate-900">Owner permission</h3>
-                <p class="mt-2 text-sm text-slate-600">Approved by {{ $visitor->owner_approval['owner_name'] }} by phone. Recorded by {{ $visitor->owner_approval['recorded_by_name'] }} on {{ \Illuminate\Support\Carbon::parse($visitor->owner_approval['approved_at'])->format('M j, Y h:i A') }}.</p>
+                <h3 class="font-semibold text-slate-900">Owner call status</h3>
+                <p class="mt-2 text-sm text-slate-600">
+                    @if (($visitor->owner_approval['call_status'] ?? 'approved') === 'unavailable')
+                        Not called / owner unavailable: {{ $visitor->owner_approval['owner_name'] }}. Entry recorded without owner approval.
+                    @else
+                        Approved by {{ $visitor->owner_approval['owner_name'] }} by phone.
+                    @endif
+                    Recorded by {{ $visitor->owner_approval['recorded_by_name'] }} on {{ \Illuminate\Support\Carbon::parse($visitor->owner_approval['recorded_at'] ?? $visitor->owner_approval['approved_at'])->format('M j, Y h:i A') }}.
+                </p>
             </div>
         @endif
         <div

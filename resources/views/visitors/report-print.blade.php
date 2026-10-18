@@ -84,13 +84,13 @@
         @if (empty($renderingPdf) && empty(request()->boolean('embed')) && !empty($previewMode))
             <div class="actions">
                 <a
-                    href="{{ route('visitors.export', $reportQuery + ['format' => 'excel']) }}"
+                    href="{{ route('visitors.export', array_merge($reportQuery, ['format' => 'excel']), false) }}"
                     style="display:inline-block;padding:8px 14px;font-size:12px;border-radius:8px;background:#059669;color:#fff;text-decoration:none;"
                 >
                     To Excel
                 </a>
                 <a
-                    href="{{ route('visitors.export', $reportQuery + ['format' => 'pdf']) }}"
+                    href="{{ route('visitors.export', array_merge($reportQuery, ['format' => 'pdf']), false) }}"
                     style="display:inline-block;padding:8px 14px;font-size:12px;border-radius:8px;background:#dc2626;color:#fff;text-decoration:none;"
                 >
                     To PDF

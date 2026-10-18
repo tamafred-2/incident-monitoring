@@ -35,6 +35,7 @@ class RecordScrollLoadingTest extends TestCase
             ['residents.index', ['q' => 'Scroll Resident', 'per_page' => 100], 'residents', 'residents', true],
             ['users.index', ['q' => 'ScrollStaff', 'role' => 'staff'], 'users', 'users', true],
             ['houses.index', ['q' => 'Scroll Street'], 'houses', 'houses', true],
+            ['visitor-profiles.index', ['q' => 'Scroll Visitor'], 'visitor-profiles', 'profiles', false],
             ['subdivisions.show', ['subdivision' => $home, 'q' => 'Scroll Street'], 'subdivision-houses', 'houses', true],
             ['incidents.index', ['q' => 'Scroll Incident', 'reported_sort' => 'asc'], 'incidents', 'incidents', false],
             ['visitors.index', ['q' => 'Scroll Visitor', 'tab' => 'check-out'], 'visitor-inside', 'insideVisitors', false],
@@ -71,12 +72,11 @@ class RecordScrollLoadingTest extends TestCase
         $this->getJson(route('users.index'), ['X-Scroll-List' => 'users'])->assertRedirect(route('dashboard'));
     }
 
-    public function test_analytics_password_reset_and_resident_request_lists_load_in_batches(): void
+    public function test_analytics_and_password_reset_lists_load_in_batches(): void
     {
         $home = Subdivision::create(['subdivision_name' => 'Card Lists', 'status' => 'Active']);
         $admin = User::factory()->create(['role' => 'admin', 'subdivision_id' => $home->subdivision_id]);
         $resident = Resident::create(['subdivision_id' => $home->subdivision_id, 'full_name' => 'Request Owner', 'status' => 'Active', 'relation_to_owner' => 'Owner']);
-        $account = User::factory()->create(['role' => 'resident', 'resident_id' => $resident->resident_id, 'subdivision_id' => $home->subdivision_id]);
         for ($i = 1; $i <= 23; $i++) {
             Resident::create(['subdivision_id' => $home->subdivision_id, 'full_name' => "Card Resident {$i}", 'status' => 'Active', 'relation_to_owner' => 'Owner']);
             if ($i <= 13) {
@@ -90,8 +90,6 @@ class RecordScrollLoadingTest extends TestCase
         $this->getJson(route('admin.password-resets.index', ['page' => 2]), ['X-Scroll-List' => 'reset-history'])
             ->assertOk()->assertJsonPath('count', 3)->assertJsonPath('next_url', null);
         $this->getJson(route('admin.password-resets.index', ['pending_page' => 2]), ['X-Scroll-List' => 'reset-pending'])
-            ->assertOk()->assertJsonPath('count', 3)->assertJsonPath('next_url', null);
-        $this->actingAs($account)->getJson(route('resident.visitors.index', ['page' => 2]), ['X-Scroll-List' => 'visitor-requests'])
             ->assertOk()->assertJsonPath('count', 3)->assertJsonPath('next_url', null);
     }
 }

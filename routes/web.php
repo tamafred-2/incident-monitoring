@@ -10,10 +10,10 @@ use App\Http\Controllers\IncidentNotificationController;
 use App\Http\Controllers\PasswordResetRequestController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ResidentController;
-use App\Http\Controllers\ResidentVisitorController;
 use App\Http\Controllers\SubdivisionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorController;
+use App\Http\Controllers\VisitorProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -75,8 +75,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
     Route::get('/incidents/export', [IncidentController::class, 'export'])->name('incidents.export');
     Route::get('/incidents/print', [IncidentController::class, 'print'])->name('incidents.print');
-    Route::get('/incidents/create', [IncidentController::class, 'create'])->middleware('role:admin,staff,security,resident')->name('incidents.create');
-    Route::post('/incidents', [IncidentController::class, 'store'])->middleware('role:admin,staff,security,resident')->name('incidents.store');
+    Route::get('/incidents/create', [IncidentController::class, 'create'])->middleware('role:admin,staff,security')->name('incidents.create');
+    Route::post('/incidents', [IncidentController::class, 'store'])->middleware('role:admin,staff,security')->name('incidents.store');
     Route::get('/incident-photos/{path}', [IncidentController::class, 'photo'])
         ->where('path', '.*')
         ->name('incidents.photos.show');
@@ -91,6 +91,11 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::post('/residents', [ResidentController::class, 'store'])->middleware('role:admin')->name('residents.store');
     Route::put('/residents/{resident}', [ResidentController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('residents.update');
     Route::delete('/residents/{resident}', [ResidentController::class, 'destroy'])->middleware(['role:admin', 'subdivision'])->name('residents.destroy');
+    Route::get('/visitor-profiles', [VisitorProfileController::class, 'index'])->middleware('role:security,staff')->name('visitor-profiles.index');
+    Route::post('/visitor-profiles', [VisitorProfileController::class, 'store'])->middleware('role:security')->name('visitor-profiles.store');
+    Route::get('/visitor-profiles/{profile}', [VisitorProfileController::class, 'show'])->middleware('role:security,staff')->name('visitor-profiles.show');
+    Route::put('/visitor-profiles/{profile}', [VisitorProfileController::class, 'update'])->middleware('role:security')->name('visitor-profiles.update');
+    Route::get('/visitor-profiles/{profile}/id-photo', [VisitorProfileController::class, 'photo'])->middleware('role:security')->name('visitor-profiles.photo');
     Route::get('/visitors', [VisitorController::class, 'index'])->middleware('role:security,staff')->name('visitors.index');
     Route::get('/visitors/export', [VisitorController::class, 'export'])->middleware('role:security')->name('visitors.export');
     Route::get('/visitors/print', [VisitorController::class, 'print'])->middleware('role:security')->name('visitors.print');
@@ -103,12 +108,6 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::delete('/visitors/{visitor}', [VisitorController::class, 'destroy'])->middleware(['role:admin,security', 'subdivision'])->name('visitors.destroy');
     Route::post('/visitors/{visitorId}/restore', [VisitorController::class, 'restore'])->middleware('role:admin,security')->name('visitors.restore');
     Route::delete('/visitors/{visitorId}/force', [VisitorController::class, 'forceDelete'])->middleware('role:admin,security')->name('visitors.force-delete');
-    Route::prefix('/resident/visitors')->middleware('role:resident')->name('resident.visitors.')->group(function () {
-        Route::get('/', [ResidentVisitorController::class, 'index'])->name('index');
-        Route::get('/{visitorRequest}/photo', [ResidentVisitorController::class, 'photo'])->name('photo');
-        Route::post('/{visitorRequest}/approve', [ResidentVisitorController::class, 'approve'])->name('approve');
-        Route::post('/{visitorRequest}/decline', [ResidentVisitorController::class, 'decline'])->name('decline');
-    });
     Route::get('/change-password', [ProfileController::class, 'forcePasswordChange'])->name('password.force-change');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

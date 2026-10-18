@@ -36,6 +36,13 @@
                 -
             @endif
         </td>
+        <td class="px-6 py-4 whitespace-nowrap text-slate-600">
+            @if ($visitor->check_in && !$visitor->check_out && $visitor->status === \App\Enums\VisitorStatus::Inside)
+                <span class="text-xs text-slate-500">Still inside</span>
+            @else
+                {{ $visitor->visit_duration_label }}
+            @endif
+        </td>
         <td class="px-6 py-4 text-slate-600">
             <div class="flex items-center gap-2">
                 <a
@@ -57,6 +64,6 @@
     </tr>
 @empty
     <tr>
-        <td colspan="6" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
+        <td colspan="7" class="px-6 py-10 text-center text-slate-500">No visitors found.</td>
     </tr>
 @endforelse

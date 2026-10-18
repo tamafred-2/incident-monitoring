@@ -19,6 +19,7 @@ class Visitor extends Model
 
     protected $fillable = [
         'owner_approval',
+        'visitor_profile_id',
         'subdivision_id',
         'full_name',
         'surname',
@@ -41,6 +42,12 @@ class Visitor extends Model
 
     protected static function booted(): void
     {
+        static::creating(function (self $visit): void {
+            if (! $visit->visitor_profile_id) {
+                $profile = VisitorProfile::create($visit->only(['subdivision_id', 'surname', 'first_name', 'middle_initials', 'extension', 'full_name', 'phone', 'id_photo_path']));
+                $visit->visitor_profile_id = $profile->getKey();
+            }
+        });
         static::saving(function (self $visitor): void {
             if ($visitor->isDirty(['first_name', 'middle_initials', 'surname', 'extension']) || empty($visitor->full_name)) {
                 $visitor->full_name = self::formatFullName(
@@ -71,6 +78,11 @@ class Visitor extends Model
     public function subdivision(): BelongsTo
     {
         return $this->belongsTo(Subdivision::class, 'subdivision_id', 'subdivision_id')->withTrashed();
+    }
+
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(VisitorProfile::class, 'visitor_profile_id', 'profile_id');
     }
 
     public static function formatFullName(

@@ -2,7 +2,7 @@
     @php
         $defaultMonitoringTab = request()->query('tab');
         $visitorReportQuery = request()->query();
-        $visitorExportPreviewUrl = route('visitors.print', $visitorReportQuery + ['preview' => 1, 'embed' => 1]);
+        $visitorExportPreviewUrl = route('visitors.print', $visitorReportQuery + ['preview' => 1, 'embed' => 1], false);
 
         if (!in_array($defaultMonitoringTab, ['check-out', 'history'], true)) {
             $defaultMonitoringTab = 'check-out';
@@ -11,7 +11,7 @@
 
     <x-slot name="header">
         <div class="flex items-start justify-between gap-4">
-            <x-page-header title="Visitors" subtitle="Visitor approval follows the corrected flow: contact resident using the registered phone number or use the automated resident response request." />
+            <x-page-header title="Visitors" subtitle="Search a saved visitor profile, record a new visit, and monitor entry and checkout." />
 
             <div
                 x-data="{ reminderOpen: false }"
@@ -40,8 +40,7 @@
                 >
                     <p class="text-sm font-semibold text-brand-800">Visitor Approval Reminder</p>
                     <p class="mt-2 text-sm leading-6">
-                        For resident visits, Admin/Guard should contact the resident using the phone number registered in the system and record the resident response before allowing entry.
-                        If automated approval is active, wait for the system response and apply the same allow or deny decision.
+                        For each resident visit, call the house owner using the registered phone number and record permission before allowing entry. Walk-ins do not require a resident or owner call.
                     </p>
                 </div>
             </div>
@@ -66,11 +65,45 @@
                 selectedResidentId: @js(old('resident_id', '')),
                 hostSearch: @js(old('host_employee', '')),
                 selectedResidentPhone: '',
-                ownerPermission: false,
+                selectedProfile: @js($selectedProfile),
+                visitorSearch: @js($selectedProfile['name'] ?? ''),
+                profileChoices: [],
+                profileLookupBusy: false,
+                profileLookupError: '',
+                profileLookupVersion: 0,
+                async lookupProfiles() {
+                    const version = ++this.profileLookupVersion;
+                    const term = this.visitorSearch;
+                    this.profileLookupBusy = true;
+                    this.profileLookupError = '';
+                    const url = new URL(@js(route('visitor-profiles.index')), window.location.origin);
+                    url.searchParams.set('q', term);
+                    url.searchParams.set('subdivision_id', this.selectedSubdivision);
+                    try {
+                        const response = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                        if (!response.ok) throw new Error('Unable to search visitors. Please try again.');
+                        const data = await response.json();
+                        if (version === this.profileLookupVersion && term === this.visitorSearch) this.profileChoices = data.profiles;
+                    } catch (error) {
+                        if (version === this.profileLookupVersion) this.profileLookupError = error.message;
+                    } finally {
+                        if (version === this.profileLookupVersion) this.profileLookupBusy = false;
+                    }
+                },
+                chooseProfile(profile) {
+                    this.profileLookupVersion++;
+                    this.profileLookupBusy = false;
+                    this.selectedProfile = profile;
+                    this.visitorSearch = profile.name;
+                    this.profileChoices = [];
+                    this.ownerPermission = '';
+                    this.approvingOwnerId = '';
+                },
+                ownerPermission: '',
                 approvingOwnerId: '',
                 get requiresOwnerPermission() {
                     const host = this.subdivisionResidents.find(r => String(r.id) === String(this.selectedResidentId));
-                    return this.visitType === 'resident' && host && !host.is_owner;
+                    return this.visitType === 'resident' && Boolean(host);
                 },
                 get houseOwners() {
                     return (this.residentsByHouse[String(this.selectedHouseId)] || []).filter(r => r.is_owner);
@@ -184,7 +217,7 @@
                     this.selectedHouseAddress = '';
                 },
                 clearResidentSelection({ clearSearch = false } = {}) {
-                    this.ownerPermission = false;
+                    this.ownerPermission = '';
                     this.approvingOwnerId = '';
                     this.selectedResidentId = '';
                     this.selectedResidentPhone = '';
@@ -194,7 +227,7 @@
                     this.clearResidentLocation();
                 },
                 applyResidentSelection(resident) {
-                    this.ownerPermission = false;
+                    this.ownerPermission = '';
                     this.approvingOwnerId = '';
                     this.selectedResidentId = String(resident.id);
                     this.hostSearch = resident.name;
@@ -229,11 +262,11 @@
             @include('partials.alerts')
 
             @if (auth()->user()->hasRole('security'))
-                <x-modal name="visitor-check-in" :show="$errors->any()" maxWidth="6xl" contentOverflow="visible" focusable>
+                <x-modal name="visitor-check-in" :show="$errors->any() || (bool) $selectedProfile" maxWidth="6xl" contentOverflow="visible" focusable>
                     <div class="p-6 bg-white sm:p-8">
                         <div class="flex items-center justify-between gap-4 mb-5">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900">Register Visitor</h3>
+                                <h3 class="text-lg font-semibold text-slate-900">Add Visit</h3>
                                 <p class="mt-1 text-sm text-slate-500">Use resident approval for home visits, or direct walk-in check-in for deliveries and amenity access.</p>
                             </div>
                             <button
@@ -268,7 +301,7 @@
                                 <button
                                     type="button"
                                     x-on:click="setVisitType('resident')"
-                                    :class="visitType === 'resident' ? 'bg-brand-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
+                                    :class="visitType === 'resident' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'"
                                     class="px-3 py-2 text-sm font-semibold transition rounded-lg"
                                 >
                                     Resident Visit
@@ -276,167 +309,11 @@
                                 <button
                                     type="button"
                                     x-on:click="setVisitType('walk_in')"
-                                    :class="visitType === 'walk_in' ? 'bg-brand-600 text-white' : 'text-slate-700 hover:bg-slate-100'"
+                                    :class="visitType === 'walk_in' ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'"
                                     class="px-3 py-2 text-sm font-semibold transition rounded-lg"
                                 >
                                     Walk-in
                                 </button>
-                            </div>
-                        </div>
-
-                        <div x-show="visitType === 'resident'" x-cloak class="p-5 border rounded-2xl border-brand-200 bg-brand-50/60">
-                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-800">Approval Step</h4>
-                            <p class="mt-2 text-sm leading-6 text-brand-700">
-                                Use this after confirming resident approval through registered contact. Submission will check the visitor in immediately.
-                            </p>
-                        </div>
-
-                        <div x-show="visitType === 'walk_in'" x-cloak class="p-5 border rounded-2xl border-emerald-200 bg-emerald-50/60">
-                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-800">Direct Entry</h4>
-                            <p class="mt-2 text-sm leading-6 text-emerald-700">
-                                Use this for delivery riders, amenity users, and other visitors without a specific resident host.
-                            </p>
-                        </div>
-
-                        <div class="p-5 bg-white border rounded-2xl border-slate-200">
-                            <div class="mb-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Visitor Identity</h4>
-                                <p class="mt-1 text-sm text-slate-500">Enter the visitor's name exactly as shown on their valid ID.</p>
-                            </div>
-
-                            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">Surname</label>
-                                    <input type="text" name="surname" value="{{ old('surname') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">First Name</label>
-                                    <input type="text" name="first_name" value="{{ old('first_name') }}" required class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">Middle Initials</label>
-                                    <input type="text" name="middle_initials" value="{{ old('middle_initials') }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500" placeholder="M.I.">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 whitespace-nowrap">Extension</label>
-                                    <input type="text" name="extension" value="{{ old('extension') }}" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500" placeholder="Jr.">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-5 bg-white border rounded-2xl border-slate-200">
-                            <div class="mb-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Contact</h4>
-                                <p class="mt-1 text-sm text-slate-500">Visitor phone number is required for records and follow-up.</p>
-                            </div>
-
-                            <div class="grid gap-4 md:grid-cols-2">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">Phone</label>
-                                    <input
-                                        type="tel"
-                                        name="phone"
-                                        value="{{ old('phone') }}"
-                                        required
-                                        inputmode="numeric"
-                                        pattern="[0-9]*"
-                                        maxlength="40"
-                                        oninput="this.value = this.value.replace(/[^0-9]/g, '')"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
-                                    >
-                                </div>
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-slate-700">Purpose</label>
-                                    <textarea name="purpose" rows="2" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">{{ old('purpose') }}</textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-5 bg-white border rounded-2xl border-slate-200">
-                            <div class="mb-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">ID Photo</h4>
-                                <p class="mt-1 text-sm text-slate-500">A valid ID photo is required before submitting.</p>
-                            </div>
-
-                            <div class="grid gap-4 md:grid-cols-2">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">Upload ID Photo</label>
-                                    <input
-                                        type="file"
-                                        name="id_photo"
-                                        accept="image/*"
-                                        required
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
-                                    >
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-5 bg-white border rounded-2xl border-slate-200">
-                            <div class="mb-4">
-                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Vehicle Option</h4>
-                                <p class="mt-1 text-sm text-slate-500">Enable this when the visitor arrives by vehicle.</p>
-                            </div>
-
-                            <input type="hidden" name="on_vehicle" :value="isVehicle ? 1 : 0">
-
-                            <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
-                                <input type="checkbox" x-model="isVehicle" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
-                                Visitor is on vehicle
-                            </label>
-
-                            <div x-show="isVehicle" x-cloak class="grid gap-4 mt-4 md:grid-cols-2">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">Plate Number</label>
-                                    <input
-                                        type="text"
-                                        name="plate_number"
-                                        value="{{ old('plate_number') }}"
-                                        :required="isVehicle"
-                                        :disabled="!isVehicle"
-                                        placeholder="e.g., ABC 1234"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
-                                    >
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">Passenger Count</label>
-                                    <input
-                                        type="number"
-                                        name="passenger_count"
-                                        value="{{ old('passenger_count') }}"
-                                        :required="isVehicle"
-                                        :disabled="!isVehicle"
-                                        min="1"
-                                        max="20"
-                                        step="1"
-                                        placeholder="e.g., 2"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
-                                    >
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">Vehicle Type</label>
-                                    <input
-                                        type="text"
-                                        name="vehicle_type"
-                                        value="{{ old('vehicle_type') }}"
-                                        :required="isVehicle"
-                                        :disabled="!isVehicle"
-                                        placeholder="e.g., Sedan, SUV, Motorcycle"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
-                                    >
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700">Vehicle Color</label>
-                                    <input
-                                        type="text"
-                                        name="vehicle_color"
-                                        value="{{ old('vehicle_color') }}"
-                                        :required="isVehicle"
-                                        :disabled="!isVehicle"
-                                        placeholder="e.g., White, Black, Blue"
-                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
-                                    >
-                                </div>
                             </div>
                         </div>
 
@@ -534,23 +411,154 @@
                         </div>
 
                         <div x-show="requiresOwnerPermission" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
-                            <h4 class="font-semibold text-slate-900">Owner permission required</h4>
-                            <p class="mt-2 text-sm text-slate-600">The host is another household member. Call the owner and obtain permission before admitting this visitor.</p>
+                            <h4 class="font-semibold text-slate-900">Owner call status</h4>
+                            <p class="mt-2 text-sm text-slate-600">Select the house owner and record whether they approved by phone or were unavailable, including when visiting the owner.</p>
                             <p x-show="houseOwners.length === 0" class="mt-2 text-sm text-rose-700">No active owner is registered for this house. Ask the administrator to update the household record before check-in.</p>
                             <template x-for="owner in houseOwners" :key="owner.id">
                                 <label class="mt-3 flex items-center gap-3">
-                                    <input type="radio" name="approving_owner_id" :value="owner.id" x-model="approvingOwnerId" @change="ownerPermission = false" :disabled="!requiresOwnerPermission" :required="requiresOwnerPermission">
+                                    <input type="radio" name="approving_owner_id" :value="owner.id" x-model="approvingOwnerId" @change="ownerPermission = ''" :disabled="!requiresOwnerPermission" :required="requiresOwnerPermission">
                                     <span x-text="owner.name"></span>
-                                    <a x-show="owner.phone" :href="'tel:' + (owner.phone || '').replace(/[^0-9+]/g, '')" class="font-semibold text-brand-700 underline" x-text="'Call ' + owner.phone"></a>
+                                    <span x-show="owner.phone" class="font-semibold text-slate-700" x-text="owner.phone"></span>
                                     <span x-show="!owner.phone" class="text-sm text-slate-500">No phone recorded</span>
                                 </label>
                             </template>
-                            <label class="mt-4 flex items-center gap-3 text-sm">
-                                <input type="checkbox" name="owner_permission" value="1" x-model="ownerPermission" :disabled="!requiresOwnerPermission || !approvingOwnerId" :required="requiresOwnerPermission">
-                                I called the selected owner and they approved this visitor’s entry.
-                            </label>
+                            <label for="owner-call-status" class="mt-4 block text-sm font-medium text-slate-700">Owner call status</label>
+                            <select id="owner-call-status" name="owner_permission" x-model="ownerPermission" :disabled="!requiresOwnerPermission || !approvingOwnerId" :required="requiresOwnerPermission" class="mt-2 w-full rounded-xl border-slate-300 text-sm focus:border-brand-500 focus:ring-brand-500">
+                                <option value="">Select call status</option>
+                                <option value="1">Called - owner approved entry</option>
+                                <option value="0">Not called / owner unavailable</option>
+                            </select>
+                            <p x-show="ownerPermission === '0'" x-cloak class="mt-2 text-sm text-amber-700">You can check this visitor in. The visit will record that the owner was unavailable and approval was not obtained.</p>
                             @error('owner_permission') <p class="mt-2 text-sm text-rose-700">{{ $message }}</p> @enderror
                             @error('approving_owner_id') <p class="mt-2 text-sm text-rose-700">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div x-show="visitType === 'resident'" x-cloak class="p-5 border rounded-2xl border-brand-200 bg-brand-50/60">
+                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-brand-800">Approval Step</h4>
+                            <p class="mt-2 text-sm leading-6 text-brand-700">
+                                Record the owner call status before submitting. Submission checks the visitor in immediately, including when the owner is unavailable.
+                            </p>
+                        </div>
+
+                        <div x-show="visitType === 'walk_in'" x-cloak class="p-5 border rounded-2xl border-emerald-200 bg-emerald-50/60">
+                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-800">Direct Entry</h4>
+                            <p class="mt-2 text-sm leading-6 text-emerald-700">
+                                Use this for delivery riders, amenity users, and other visitors without a specific resident host.
+                            </p>
+                        </div>
+
+                        <section class="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+                            <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Select Visitor</h4>
+                            <label for="visit-profile-search" class="block text-sm text-slate-600">Search by name or phone</label>
+                            <input id="visit-profile-search" type="search" x-model="visitorSearch" @input="selectedProfile = null; profileChoices = []; profileLookupVersion++" @input.debounce.250ms="lookupProfiles()" @focus="lookupProfiles()" class="w-full rounded-xl border-slate-300 text-sm" autocomplete="off">
+                            <p x-show="profileLookupBusy" class="text-sm text-slate-500">Searching?</p>
+                            <p x-show="profileLookupError" x-text="profileLookupError" role="alert" class="text-sm text-rose-700"></p>
+                            <div x-show="profileChoices.length" class="max-h-52 overflow-y-auto rounded-xl border border-slate-200">
+                                <template x-for="profile in profileChoices" :key="profile.id">
+                                    <button type="button" @click="chooseProfile(profile)" class="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm hover:bg-slate-50">
+                                        <span class="font-semibold text-slate-900" x-text="profile.name"></span>
+                                        <span class="ml-2 text-slate-500" x-text="(profile.phone || 'No phone') + (profile.is_inside ? ' - Currently inside' : '')"></span>
+                                    </button>
+                                </template>
+                            </div>
+                            <input type="hidden" name="visitor_profile_id" :value="selectedProfile?.id || ''">
+                            <div x-show="selectedProfile" class="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm">
+                                <p class="font-semibold text-brand-800" x-text="selectedProfile?.name"></p>
+                                <p class="mt-1 text-slate-600" x-text="selectedProfile?.phone || 'No phone'"></p>
+                                <p x-show="selectedProfile?.is_inside" class="mt-2 text-rose-700">This visitor is already inside. Check out their current visit first.</p>
+                            </div>
+                            <p class="text-sm text-slate-500">New visitor? <a href="{{ route('visitor-profiles.index', ['subdivision_id' => $effectiveSubdivision]) }}" class="font-semibold text-brand-700 underline">Add a visitor profile first</a>.</p>
+                            <label for="visit-purpose" class="block text-sm font-medium text-slate-700">Purpose</label>
+                            <textarea id="visit-purpose" name="purpose" rows="2" class="w-full rounded-xl border-slate-300 text-sm">{{ old('purpose') }}</textarea>
+                        </section>
+
+                        <div x-show="selectedProfile && !selectedProfile.has_photo" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
+                            <div class="mb-4">
+                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">ID Photo</h4>
+                                <p class="mt-1 text-sm text-slate-500">This visitor has no saved ID photo. Upload one to complete their profile.</p>
+                            </div>
+
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Upload ID Photo</label>
+                                    <input
+                                        type="file"
+                                        name="id_photo"
+                                        accept="image/jpeg,image/png,image/webp,image/gif"
+                                        :required="selectedProfile && !selectedProfile.has_photo"
+                                        :disabled="!selectedProfile || selectedProfile.has_photo"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 bg-white border rounded-2xl border-slate-200">
+                            <div class="mb-4">
+                                <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Vehicle Option</h4>
+                                <p class="mt-1 text-sm text-slate-500">Enable this when the visitor arrives by vehicle.</p>
+                            </div>
+
+                            <input type="hidden" name="on_vehicle" :value="isVehicle ? 1 : 0">
+
+                            <label class="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                                <input type="checkbox" x-model="isVehicle" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                                Visitor is on vehicle
+                            </label>
+
+                            <div x-show="isVehicle" x-cloak class="grid gap-4 mt-4 md:grid-cols-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Plate Number</label>
+                                    <input
+                                        type="text"
+                                        name="plate_number"
+                                        value="{{ old('plate_number') }}"
+                                        :required="isVehicle"
+                                        :disabled="!isVehicle"
+                                        placeholder="e.g., ABC 1234"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Passenger Count</label>
+                                    <input
+                                        type="number"
+                                        name="passenger_count"
+                                        value="{{ old('passenger_count') }}"
+                                        :required="isVehicle"
+                                        :disabled="!isVehicle"
+                                        min="1"
+                                        max="20"
+                                        step="1"
+                                        placeholder="e.g., 2"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Vehicle Type</label>
+                                    <input
+                                        type="text"
+                                        name="vehicle_type"
+                                        value="{{ old('vehicle_type') }}"
+                                        :required="isVehicle"
+                                        :disabled="!isVehicle"
+                                        placeholder="e.g., Sedan, SUV, Motorcycle"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Vehicle Color</label>
+                                    <input
+                                        type="text"
+                                        name="vehicle_color"
+                                        value="{{ old('vehicle_color') }}"
+                                        :required="isVehicle"
+                                        :disabled="!isVehicle"
+                                        placeholder="e.g., White, Black, Blue"
+                                        class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500 disabled:bg-slate-100 disabled:text-slate-400"
+                                    >
+                                </div>
+                            </div>
                         </div>
 
                         <div x-show="visitType === 'walk_in'" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
@@ -582,7 +590,7 @@
                             >
                                 Cancel
                             </button>
-                            <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-brand-600 hover:bg-brand-700">
+                            <button :disabled="!selectedProfile || selectedProfile.is_inside" class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 shadow-sm transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <span x-show="visitType === 'resident'" x-cloak>Check In Visitor</span>
                                 <span x-show="visitType === 'walk_in'" x-cloak>Check In Visitor</span>
                             </button>
@@ -669,7 +677,7 @@
                                                 x-on:click="$dispatch('open-modal', 'visitor-check-in')"
                                                 class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-slate-900 hover:bg-slate-800"
                                             >
-                                                Register Visitor
+                                                Add Visit
                                             </button>
                                         </div>
                                     @endif
@@ -720,6 +728,7 @@
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check In</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Check Out</th>
+                                    <th class="px-6 py-3 font-semibold text-left text-slate-600">Duration</th>
                                     <th class="px-6 py-3 font-semibold text-left text-slate-600">Action</th>
                                 </tr>
                             </thead>
@@ -748,14 +757,14 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <button
                                 type="button"
-                                @click="openExcelConfirm('{{ route('visitors.export', $visitorReportQuery + ['format' => 'excel']) }}')"
+                                @click="openExcelConfirm(@js(route('visitors.export', array_merge($visitorReportQuery, ['format' => 'excel']), false)))"
                                 class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700"
                             >
                                 To Excel
                             </button>
                             <button
                                 type="button"
-                                @click="openPdfConfirm('{{ route('visitors.export', $visitorReportQuery + ['format' => 'pdf']) }}')"
+                                @click="openPdfConfirm(@js(route('visitors.export', array_merge($visitorReportQuery, ['format' => 'pdf']), false)))"
                                 class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700"
                             >
                                 To PDF

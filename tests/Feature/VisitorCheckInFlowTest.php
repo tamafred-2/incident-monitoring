@@ -77,6 +77,8 @@ class VisitorCheckInFlowTest extends TestCase
                 'id_photo' => UploadedFile::fake()->create('visitor-id.jpg', 120, 'image/jpeg'),
                 'house_address_or_unit' => 'Block 3 Lot 12',
                 'resident_id' => $resident->resident_id,
+                'owner_permission' => 1,
+                'approving_owner_id' => $resident->resident_id,
             ]);
 
         $response->assertSessionHas('success', 'Resident visit checked in successfully.');
@@ -117,7 +119,7 @@ class VisitorCheckInFlowTest extends TestCase
             'house_address_or_unit' => $house->display_address,
             'id_photo' => UploadedFile::fake()->create('visitor-id.jpg', 120, 'image/jpeg'),
         ];
-        $this->actingAs($security)->get(route('visitors.index'))->assertOk()->assertSee('Owner permission required');
+        $this->actingAs($security)->get(route('visitors.index'))->assertOk()->assertSee('Owner call status');
         $this->post(route('visitors.store'), $payload)->assertSessionHasErrors('owner_permission');
         $this->assertDatabaseCount('visitors', 0);
         $this->post(route('visitors.store'), $payload + ['owner_permission' => 1, 'approving_owner_id' => $son->resident_id])->assertSessionHasErrors('approving_owner_id');

@@ -9,6 +9,7 @@ use App\Models\House;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
+use App\Models\VisitorProfile;
 use App\Models\VisitorRequest;
 use App\Rules\PersonName;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -22,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -116,8 +118,18 @@ class VisitorController extends Controller
             ->orderByDesc('visitor_id')->simplePaginate($checkOutPerPage, ['*'], 'check_out_page')
             ->withQueryString();
 
+        $selectedProfile = null;
+        $profileId = (int) $request->old('visitor_profile_id', $request->query('profile', 0));
+        if ($profileId) {
+            $profile = VisitorProfile::findOrFail($profileId);
+            abort_unless($user->canAccessSubdivision($profile->subdivision_id), 403);
+            $profile->loadExists(['visits as is_inside' => fn ($query) => $query->where('status', VisitorStatus::Inside)]);
+            $selectedProfile = app(VisitorProfileController::class)->format($profile);
+        }
+
         return $this->scrollView('visitors.index', compact(
             'visitors',
+            'selectedProfile',
             'subdivisions',
             'filterQ',
             'filterSubdivision',
@@ -293,6 +305,24 @@ class VisitorController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $request->validate(['visitor_profile_id' => ['nullable', 'integer']]);
+        return DB::transaction(function () use ($request): RedirectResponse {
+            if ($request->filled('visitor_profile_id')) {
+                $profile = VisitorProfile::lockForUpdate()->findOrFail($request->integer('visitor_profile_id'));
+                abort_unless($request->user()->canAccessSubdivision($profile->subdivision_id), 403);
+                if ($profile->visits()->where('status', VisitorStatus::Inside)->exists()) {
+                    throw ValidationException::withMessages(['visitor_profile_id' => 'This visitor is already inside. Check out their current visit before adding another.']);
+                }
+                $request->merge($profile->only(['surname', 'first_name', 'middle_initials', 'extension', 'phone']));
+                $request->merge(['subdivision_id' => $profile->subdivision_id]);
+                $request->attributes->set('visitor_profile', $profile);
+            }
+            return $this->storeVisit($request);
+        });
+    }
+
+    private function storeVisit(Request $request): RedirectResponse
+    {
         $data = $request->validate([
             'subdivision_id' => ['nullable', 'integer'],
             'visit_type' => ['required', Rule::in(['resident', 'walk_in'])],
@@ -307,7 +337,7 @@ class VisitorController extends Controller
             'passenger_count' => ['nullable', 'integer', 'min:1', 'max:20', 'required_if:on_vehicle,1'],
             'vehicle_type' => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
             'vehicle_color' => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
-            'id_photo' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'id_photo' => [$request->attributes->get('visitor_profile')?->id_photo_path ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
             'host_employee' => ['nullable', 'string', 'max:150', new PersonName],
             'house_address_or_unit' => ['nullable', 'string', 'max:120', 'required_if:visit_type,resident', 'required_if:visit_type,walk_in'],
             'resident_house_id' => ['nullable', 'integer'],
@@ -317,6 +347,20 @@ class VisitorController extends Controller
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
         if (! $subdivisionId) {
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
+        }
+
+        // Older check-in clients can still submit identity fields; link them to the saved person.
+        if (! $request->attributes->get('visitor_profile')) {
+            $name = Visitor::formatFullName($data['first_name'], $data['middle_initials'] ?? null, $data['surname'], $data['extension'] ?? null);
+            $profile = VisitorProfile::where('subdivision_id', $subdivisionId)
+                ->whereRaw('LOWER(full_name) = ?', [mb_strtolower($name)])
+                ->where('phone', $data['phone'])->lockForUpdate()->first();
+            if ($profile) {
+                if ($profile->visits()->where('status', VisitorStatus::Inside)->exists()) {
+                    throw ValidationException::withMessages(['visitor_profile_id' => 'This visitor is already inside. Check out their current visit before adding another.']);
+                }
+                $request->attributes->set('visitor_profile', $profile);
+            }
         }
 
         if (($data['visit_type'] ?? 'resident') === 'walk_in') {
@@ -336,6 +380,7 @@ class VisitorController extends Controller
                 : null;
 
             Visitor::create([
+                'visitor_profile_id' => $request->attributes->get('visitor_profile')?->getKey(),
                 'subdivision_id' => $subdivisionId,
                 'surname' => $data['surname'],
                 'first_name' => $data['first_name'],
@@ -403,34 +448,35 @@ class VisitorController extends Controller
         }
 
         $ownerApproval = null;
-        if (strcasecmp(trim((string) $resident->relation_to_owner), 'Owner') !== 0) {
-            $approval = $request->validate([
-                'owner_permission' => ['required', 'accepted'],
-                'approving_owner_id' => ['required', 'integer'],
-            ], ['owner_permission.accepted' => 'Call the house owner and obtain permission before checking in this visitor.']);
+        // Record a fresh call outcome for every resident visit.
+        $approval = $request->validate([
+            'owner_permission' => ['required', 'boolean'],
+            'approving_owner_id' => ['required', 'integer'],
+        ]);
 
-            $owner = Resident::query()
-                ->whereKey($approval['approving_owner_id'])
-                ->where('house_id', $house->house_id)
-                ->where('subdivision_id', $subdivisionId)
-                ->where('status', ActiveStatus::Active)
-                ->first();
+        $owner = Resident::query()
+            ->whereKey($approval['approving_owner_id'])
+            ->where('house_id', $house->house_id)
+            ->where('subdivision_id', $subdivisionId)
+            ->where('status', ActiveStatus::Active)
+            ->first();
 
-            if (! $owner || strcasecmp(trim((string) $owner->relation_to_owner), 'Owner') !== 0) {
-                return back()->withErrors(['approving_owner_id' => 'An active owner of this house must give permission before entry.'])->withInput();
-            }
-
-            $ownerApproval = [
-                'owner_id' => $owner->resident_id,
-                'owner_name' => $owner->full_name,
-                'owner_phone' => $owner->phone,
-                'host_resident_id' => $resident->resident_id,
-                'recorded_by' => $request->user()->user_id,
-                'recorded_by_name' => $request->user()->name,
-                'approved_at' => now()->toIso8601String(),
-                'method' => 'phone',
-            ];
+        if (! $owner || strcasecmp(trim((string) $owner->relation_to_owner), 'Owner') !== 0) {
+            return back()->withErrors(['approving_owner_id' => 'Select an active owner of this house to record the call status.'])->withInput();
         }
+
+        $ownerApproval = [
+            'owner_id' => $owner->resident_id,
+            'owner_name' => $owner->full_name,
+            'owner_phone' => $owner->phone,
+            'host_resident_id' => $resident->resident_id,
+            'recorded_by' => $request->user()->user_id,
+            'recorded_by_name' => $request->user()->full_name,
+            'call_status' => $request->boolean('owner_permission') ? 'approved' : 'unavailable',
+            'recorded_at' => now()->toIso8601String(),
+            'approved_at' => $request->boolean('owner_permission') ? now()->toIso8601String() : null,
+            'method' => $request->boolean('owner_permission') ? 'phone' : null,
+        ];
 
         $idPhotoPath = $this->storeVisitorIdPhoto($request);
         $onVehicle = (bool) ($data['on_vehicle'] ?? false);
@@ -448,6 +494,7 @@ class VisitorController extends Controller
             : null;
 
         $visitor = Visitor::create([
+            'visitor_profile_id' => $request->attributes->get('visitor_profile')?->getKey(),
             'subdivision_id' => $subdivisionId,
             'surname' => $data['surname'],
             'first_name' => $data['first_name'],
@@ -490,9 +537,9 @@ class VisitorController extends Controller
             'id_photo_path' => $idPhotoPath,
             'purpose' => $data['purpose'] ?? null,
             'house_address_or_unit' => $house->display_address,
-            'status' => VisitorRequestStatus::Approved->value,
+            'status' => $request->boolean('owner_permission') ? VisitorRequestStatus::Approved->value : VisitorRequestStatus::Pending->value,
             'requested_at' => now(),
-            'responded_at' => now(),
+            'responded_at' => $request->boolean('owner_permission') ? now() : null,
         ]);
 
         return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
@@ -518,6 +565,10 @@ class VisitorController extends Controller
             'check_out' => now(),
             'status' => VisitorStatus::CheckedOut->value,
         ]);
+
+        if ($request->input('return_to') === 'profile' && $visitor->visitor_profile_id) {
+            return redirect()->route('visitor-profiles.show', $visitor->visitor_profile_id)->with('success', 'Visitor checked out successfully.');
+        }
 
         return redirect()->route(
             $request->input('return_to') === 'dashboard' ? 'dashboard' : 'visitors.index',
@@ -788,7 +839,7 @@ class VisitorController extends Controller
                 'check_in' => $visitor->check_in?->format('Y-m-d h:i:s A') ?: '-',
                 'check_out' => $visitor->check_out?->format('Y-m-d h:i:s A') ?: '-',
                 'duration' => $visitor->visit_duration_label ?: '-',
-                'status' => $visitor->status ?: '-',
+                'status' => $visitor->status?->value ?? '-',
                 'photo_url' => $photoUrl,
                 'photo_data_uri' => $photoDataUri,
             ];
@@ -818,12 +869,17 @@ class VisitorController extends Controller
 
     private function storeVisitorIdPhoto(Request $request): string
     {
+        if (! $request->hasFile('id_photo')) {
+            return $request->attributes->get('visitor_profile')->id_photo_path;
+        }
         $file = $request->file('id_photo');
         if (! $file) {
             abort(422, 'ID photo is required.');
         }
 
-        return $file->store('uploads/visitors/id-photos', 'public');
+        $path = $file->store('uploads/visitors/id-photos', 'public');
+        $request->attributes->get('visitor_profile')?->update(['id_photo_path' => $path]);
+        return $path;
     }
 
     private function visitorPhotoAbsolutePath(?string $path): ?string

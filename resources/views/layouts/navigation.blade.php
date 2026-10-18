@@ -70,8 +70,8 @@
             'items' => array_values(array_filter([
                 ['label' => 'Incidents', 'href' => route('incidents.index'), 'active' => 'incidents.index'],
                 $user->hasRole(['staff', 'security']) ? ['label' => 'Residents', 'href' => route('residents.index'), 'active' => 'residents.*'] : null,
-                ($isSecurityUser || $isAdminUser) ? ['label' => 'Visitors', 'href' => route('visitors.index'), 'active' => 'visitors.*'] : null,
-                $user->isResident() ? ['label' => 'My Visitors', 'href' => route('resident.visitors.index'), 'active' => 'resident.visitors.*'] : null,
+                $user->hasRole(['staff', 'security']) ? ['label' => 'Visitors', 'href' => route('visitor-profiles.index'), 'active' => 'visitor-profiles.*'] : null,
+                ($isSecurityUser || $isAdminUser) ? ['label' => 'Gate Monitoring', 'href' => route('visitors.index'), 'active' => 'visitors.*'] : null,
             ])),
         ],
     ];
