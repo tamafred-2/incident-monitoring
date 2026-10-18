@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Enums\ActiveStatus;
 use App\Models\House;
+use App\Models\Resident;
 use App\Models\Subdivision;
+use App\Models\User;
+use App\Rules\PersonName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -89,7 +93,22 @@ class HouseController extends Controller
     {
         $data = $this->validateHouse($request, null, 'houseCreate');
 
-        House::create($data);
+        DB::transaction(function () use ($data): void {
+            $owner = $data['owner'];
+            unset($data['owner']);
+            $house = House::create($data);
+
+            Resident::create([
+                'subdivision_id' => $house->subdivision_id,
+                'house_id' => $house->house_id,
+                'full_name' => $owner['full_name'],
+                'phone' => $owner['phone'],
+                'email' => $owner['email'],
+                'address_or_unit' => $house->display_address,
+                'relation_to_owner' => 'Owner',
+                'status' => ActiveStatus::Active,
+            ]);
+        });
 
         $redirect = $request->input('_redirect');
 
@@ -127,7 +146,7 @@ class HouseController extends Controller
             'lot' => House::normalizeLot((string) $request->input('lot')),
         ]);
 
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
             'street' => ['required', 'string', 'max:120'],
             'block' => ['required', 'string', 'max:30'],
@@ -145,17 +164,55 @@ class HouseController extends Controller
                     })
                     ->ignore($house?->house_id, 'house_id'),
             ],
-        ], [
+        ];
+
+        if ($house === null) {
+            $rules += [
+                'owner.surname' => ['required', 'string', 'max:50', new PersonName],
+                'owner.first_name' => ['required', 'string', 'max:50', new PersonName],
+                'owner.middle_name' => ['nullable', 'string', 'max:50', new PersonName],
+                'owner.extension' => ['nullable', 'string', 'max:20', new PersonName],
+                'owner.phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+                'owner.email' => ['required', 'email', 'max:100'],
+            ];
+        }
+
+        $validator = Validator::make($request->all(), $rules, [
             'lot.unique' => 'This lot already exists for the same street and block.',
         ]);
+        $validator->after(function ($validator) use ($request, $house): void {
+            if ($house === null && ! $validator->errors()->any()) {
+                $name = User::formatFullName(
+                    $request->input('owner.first_name'),
+                    $request->input('owner.surname'),
+                    $request->input('owner.middle_name'),
+                    $request->input('owner.extension'),
+                );
+                if (mb_strlen($name) > 100) {
+                    $validator->errors()->add('owner.surname', 'The owner’s full name must not exceed 100 characters.');
+                }
+            }
+        });
         $data = $validator->validateWithBag($errorBag);
 
-        return [
+        $houseData = [
             'subdivision_id' => (int) $data['subdivision_id'],
             'street' => $this->normalizeStreet((string) $data['street']),
             'block' => House::normalizeBlock($data['block']),
             'lot' => House::normalizeLot($data['lot']),
         ];
+
+        if ($house === null) {
+            $houseData['owner'] = $data['owner'];
+            $houseData['owner']['full_name'] = User::formatFullName(
+                $data['owner']['first_name'],
+                $data['owner']['surname'],
+                $data['owner']['middle_name'] ?? null,
+                $data['owner']['extension'] ?? null,
+            );
+        }
+
+        return $houseData;
     }
 
     private function normalizeStreet(string $value): string

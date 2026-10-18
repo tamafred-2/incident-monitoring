@@ -91,7 +91,7 @@
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <h3 class="text-base font-semibold text-slate-900">Add House</h3>
-                            <p class="mt-1 text-sm text-slate-500">Create a new block and lot record.</p>
+                            <p class="mt-1 text-sm text-slate-500">Create a house and assign its owner.</p>
                         </div>
                         <button type="button" x-on:click="$dispatch('close')" class="rounded-xl border border-slate-200 p-2 text-slate-400 hover:text-slate-600" aria-label="Close">
                             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.22 4.22a.75.75 0 011.06 0L10 8.94l4.72-4.72a.75.75 0 111.06 1.06L11.06 10l4.72 4.72a.75.75 0 11-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 01-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 010-1.06z" clip-rule="evenodd" /></svg>
@@ -101,6 +101,7 @@
                         @csrf
                         <input type="hidden" name="house_form_mode" value="create">
                         @include('houses.partials.form-fields', ['errorBag' => 'houseCreate'])
+                        @include('houses.partials.owner-fields')
                         <div class="flex gap-2 pt-1">
                             <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800">Save</button>
                             <button type="button" x-on:click="$dispatch('close')" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>

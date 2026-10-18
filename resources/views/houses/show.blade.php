@@ -7,18 +7,6 @@
                 <h2 class="page-title">{{ $house->display_address }}</h2>
                 <p class="page-subtitle">{{ $house->subdivision?->subdivision_name ?? '-' }}</p>
             </div>
-            @if ($house->subdivision)
-                <div class="flex items-center gap-2">
-                    <a href="{{ route('subdivisions.show', $house->subdivision) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
-                        View Subdivision Contact Info
-                    </a>
-                    @if (auth()->user()->isAdmin())
-                        <a href="{{ route('subdivisions.edit', $house->subdivision) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
-                            Edit Subdivision Profile
-                        </a>
-                    @endif
-                </div>
-            @endif
         </div>
     </x-slot>
 
