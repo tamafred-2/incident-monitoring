@@ -184,8 +184,8 @@ class VisitorController extends Controller
 
         if ($format === 'pdf') {
             try {
-                $pdf = Pdf::loadView('visitors.report-print', $this->visitorReportViewData($request, false, true, true))
-                    ->setPaper('a4', 'landscape');
+                $pdf = Pdf::loadView('visitors.report-pdf', $this->visitorReportViewData($request, false, true, true))
+                    ->setPaper('a4', 'portrait');
 
                 return $pdf->download('visitor-report-'.now()->format('Ymd_His').'.pdf');
             } catch (\Throwable $exception) {
@@ -195,7 +195,7 @@ class VisitorController extends Controller
             }
         }
 
-        $visitors = $this->buildVisitorHistoryQuery($request)->get();
+        $visitors = $this->buildVisitorHistoryQuery($request)->orderByDesc('visitor_id')->limit(100)->get();
         $reportRows = $this->buildVisitorReportRows($visitors, false);
         $filename = 'visitor-report-'.now()->format('Ymd_His').'.csv';
 
@@ -795,13 +795,16 @@ class VisitorController extends Controller
         bool $includePhotos = true,
         bool $renderingPdf = false
     ): array {
-        $visitors = $this->buildVisitorHistoryQuery($request)->get();
-        $reportRows = $this->buildVisitorReportRows($visitors, $includePhotos);
+        $query = $this->buildVisitorHistoryQuery($request)->orderByDesc('visitor_id');
+        $totalMatching = $renderingPdf ? (clone $query)->count() : null;
+        $visitors = $query->when($renderingPdf, fn ($query) => $query->limit(100))->get();
+        $reportRows = $this->buildVisitorReportRows($visitors, $includePhotos, $renderingPdf);
 
         return [
             'title' => 'Visitor Report',
             'generatedAt' => now(),
             'reportRows' => $reportRows,
+            'totalMatching' => $totalMatching ?? count($reportRows),
             'autoPrint' => $autoPrint,
             'renderingPdf' => $renderingPdf,
             'reportQuery' => $request->query(),
@@ -809,20 +812,30 @@ class VisitorController extends Controller
         ];
     }
 
-    private function buildVisitorReportRows($visitors, bool $includePhotos): array
+    private function buildVisitorReportRows($visitors, bool $includePhotos, bool $renderingPdf = false): array
     {
-        return $visitors->map(function (Visitor $visitor) use ($includePhotos) {
+        return $visitors->map(function (Visitor $visitor) use ($includePhotos, $renderingPdf) {
             $photoUrl = $visitor->id_photo_path
                 ? route('visitors.photo', ['visitor' => $visitor->visitor_id])
                 : null;
             $photoDataUri = null;
+            $photoPath = null;
+            $photoOmitted = false;
 
             if ($includePhotos && $visitor->id_photo_path) {
                 $absolutePath = $this->visitorPhotoAbsolutePath($visitor->id_photo_path);
                 if ($absolutePath && File::exists($absolutePath)) {
-                    $mime = File::mimeType($absolutePath) ?: 'image/png';
-                    $contents = File::get($absolutePath);
-                    $photoDataUri = 'data:'.$mime.';base64,'.base64_encode($contents);
+                    if ($renderingPdf) {
+                        if (\App\Support\PdfImage::supported($absolutePath)) {
+                            $photoPath = $absolutePath;
+                        } else {
+                            $photoOmitted = true;
+                        }
+                    } else {
+                        $mime = File::mimeType($absolutePath) ?: 'image/png';
+                        $contents = File::get($absolutePath);
+                        $photoDataUri = 'data:'.$mime.';base64,'.base64_encode($contents);
+                    }
                 }
             }
 
@@ -842,6 +855,8 @@ class VisitorController extends Controller
                 'status' => $visitor->status?->value ?? '-',
                 'photo_url' => $photoUrl,
                 'photo_data_uri' => $photoDataUri,
+                'photo_path' => $photoPath,
+                'photo_omitted' => $photoOmitted,
             ];
         })->all();
     }

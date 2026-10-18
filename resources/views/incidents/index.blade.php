@@ -318,7 +318,7 @@
                     <div class="px-5 py-4 border-b border-emerald-100 bg-emerald-50">
                         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Export</p>
                         <h3 class="mt-1 text-base font-semibold text-slate-900">Confirm Excel Export</h3>
-                        <p class="mt-1 text-sm text-slate-700">Generate the incident history report now as an Excel-compatible CSV file.</p>
+                        <p class="mt-1 text-sm text-slate-700">Download up to 100 incidents matching your filters as an Excel-compatible CSV, newest reported date first.</p>
                     </div>
                     <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
                         <button
@@ -350,7 +350,7 @@
                 <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl">
                     <div class="px-5 py-4 border-b border-slate-200">
                         <h3 class="text-base font-semibold text-slate-900">Confirm PDF Export</h3>
-                        <p class="mt-1 text-sm text-slate-600">Generate and download the incident history report as a PDF file?</p>
+                        <p class="mt-1 text-sm text-slate-600">Download up to 100 incidents matching your filters as a PDF, newest reported date first.</p>
                     </div>
                     <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
                         <button

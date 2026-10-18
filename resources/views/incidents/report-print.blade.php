@@ -29,6 +29,7 @@
         <h1>{{ $title }}</h1>
         <p class="meta">Generated at: {{ $generatedAt->format('Y-m-d H:i:s') }}</p>
         <p class="summary">Total resolved incidents: {{ count($reportRows ?? []) }}</p>
+        <p class="summary">PDF and Excel downloads include up to 100 matching incidents, newest reported date first. Narrow the date range to download older records.</p>
 
         <table>
             <thead>
@@ -54,6 +55,8 @@
                         <td>
                             @if (!empty($row['proof_data_uri']))
                                 <img src="{{ $row['proof_data_uri'] }}" alt="Incident proof" class="proof-thumb">
+                            @elseif (!empty($row['proof_omitted']))
+                                Photo unavailable in PDF. <a href="{{ $row['proof_url'] }}">View original photo</a>
                             @else
                                 -
                             @endif

@@ -134,18 +134,15 @@ class IncidentController extends Controller
         }
 
         if ($format === 'pdf') {
-            $data = $this->reportViewData($request, false, true, true, true);
-
             try {
+                $data = $this->reportViewData($request, false, true, true, true);
                 $pdf = Pdf::loadView('incidents.report-print', $data)->setPaper('a4', 'landscape');
 
                 return $pdf->download('incident-report-'.now()->format('Ymd_His').'.pdf');
             } catch (\Throwable $exception) {
                 report($exception);
 
-                $message = extension_loaded('gd')
-                    ? 'PDF export failed on this server. Please try again. If it continues, check server logs.'
-                    : 'PDF export failed on this server. Enable PHP GD extension for image-capable PDF export.';
+                $message = 'PDF export failed on this server. Please try again. If it continues, check server logs.';
 
                 return back()->with(
                     'error',
@@ -154,7 +151,7 @@ class IncidentController extends Controller
             }
         }
 
-        $incidents = $this->buildIncidentReportQuery($request, true)->get();
+        $incidents = $this->buildIncidentDownloadQuery($request)->get();
         $reportRows = $this->buildIncidentReportRows($incidents, false);
         $filename = 'incident-report-'.now()->format('Ymd_His').'.csv';
 
@@ -1113,6 +1110,15 @@ class IncidentController extends Controller
         return $query;
     }
 
+    private function buildIncidentDownloadQuery(Request $request): Builder
+    {
+        return $this->buildIncidentReportQuery($request, true)
+            ->reorder()
+            ->orderByRaw('COALESCE(reported_at, incident_date, created_at) DESC')
+            ->orderByDesc('incident_id')
+            ->limit(100);
+    }
+
     private function reportViewData(
         Request $request,
         bool $autoPrint,
@@ -1120,8 +1126,10 @@ class IncidentController extends Controller
         bool $includeProofImages = true,
         bool $renderingPdf = false
     ): array {
-        $incidents = $this->buildIncidentReportQuery($request, $historyOnly)->get();
-        $reportRows = $this->buildIncidentReportRows($incidents, $includeProofImages);
+        $incidents = ($renderingPdf
+            ? $this->buildIncidentDownloadQuery($request)
+            : $this->buildIncidentReportQuery($request, $historyOnly))->get();
+        $reportRows = $this->buildIncidentReportRows($incidents, $includeProofImages, $renderingPdf);
         $reportQuery = array_filter([
             'q' => trim((string) $request->query('q', '')) ?: null,
             'subdivision_id' => (int) $request->query('subdivision_id', 0) ?: null,
@@ -1146,18 +1154,23 @@ class IncidentController extends Controller
         ];
     }
 
-    private function buildIncidentReportRows(Collection $incidents, bool $includeProofImages): array
+    private function buildIncidentReportRows(Collection $incidents, bool $includeProofImages, bool $renderingPdf = false): array
     {
-        return $incidents->map(function (Incident $incident) use ($includeProofImages) {
+        return $incidents->map(function (Incident $incident) use ($includeProofImages, $renderingPdf) {
             $proofPath = $incident->proofPhotos->first()->photo_path ?? $incident->proof_photo_path;
             $proofUrl = $proofPath ? route('incidents.photos.show', ['path' => $proofPath]) : null;
             $proofDataUri = null;
+            $proofOmitted = false;
 
             if ($includeProofImages && $proofPath) {
                 $absolutePath = $this->proofPhotoAbsolutePath($proofPath);
                 if ($absolutePath && File::exists($absolutePath)) {
-                    $mime = File::mimeType($absolutePath) ?: 'image/jpeg';
-                    $proofDataUri = 'data:'.$mime.';base64,'.base64_encode((string) File::get($absolutePath));
+                    if ($renderingPdf && ! \App\Support\PdfImage::supported($absolutePath)) {
+                        $proofOmitted = true;
+                    } else {
+                        $mime = File::mimeType($absolutePath) ?: 'image/jpeg';
+                        $proofDataUri = 'data:'.$mime.';base64,'.base64_encode((string) File::get($absolutePath));
+                    }
                 }
             }
 
@@ -1170,6 +1183,7 @@ class IncidentController extends Controller
                 'resolved_at' => $incident->resolved_at?->format('Y-m-d H:i:s') ?: '-',
                 'proof_url' => $proofUrl,
                 'proof_data_uri' => $proofDataUri,
+                'proof_omitted' => $proofOmitted,
             ];
         })->values()->all();
     }
