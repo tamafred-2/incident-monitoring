@@ -12,7 +12,7 @@
                 @endphp
                 <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     <x-stat-card :compact="true" :href="route('incidents.index', ['view' => 'all'])" label="Total Incidents" tone="rose" :tinted="true" :value="$summary['total_incidents']" :hint="$summary['pending_incidents'] . ' pending'" />
-                    <x-stat-card :compact="true" :href="route('visitors.index', ['tab' => 'history', 'chart_filter' => 1, 'date_from' => now()->startOfDay()->format('Y-m-d\TH:i'), 'date_to' => now()->endOfDay()->format('Y-m-d\TH:i')])" label="Today's Visitors" tone="brand" :tinted="true" :value="$visitorsToday" :hint="$summary['visitors_inside'] . ' currently inside'" />
+                    <x-stat-card :compact="true" :href="route('visitors.index', ['tab' => 'check-out', 'date_from' => now()->startOfDay()->format('Y-m-d\TH:i'), 'date_to' => now()->endOfDay()->format('Y-m-d\TH:i:s')])" label="Today's Visitors" tone="brand" :tinted="true" :value="$visitorsToday" :hint="$summary['visitors_inside'] . ' currently inside'" />
                     <x-stat-card :compact="true" :href="route('residents.index')" label="Total Residents" tone="violet" :tinted="true" :value="$summary['total_residents']" />
                     <x-stat-card :compact="true" :href="auth()->user()->isAdmin() ? route('houses.index') : route('residents.index')" label="Total Houses" tone="teal" :tinted="true" :value="$summary['total_houses']" />
                 </div>
