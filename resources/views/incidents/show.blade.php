@@ -66,7 +66,7 @@
                     <section class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Report Summary</h4>
                         <dl class="mt-4 space-y-4 text-sm">
-                            @foreach (['Category' => $incident->category, 'Location' => ($incident->location ?: $incident->house?->display_address), 'Reported By' => $incident->reporter?->full_name] as $label => $value)
+                            @foreach (['Category' => $incident->category, 'Location' => ($incident->location ?: $incident->house?->display_address), 'Created By' => $incident->reporter?->full_name] as $label => $value)
                                 <div class="flex items-start justify-between gap-4">
                                     <dt class="text-slate-500">{{ $label }}</dt>
                                     <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $value ?: '-' }}</dd>

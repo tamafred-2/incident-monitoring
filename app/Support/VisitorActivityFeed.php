@@ -63,13 +63,13 @@ class VisitorActivityFeed
                 // Use actual creation time so a backdated report is still new.
                 $occurredAt = $incident->created_at;
                 $category = $incident->category ?: 'Uncategorized';
-                $reporter = $incident->reporter?->full_name ?? 'A user';
+                $reporter = $incident->reporter?->first_name ?: 'A user';
                 return [
                     'key' => "incident:{$incident->incident_id}:created",
                     'type' => 'incident_reported',
                     'incident_id' => $incident->incident_id,
-                    'title' => "New incident: {$category}",
-                    'message' => "{$reporter} reported an incident at " . ($incident->location ?: $incident->subdivision?->subdivision_name ?: 'an unspecified location') . '.',
+                    'title' => "{$reporter} created a new incident",
+                    'message' => "{$category} at " . ($incident->location ?: $incident->subdivision?->subdivision_name ?: 'an unspecified location') . '.',
                     'detail_url' => route('incidents.show', ['incidentId' => $incident->incident_id]),
                     'occurred_at' => $occurredAt->toIso8601String(),
                     'time_label' => $occurredAt->format('M j, Y h:i A'),

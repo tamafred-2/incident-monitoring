@@ -83,10 +83,10 @@
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
-                                <p class="truncate text-sm font-semibold text-slate-900" x-text="notification.title || notification.visitor_name"></p>
+                                <p class="min-w-0 whitespace-normal break-words text-sm font-semibold text-slate-900" x-text="notification.title || notification.visitor_name"></p>
                                 <span
                                     x-show="notification.is_unread"
-                                    class="inline-flex h-2.5 w-2.5 rounded-full bg-brand-500"
+                                    class="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500"
                                 ></span>
                             </div>
                             <p class="mt-1 text-xs leading-5 text-slate-500" x-text="notification.message"></p>
