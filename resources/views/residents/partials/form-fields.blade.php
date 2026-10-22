@@ -141,8 +141,8 @@
                     required
                     value="{{ $fieldValue('phone', $resident?->phone ?? '') }}"
                     inputmode="numeric"
-                    pattern="[0-9]*"
-                    maxlength="20"
+                    pattern="[0-9]{11}" minlength="11" title="Enter exactly 11 digits."
+                    maxlength="11"
                     oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                     class="mt-1 w-full rounded-xl {{ $formErrors->has('phone') ? 'border-rose-300' : 'border-slate-300' }} text-sm shadow-sm {{ $formErrors->has('phone') ? 'focus:border-rose-500' : 'focus:border-brand-500' }} focus:ring-brand-500"
                 >

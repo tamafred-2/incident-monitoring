@@ -38,7 +38,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Phone</label>
-                        <input type="text" name="phone" value="{{ old('phone', $visitor->phone) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                        <input type="tel" name="phone" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" title="Enter exactly 11 digits." value="{{ old('phone', $visitor->phone) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>

@@ -152,7 +152,7 @@ class ResidentController extends Controller
             'middle_name' => ['nullable', 'string', 'max:50', new PersonName],
             'extension' => ['nullable', 'string', 'max:20', new PersonName],
             'full_name' => ['nullable', 'string', 'max:100', new PersonName],
-            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+            'phone' => ['required', 'string', 'digits:11'],
             'email' => ['required', 'email', 'max:100'],
             'subdivision_id' => ['required', 'integer', 'exists:subdivisions,subdivision_id'],
             'house_id' => ['nullable', 'integer', 'exists:houses,house_id'],

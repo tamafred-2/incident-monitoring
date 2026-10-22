@@ -195,7 +195,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Contact Number <span class="text-rose-500">*</span></label>
-                            <input type="text" name="contact_number" required
+                            <input type="tel" name="contact_number" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" title="Enter exactly 11 digits." required
                                    value="{{ old('contact_number', $subdivision->contact_number) }}"
                                    class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                             @error('contact_number') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
@@ -234,7 +234,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700">Contact Number</label>
-                            <input type="text" name="secondary_contact_number"
+                            <input type="tel" name="secondary_contact_number" inputmode="numeric" pattern="[0-9]{11}" minlength="11" maxlength="11" title="Enter exactly 11 digits."
                                    value="{{ old('secondary_contact_number', $subdivision->secondary_contact_number) }}"
                                    class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
                         </div>

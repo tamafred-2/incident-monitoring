@@ -8,7 +8,7 @@
             ['extension', 'Extension', 'text', false, 20],
         ]],
         ['title' => 'Contact', 'description' => 'Ways to reach the resident if follow-up is needed.', 'fields' => [
-            ['phone', 'Phone', 'tel', true, 20],
+            ['phone', 'Phone', 'tel', true, 11],
             ['email', 'Email', 'email', true, 100],
         ]],
     ];
@@ -34,7 +34,7 @@
                             value="{{ $ownerErrors->any() ? old('owner.'.$field) : '' }}"
                             @required($required)
                             maxlength="{{ $maxLength }}"
-                            @if ($field === 'phone') inputmode="numeric" pattern="[0-9]+" @endif
+                            @if ($field === 'phone') inputmode="numeric" pattern="[0-9]{11}" minlength="11" title="Enter exactly 11 digits." @endif
                             aria-invalid="{{ $ownerErrors->has('owner.'.$field) ? 'true' : 'false' }}"
                             @if ($ownerErrors->has('owner.'.$field)) aria-describedby="house-owner-{{ $field }}-error" @endif
                             class="mt-1 w-full rounded-xl {{ $ownerErrors->has('owner.'.$field) ? 'border-rose-300' : 'border-slate-300' }} text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"
