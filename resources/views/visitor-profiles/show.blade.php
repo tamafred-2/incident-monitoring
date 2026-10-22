@@ -33,12 +33,29 @@
                 </x-modal>
             @endif
         </section>
+        @if ($expectedVisits->isNotEmpty())
+        <section class="rounded-2xl border border-slate-200 bg-white p-6">
+            <h3 class="text-lg font-semibold text-slate-900">Expected Visit Records</h3>
+            <p class="mt-1 text-sm text-slate-500">The 10 most recent scheduled visits, including arrivals and cancellations.</p>
+            <div class="mt-4 divide-y divide-slate-100">
+                @foreach ($expectedVisits as $expected)
+                <div class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                    <div><p class="font-semibold">{{ $expected->expected_at->format('M j, Y h:i A') }} - {{ $expected->status }}</p><p class="text-slate-500">Resident: {{ $expected->resident?->full_name ?? 'Unavailable' }} - Recorded by {{ $expected->recorder?->full_name ?? 'Unknown' }}</p></div>
+                    @if ($expected->status === 'Expected' && auth()->user()->hasRole('security'))<a href="{{ route('visitors.index', ['expected_visit' => $expected->getKey()]) }}" class="font-semibold text-brand-700">Check In on Arrival</a>@endif
+                </div>
+                @endforeach
+            </div>
+        </section>
+        @endif
         <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-5">
                 <h3 class="text-lg font-semibold text-slate-900">Visit History</h3>
                 @if (auth()->user()->hasRole('security'))
+                    <div class="flex flex-wrap items-center gap-2">
+                    <button type="button" x-data @click="$dispatch('open-modal', 'schedule-expected-visit')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Schedule Expected Visit</button>
                     @if ($isInside)<span class="text-sm text-amber-700">Check out the current visit before adding another.</span>
                     @else<a href="{{ route('visitors.index', ['profile' => $profile->getKey(), 'subdivision_id' => $profile->subdivision_id]) }}" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Add Visit</a>@endif
+                    </div>
                 @endif
             </div>
             <div class="overflow-x-auto"><table class="min-w-full divide-y divide-slate-200 text-sm">
@@ -75,7 +92,8 @@
             <div class="p-4">{{ $visits->links() }}</div>
         </section>
         @if (auth()->user()->hasRole('security'))
-            <x-modal name="edit-visitor-profile" :show="$errors->any()" maxWidth="2xl" focusable>
+            @include('expected-visits.modal')
+            <x-modal name="edit-visitor-profile" :show="$errors->any() && !old('expected_visit_form')" maxWidth="2xl" focusable>
                 <form method="POST" action="{{ route('visitor-profiles.update', $profile) }}" enctype="multipart/form-data" class="space-y-5 bg-white p-6 sm:p-8">
                     @csrf @method('PUT')
                     <div class="flex items-start justify-between gap-4">

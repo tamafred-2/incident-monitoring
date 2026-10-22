@@ -11,6 +11,7 @@
                 <input id="profile-search" name="q" value="{{ $q }}" type="search" placeholder="Search name or phone" data-live-search="#visitor-profile-results" autocomplete="off" class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
             </form>
             <div class="flex flex-wrap items-center gap-3">
+                <a href="{{ route('expected-visits.index') }}" class="text-sm font-semibold text-brand-700">Expected Visits</a>
             @if (auth()->user()->hasRole('security'))
                 <button type="button" x-data @click="$dispatch('open-modal', 'add-visitor-profile')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Add Visitor</button>
             @endif

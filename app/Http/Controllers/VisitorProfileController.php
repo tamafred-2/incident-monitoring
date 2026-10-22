@@ -46,11 +46,11 @@ class VisitorProfileController extends Controller
         }
         abort_unless(Subdivision::whereKey($subdivisionId)->exists(), 422, 'Please select a valid subdivision.');
         $this->ensureUniqueName($data, $subdivisionId);
-        $data['id_photo_path'] = $request->file('id_photo')->store('uploads/visitors/id-photos', 'public');
-        unset($data['id_photo']);
+        $data['id_photo_path'] = $request->file('id_photo')?->store('uploads/visitors/id-photos', 'public');
+        unset($data['id_photo'], $data['advance_registration']);
         $profile = VisitorProfile::create($data + ['subdivision_id' => $subdivisionId]);
 
-        return redirect()->route('visitor-profiles.show', $profile)->with('success', 'Visitor profile created. You can now add a visit.');
+        return redirect()->route($request->boolean('advance_registration') ? 'expected-visits.create' : 'visitor-profiles.show', $profile)->with('success', 'Visitor profile created. You can now add a visit.');
     }
 
     public function show(Request $request, VisitorProfile $profile)
@@ -59,7 +59,15 @@ class VisitorProfileController extends Controller
         $visits = $profile->visits()->withTrashed()->orderByDesc('check_in')->orderByDesc('visitor_id')->simplePaginate(10);
         $isInside = $profile->visits()->where('status', VisitorStatus::Inside)->exists();
 
-        return view('visitor-profiles.show', compact('profile', 'visits', 'isInside'));
+        $expectedVisits = \App\Models\ExpectedVisit::with(['resident', 'recorder'])
+            ->where('visitor_profile_id', $profile->getKey())->orderByDesc('expected_at')->limit(10)->get();
+
+        $residents = $request->user()->hasRole('security')
+            ? \App\Models\Resident::with('house')->where('subdivision_id', $profile->subdivision_id)
+                ->where('status', ActiveStatus::Active)->whereHas('house')->orderBy('full_name')->get()
+            : collect();
+
+        return view('visitor-profiles.show', compact('profile', 'visits', 'isInside', 'expectedVisits', 'residents'));
     }
 
     public function update(Request $request, VisitorProfile $profile)
@@ -70,7 +78,7 @@ class VisitorProfileController extends Controller
         if ($request->hasFile('id_photo')) {
             $data['id_photo_path'] = $request->file('id_photo')->store('uploads/visitors/id-photos', 'public');
         }
-        unset($data['id_photo']);
+        unset($data['id_photo'], $data['advance_registration']);
         $profile->update($data);
 
         return redirect()->route('visitor-profiles.show', $profile)->with('success', 'Visitor profile updated. Previous visits retain their recorded details.');
@@ -117,8 +125,9 @@ class VisitorProfileController extends Controller
             'first_name' => ['required', 'string', 'max:50', new PersonName],
             'middle_initials' => ['nullable', 'string', 'max:20', new PersonName],
             'extension' => ['nullable', 'string', 'max:20', new PersonName],
-            'phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
-            'id_photo' => [$editing ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'phone' => ['required', 'string', 'digits:11'],
+            'advance_registration' => ['nullable', 'boolean'],
+            'id_photo' => [$editing || $request->boolean('advance_registration') ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
         ]);
         foreach (['first_name', 'middle_initials', 'surname', 'extension'] as $field) {
             if (isset($data[$field])) {
