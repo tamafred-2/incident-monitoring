@@ -102,14 +102,15 @@ class VisitorExportTest extends TestCase
         $this->assertStringStartsWith('%PDF-', $response->getContent());
     }
 
-    public function test_history_buttons_use_same_origin_download_urls(): void
+    public function test_reports_replace_history_export_controls_and_use_same_origin_urls(): void
     {
         $this->signInWithVisitorHistory();
-
         $this->withoutVite()->get(route('visitors.index', ['tab' => 'history']))
-            ->assertOk()
-            ->assertSee("openExcelConfirm('\\/visitors\\/export?tab=history\\u0026format=excel')", false)
-            ->assertSee("openPdfConfirm('\\/visitors\\/export?tab=history\\u0026format=pdf')", false);
+            ->assertOk()->assertSee(route('reports.index', ['type' => 'visitors']))
+            ->assertDontSee('openExcelConfirm');
+        $this->get(route('reports.index', ['type' => 'visitors']))->assertOk()
+            ->assertViewHas('excelUrl', fn ($url) => str_starts_with($url, '/visitors/export?') && str_contains($url, 'format=excel'))
+            ->assertViewHas('pdfUrl', fn ($url) => str_starts_with($url, '/visitors/export?') && str_contains($url, 'format=pdf'));
     }
 
     public function test_pdf_selects_latest_100_matching_visits_before_rendering(): void

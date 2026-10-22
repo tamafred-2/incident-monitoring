@@ -16,9 +16,10 @@
 </head>
 <body>
     <h1>{{ $title }}</h1>
+        @if (request()->has('report_part'))<p>Part {{ request()->integer('report_part', 1) }} - up to 100 records</p>@endif
     <p class="meta">Generated at: {{ $generatedAt->format('Y-m-d H:i:s') }} | Showing {{ count($reportRows) }} of {{ $totalMatching }} matching visits, newest check-in first.</p>
     @if ($totalMatching > count($reportRows))
-        <p class="meta">This PDF includes only the 100 most recent matching visits. Narrow the date range to export older visits.</p>
+        <p class="meta">{{ request()->has('report_part') ? 'This file contains one part of the report. Download the remaining parts from Reports.' : 'This PDF includes only the 100 most recent matching visits. Open Reports to download all records in parts.' }}</p>
     @endif
     {{-- Ordinary blocks can split across pages; a tall table row cannot. --}}
     @forelse ($reportRows as $row)

@@ -71,7 +71,8 @@
                 ['label' => 'Incidents', 'href' => route('incidents.index'), 'active' => 'incidents.index'],
                 $user->hasRole(['staff', 'security']) ? ['label' => 'Residents', 'href' => route('residents.index'), 'active' => 'residents.*'] : null,
                 $user->hasRole(['staff', 'security']) ? ['label' => 'Visitors', 'href' => route('visitor-profiles.index'), 'active' => 'visitor-profiles.*'] : null,
-                ($isSecurityUser || $isAdminUser) ? ['label' => 'Gate Monitoring', 'href' => route('visitors.index'), 'active' => 'visitors.*'] : null,
+                ($isSecurityUser || $isAdminUser) ? ['label' => 'Gate', 'href' => route('visitors.index'), 'active' => 'visitors.*'] : null,
+                ['label' => 'Reports', 'href' => route('reports.index'), 'active' => 'reports.*'],
             ])),
         ],
     ];

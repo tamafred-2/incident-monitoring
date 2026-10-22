@@ -36,6 +36,7 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     });
     Route::get('/dashboard/records/{table}', [DashboardController::class, 'records'])
         ->whereIn('table', ['incidents', 'visitors'])->name('dashboard.records');
+    Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('role:admin,staff,security')->name('reports.index');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('role:admin,staff')->name('analytics.index');
     Route::get('/analytics/records', [AnalyticsController::class, 'records'])->middleware('role:admin,staff')->name('analytics.records');
 
@@ -96,6 +97,10 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/visitor-profiles/{profile}', [VisitorProfileController::class, 'show'])->middleware('role:security,staff')->name('visitor-profiles.show');
     Route::put('/visitor-profiles/{profile}', [VisitorProfileController::class, 'update'])->middleware('role:security')->name('visitor-profiles.update');
     Route::get('/visitor-profiles/{profile}/id-photo', [VisitorProfileController::class, 'photo'])->middleware('role:security')->name('visitor-profiles.photo');
+    Route::get('/expected-visits', [\App\Http\Controllers\ExpectedVisitController::class, 'index'])->middleware('role:security,staff')->name('expected-visits.index');
+    Route::get('/visitor-profiles/{profile}/expected-visits/create', [\App\Http\Controllers\ExpectedVisitController::class, 'create'])->middleware('role:security')->name('expected-visits.create');
+    Route::post('/visitor-profiles/{profile}/expected-visits', [\App\Http\Controllers\ExpectedVisitController::class, 'store'])->middleware('role:security')->name('expected-visits.store');
+    Route::post('/expected-visits/{expectedVisit}/cancel', [\App\Http\Controllers\ExpectedVisitController::class, 'cancel'])->middleware('role:security')->name('expected-visits.cancel');
     Route::get('/visitors', [VisitorController::class, 'index'])->middleware('role:security,staff')->name('visitors.index');
     Route::get('/visitors/export', [VisitorController::class, 'export'])->middleware('role:security')->name('visitors.export');
     Route::get('/visitors/print', [VisitorController::class, 'print'])->middleware('role:security')->name('visitors.print');

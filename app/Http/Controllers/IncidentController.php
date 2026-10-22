@@ -126,8 +126,15 @@ class IncidentController extends Controller
         ]);
     }
 
+    public function reportSummary(Request $request): array
+    {
+        $query = $this->buildIncidentReportQuery($request);
+        return ['count' => (clone $query)->count(), 'max_id' => (clone $query)->reorder()->max('incident_id') ?? 0];
+    }
+
     public function export(Request $request): Response|StreamedResponse|RedirectResponse
     {
+        \App\Support\ReportBatch::validate($request);
         $format = strtolower((string) $request->query('format', 'excel'));
         if (! in_array($format, ['excel', 'pdf'], true)) {
             return back()->with('error', 'Unsupported export format.');
@@ -138,7 +145,7 @@ class IncidentController extends Controller
                 $data = $this->reportViewData($request, false, true, true, true);
                 $pdf = Pdf::loadView('incidents.report-print', $data)->setPaper('a4', 'landscape');
 
-                return $pdf->download('incident-report-'.now()->format('Ymd_His').'.pdf');
+                return $pdf->download('incident-report-'.now()->format('Ymd_His').\App\Support\ReportBatch::suffix($request).'.pdf');
             } catch (\Throwable $exception) {
                 report($exception);
 
@@ -153,7 +160,7 @@ class IncidentController extends Controller
 
         $incidents = $this->buildIncidentDownloadQuery($request)->get();
         $reportRows = $this->buildIncidentReportRows($incidents, false);
-        $filename = 'incident-report-'.now()->format('Ymd_His').'.csv';
+        $filename = 'incident-report-'.now()->format('Ymd_His').\App\Support\ReportBatch::suffix($request).'.csv';
 
         return response()->streamDownload(function () use ($reportRows) {
             $handle = fopen('php://output', 'w');
@@ -179,6 +186,7 @@ class IncidentController extends Controller
 
     public function print(Request $request): View
     {
+        \App\Support\ReportBatch::validate($request);
         return view('incidents.report-print', $this->reportViewData(
             $request,
             $request->boolean('autoprint'),
@@ -457,7 +465,7 @@ class IncidentController extends Controller
             'category_other' => ['nullable', 'string', 'max:100', 'required_if:category,Other'],
             'location' => ['nullable', 'string', 'max:150'],
             'location_other' => ['nullable', 'string', 'max:150', 'required_if:location,__other__'],
-            'incident_date' => ['required', 'date'],
+            'incident_date' => ['required', 'date', 'before_or_equal:now'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,user_id'],
             'investigation_photos' => ['nullable', 'array', 'max:10'],
             'investigation_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
@@ -896,8 +904,8 @@ class IncidentController extends Controller
 
         Notification::send($team, new IncidentUpdatedNotification(
             $incident,
-            'New Incident Reported',
-            ($incident->reporter?->full_name ?? 'A user').' reported '.($incident->category ?: 'an incident').' at '.($incident->location ?: 'the subdivision').'.'
+            ($incident->reporter?->first_name ?: 'A user').' created a new incident',
+            ($incident->category ?: 'Uncategorized').' at '.($incident->location ?: 'the subdivision').'.'
         ));
     }
 
@@ -1068,7 +1076,7 @@ class IncidentController extends Controller
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
         $filterDateFrom = $this->normalizeDateTimeInput($request->query('date_from'));
         $filterDateTo = $this->normalizeDateTimeInput($request->query('date_to'));
-        $historyView = $historyOnly ? 'history' : $this->resolveHistoryView($request->query('view'));
+        $historyView = $historyOnly && ! $request->boolean('report') ? 'history' : $this->resolveHistoryView($request->query('view'));
         $reportedSort = strtolower((string) $request->query('reported_sort', 'desc'));
         if (! in_array($reportedSort, ['asc', 'desc'], true)) {
             $reportedSort = 'desc';
@@ -1077,6 +1085,10 @@ class IncidentController extends Controller
         $query = Incident::query()
             ->with(['reporter', 'proofPhotos'])
             ->orderByRaw('COALESCE(reported_at, incident_date, created_at) '.strtoupper($reportedSort));
+
+        if ($request->has('report_max_id')) {
+            $query->where('incident_id', '<=', $request->integer('report_max_id'));
+        }
 
         if ($filterQ !== '') {
             $query->where(function (Builder $builder) use ($filterQ) {
@@ -1112,11 +1124,10 @@ class IncidentController extends Controller
 
     private function buildIncidentDownloadQuery(Request $request): Builder
     {
-        return $this->buildIncidentReportQuery($request, true)
+        return \App\Support\ReportBatch::apply($this->buildIncidentReportQuery($request, true)
             ->reorder()
             ->orderByRaw('COALESCE(reported_at, incident_date, created_at) DESC')
-            ->orderByDesc('incident_id')
-            ->limit(100);
+            ->orderByDesc('incident_id'), $request);
     }
 
     private function reportViewData(
@@ -1126,14 +1137,15 @@ class IncidentController extends Controller
         bool $includeProofImages = true,
         bool $renderingPdf = false
     ): array {
-        $incidents = ($renderingPdf
+        $incidents = ($renderingPdf || $request->boolean('report')
             ? $this->buildIncidentDownloadQuery($request)
             : $this->buildIncidentReportQuery($request, $historyOnly))->get();
         $reportRows = $this->buildIncidentReportRows($incidents, $includeProofImages, $renderingPdf);
         $reportQuery = array_filter([
             'q' => trim((string) $request->query('q', '')) ?: null,
             'subdivision_id' => (int) $request->query('subdivision_id', 0) ?: null,
-            'view' => 'history',
+            'view' => $request->boolean('report') ? $this->resolveHistoryView($request->query('view')) : 'history',
+            'report' => $request->boolean('report') ? 1 : null,
             'reported_sort' => in_array(strtolower((string) $request->query('reported_sort', 'desc')), ['asc', 'desc'], true)
                 ? strtolower((string) $request->query('reported_sort', 'desc'))
                 : null,

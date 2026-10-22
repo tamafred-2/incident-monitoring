@@ -1,8 +1,6 @@
 <x-app-layout>
     @php
         $defaultMonitoringTab = request()->query('tab');
-        $visitorReportQuery = request()->query();
-        $visitorExportPreviewUrl = route('visitors.print', $visitorReportQuery + ['preview' => 1, 'embed' => 1], false);
 
         if (!in_array($defaultMonitoringTab, ['check-out', 'history'], true)) {
             $defaultMonitoringTab = 'check-out';
@@ -12,6 +10,7 @@
     <x-slot name="header">
         <div class="flex items-start justify-between gap-4">
             <x-page-header title="Visitors" subtitle="Search a saved visitor profile, record a new visit, and monitor entry and checkout." />
+            <a href="{{ route('expected-visits.index') }}" class="shrink-0 rounded-xl border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700">Expected Visits</a>
 
             <div
                 x-data="{ reminderOpen: false }"
@@ -55,15 +54,15 @@
                 residentsByHouse: {{ \Illuminate\Support\Js::from($residentsByHouse) }},
                 selectedSubdivision: '{{ $effectiveSubdivision }}',
                 visitType: @js(old('visit_type', 'resident')),
-                selectedHouseId: @js(old('visit_type', 'resident') === 'resident' ? (string) old('resident_house_id', '') : ''),
-                selectedHouseAddress: @js(old('visit_type', 'resident') === 'resident' ? old('house_address_or_unit', '') : ''),
+                selectedHouseId: @js(old('visit_type', 'resident') === 'resident' ? (string) old('resident_house_id', $expectedVisit?->resident?->house_id ?? '') : ''),
+                selectedHouseAddress: @js(old('visit_type', 'resident') === 'resident' ? old('house_address_or_unit', $expectedVisit?->resident?->house?->display_address ?? '') : ''),
                 selectedStreet: '',
                 selectedBlock: '',
                 selectedLot: '',
-                walkInLocation: @js(old('visit_type') === 'walk_in' ? old('house_address_or_unit', '') : ''),
+                walkInLocation: @js(old('visit_type') === 'walk_in' ? old('house_address_or_unit', $expectedVisit?->resident?->house?->display_address ?? '') : ''),
                 isVehicle: @js(old('on_vehicle') == '1' || old('plate_number') || old('passenger_count')),
-                selectedResidentId: @js(old('resident_id', '')),
-                hostSearch: @js(old('host_employee', '')),
+                selectedResidentId: @js(old('resident_id', $expectedVisit?->resident_id ?? '')),
+                hostSearch: @js(old('host_employee', $expectedVisit?->resident?->full_name ?? '')),
                 selectedResidentPhone: '',
                 selectedProfile: @js($selectedProfile),
                 visitorSearch: @js($selectedProfile['name'] ?? ''),
@@ -109,48 +108,8 @@
                     return (this.residentsByHouse[String(this.selectedHouseId)] || []).filter(r => r.is_owner);
                 },
                 hostOpen: false,
-                exportPreviewOpen: false,
-                exportPreviewUrl: @js($visitorExportPreviewUrl),
-                excelConfirmOpen: false,
-                excelExportUrl: '',
-                pdfConfirmOpen: false,
-                pdfExportUrl: '',
                 init() {
                     this.initializeResidentSelection();
-                },
-                openExportPreview() {
-                    this.exportPreviewOpen = true;
-                },
-                closeExportPreview() {
-                    this.exportPreviewOpen = false;
-                },
-                openExcelConfirm(url) {
-                    this.excelExportUrl = url;
-                    this.excelConfirmOpen = true;
-                },
-                closeExcelConfirm() {
-                    this.excelConfirmOpen = false;
-                    this.excelExportUrl = '';
-                },
-                proceedExcelExport() {
-                    if (this.excelExportUrl) {
-                        window.location.href = this.excelExportUrl;
-                    }
-                    this.closeExcelConfirm();
-                },
-                openPdfConfirm(url) {
-                    this.pdfExportUrl = url;
-                    this.pdfConfirmOpen = true;
-                },
-                closePdfConfirm() {
-                    this.pdfConfirmOpen = false;
-                    this.pdfExportUrl = '';
-                },
-                proceedPdfExport() {
-                    if (this.pdfExportUrl) {
-                        window.location.href = this.pdfExportUrl;
-                    }
-                    this.closePdfConfirm();
                 },
                 get availableHouses() {
                     return this.housesBySubdivision[this.selectedSubdivision] || [];
@@ -283,6 +242,10 @@
 
                     <form method="POST" action="{{ route('visitors.store') }}" enctype="multipart/form-data" class="space-y-6" data-visitor-check-in>
                         @csrf
+                        @if ($expectedVisit)
+                            <input type="hidden" name="expected_visit_id" value="{{ $expectedVisit->getKey() }}">
+                            <p class="rounded-xl bg-brand-50 p-3 text-sm text-brand-800">Expected visit for {{ $selectedProfile['name'] ?? '' }} at {{ $expectedVisit->expected_at->format('M j, Y h:i A') }}. Complete this form only when the visitor arrives.</p>
+                        @endif
                         <input type="hidden" name="_submission_token" value="{{ bin2hex(random_bytes(16)) }}">
                         <div data-check-in-errors role="alert" tabindex="-1" hidden class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"></div>
                         <input type="hidden" name="tab" value="check-in">
@@ -469,7 +432,7 @@
                             </div>
                             <p class="text-sm text-slate-500">New visitor? <a href="{{ route('visitor-profiles.index', ['subdivision_id' => $effectiveSubdivision]) }}" class="font-semibold text-brand-700 underline">Add a visitor profile first</a>.</p>
                             <label for="visit-purpose" class="block text-sm font-medium text-slate-700">Purpose</label>
-                            <textarea id="visit-purpose" name="purpose" rows="2" class="w-full rounded-xl border-slate-300 text-sm">{{ old('purpose') }}</textarea>
+                            <textarea id="visit-purpose" name="purpose" rows="2" class="w-full rounded-xl border-slate-300 text-sm">{{ old('purpose', $expectedVisit?->purpose) }}</textarea>
                         </section>
 
                         <div x-show="selectedProfile && !selectedProfile.has_photo" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
@@ -620,14 +583,7 @@
                             Visitor History
                         </a>
                     </nav>
-                    <button
-                        type="button"
-                        x-show="activeMonitoringTab === 'history'"
-                        @click="openExportPreview()"
-                        class="px-4 py-2 mb-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                    >
-                        Export
-                    </button>
+                    @if (auth()->user()->hasRole('security'))<a href="{{ route('reports.index', ['type' => 'visitors']) }}" class="mb-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reports</a>@endif
                 </div>
             </div>
 
@@ -743,119 +699,6 @@
             </div>
 
 
-            <div
-                x-cloak
-                x-show="exportPreviewOpen"
-                x-on:keydown.escape.window="closeExportPreview()"
-                class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-slate-950/80"
-                style="display: none;"
-            >
-                <div class="absolute inset-0" @click="closeExportPreview()"></div>
-                <div class="relative w-full max-w-6xl overflow-hidden bg-white shadow-2xl rounded-2xl">
-                    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
-                        <h3 class="text-base font-semibold text-slate-900">Visitor Report Preview</h3>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button
-                                type="button"
-                                @click="openExcelConfirm(@js(route('visitors.export', array_merge($visitorReportQuery, ['format' => 'excel']), false)))"
-                                class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700"
-                            >
-                                To Excel
-                            </button>
-                            <button
-                                type="button"
-                                @click="openPdfConfirm(@js(route('visitors.export', array_merge($visitorReportQuery, ['format' => 'pdf']), false)))"
-                                class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700"
-                            >
-                                To PDF
-                            </button>
-                            <a
-                                href="{{ route('visitors.print', $visitorReportQuery + ['autoprint' => 1]) }}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
-                            >
-                                Print
-                            </a>
-                            <button
-                                type="button"
-                                @click="closeExportPreview()"
-                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                    <div class="h-[70vh] bg-slate-100">
-                        <iframe :src="exportPreviewUrl" class="w-full h-full border-0" title="Visitor report preview"></iframe>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                x-cloak
-                x-show="excelConfirmOpen"
-                x-on:keydown.escape.window="closeExcelConfirm()"
-                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/80"
-                style="display: none;"
-            >
-                <div class="absolute inset-0" @click="closeExcelConfirm()"></div>
-                <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl ring-1 ring-emerald-200">
-                    <div class="px-5 py-4 border-b border-emerald-100 bg-emerald-50">
-                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Export</p>
-                        <h3 class="mt-1 text-base font-semibold text-slate-900">Confirm Excel Export</h3>
-                        <p class="mt-1 text-sm text-slate-700">Download up to 100 visits matching your filters as an Excel-compatible CSV, newest check-in first.</p>
-                    </div>
-                    <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
-                        <button
-                            type="button"
-                            @click="closeExcelConfirm()"
-                            class="px-3 py-2 text-sm font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-white"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            @click="proceedExcelExport()"
-                            class="px-3 py-2 text-sm font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700"
-                        >
-                            Continue
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                x-cloak
-                x-show="pdfConfirmOpen"
-                x-on:keydown.escape.window="closePdfConfirm()"
-                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/80"
-                style="display: none;"
-            >
-                <div class="absolute inset-0" @click="closePdfConfirm()"></div>
-                <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl">
-                    <div class="px-5 py-4 border-b border-slate-200">
-                        <h3 class="text-base font-semibold text-slate-900">Confirm PDF Export</h3>
-                        <p class="mt-1 text-sm text-slate-600">Download the 100 most recent visits matching your filters as a PDF, newest check-in first. If fewer visits match, all matching visits will be included.</p>
-                    </div>
-                    <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
-                        <button
-                            type="button"
-                            @click="closePdfConfirm()"
-                            class="px-3 py-2 text-sm font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-white"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            @click="proceedPdfExport()"
-                            class="px-3 py-2 text-sm font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700"
-                        >
-                            Continue
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 

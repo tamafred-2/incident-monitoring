@@ -27,9 +27,10 @@
 <body>
     <div class="page">
         <h1>{{ $title }}</h1>
+        @if (request()->has('report_part'))<p>Part {{ request()->integer('report_part', 1) }} - up to 100 records</p>@endif
         <p class="meta">Generated at: {{ $generatedAt->format('Y-m-d H:i:s') }}</p>
         <p class="summary">Total visitor history records: {{ count($reportRows ?? []) }}</p>
-        <p class="summary">PDF and Excel downloads include up to 100 matching visits, newest check-in first. Narrow the date range to download older records.</p>
+        <p class="summary">PDF and Excel downloads include up to 100 matching visits, newest check-in first. Use Reports to download additional numbered parts.</p>
 
         <table>
             <thead>

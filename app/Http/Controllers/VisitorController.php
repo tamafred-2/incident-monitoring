@@ -6,6 +6,7 @@ use App\Enums\ActiveStatus;
 use App\Enums\VisitorRequestStatus;
 use App\Enums\VisitorStatus;
 use App\Models\House;
+use App\Models\ExpectedVisit;
 use App\Models\Resident;
 use App\Models\Subdivision;
 use App\Models\Visitor;
@@ -118,8 +119,14 @@ class VisitorController extends Controller
             ->orderByDesc('visitor_id')->simplePaginate($checkOutPerPage, ['*'], 'check_out_page')
             ->withQueryString();
 
+        $expectedVisit = null;
+        if ($request->filled('expected_visit')) {
+            $expectedVisit = ExpectedVisit::with('resident.house')->findOrFail($request->integer('expected_visit'));
+            abort_unless($user->canAccessSubdivision($expectedVisit->subdivision_id), 403);
+            abort_unless($expectedVisit->status === 'Expected', 422, 'This visit is no longer expected.');
+        }
         $selectedProfile = null;
-        $profileId = (int) $request->old('visitor_profile_id', $request->query('profile', 0));
+        $profileId = (int) $request->old('visitor_profile_id', $expectedVisit?->visitor_profile_id ?? $request->query('profile', 0));
         if ($profileId) {
             $profile = VisitorProfile::findOrFail($profileId);
             abort_unless($user->canAccessSubdivision($profile->subdivision_id), 403);
@@ -130,6 +137,7 @@ class VisitorController extends Controller
         return $this->scrollView('visitors.index', compact(
             'visitors',
             'selectedProfile',
+            'expectedVisit',
             'subdivisions',
             'filterQ',
             'filterSubdivision',
@@ -175,8 +183,15 @@ class VisitorController extends Controller
         ]);
     }
 
+    public function reportSummary(Request $request): array
+    {
+        $query = $this->buildVisitorHistoryQuery($request);
+        return ['count' => (clone $query)->count(), 'max_id' => (clone $query)->reorder()->max('visitor_id') ?? 0];
+    }
+
     public function export(Request $request): Response|StreamedResponse|RedirectResponse
     {
+        \App\Support\ReportBatch::validate($request);
         $format = strtolower((string) $request->query('format', 'excel'));
         if (! in_array($format, ['excel', 'pdf'], true)) {
             return back()->with('error', 'Unsupported export format.');
@@ -187,7 +202,7 @@ class VisitorController extends Controller
                 $pdf = Pdf::loadView('visitors.report-pdf', $this->visitorReportViewData($request, false, true, true))
                     ->setPaper('a4', 'portrait');
 
-                return $pdf->download('visitor-report-'.now()->format('Ymd_His').'.pdf');
+                return $pdf->download('visitor-report-'.now()->format('Ymd_His').\App\Support\ReportBatch::suffix($request).'.pdf');
             } catch (\Throwable $exception) {
                 report($exception);
 
@@ -195,9 +210,9 @@ class VisitorController extends Controller
             }
         }
 
-        $visitors = $this->buildVisitorHistoryQuery($request)->orderByDesc('visitor_id')->limit(100)->get();
+        $visitors = \App\Support\ReportBatch::apply($this->buildVisitorHistoryQuery($request)->orderByDesc('visitor_id'), $request)->get();
         $reportRows = $this->buildVisitorReportRows($visitors, false);
-        $filename = 'visitor-report-'.now()->format('Ymd_His').'.csv';
+        $filename = 'visitor-report-'.now()->format('Ymd_His').\App\Support\ReportBatch::suffix($request).'.csv';
 
         return response()->streamDownload(function () use ($reportRows) {
             $handle = fopen('php://output', 'w');
@@ -230,6 +245,7 @@ class VisitorController extends Controller
 
     public function print(Request $request): View
     {
+        \App\Support\ReportBatch::validate($request);
         return view('visitors.report-print', $this->visitorReportViewData(
             $request,
             $request->boolean('autoprint'),
@@ -260,7 +276,7 @@ class VisitorController extends Controller
             'first_name' => ['required', 'string', 'max:100', new PersonName],
             'middle_initials' => ['nullable', 'string', 'max:20', new PersonName],
             'extension' => ['nullable', 'string', 'max:20', new PersonName],
-            'phone' => ['required', 'string', 'max:40', 'regex:/^[0-9]+$/'],
+            'phone' => ['required', 'string', 'digits:11'],
             'purpose' => ['nullable', 'string'],
             'host_employee' => ['nullable', 'string', 'max:150', new PersonName],
             'house_address_or_unit' => ['nullable', 'string', 'max:120'],
@@ -305,8 +321,32 @@ class VisitorController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $request->validate(['visitor_profile_id' => ['nullable', 'integer']]);
+        $request->validate(['visitor_profile_id' => ['nullable', 'integer'], 'expected_visit_id' => ['nullable', 'integer']]);
         return DB::transaction(function () use ($request): RedirectResponse {
+            if ($request->filled('expected_visit_id')) {
+                $expected = ExpectedVisit::with('resident.house')->lockForUpdate()->findOrFail($request->integer('expected_visit_id'));
+                abort_unless($request->user()->canAccessSubdivision($expected->subdivision_id), 403);
+                if ($expected->status !== 'Expected') {
+                    throw ValidationException::withMessages(['expected_visit_id' => 'This visit has already been checked in or cancelled.']);
+                }
+                if (! $expected->resident || $expected->resident->status !== ActiveStatus::Active || ! $expected->resident->house
+                    || $expected->resident->subdivision_id != $expected->subdivision_id) {
+                    throw ValidationException::withMessages(['expected_visit_id' => 'The scheduled resident is no longer available. Cancel this expected visit and record a new one.']);
+                }
+                if ($request->filled('visitor_profile_id') && $request->integer('visitor_profile_id') !== (int) $expected->visitor_profile_id) {
+                    throw ValidationException::withMessages(['visitor_profile_id' => 'Select the visitor attached to this expected visit.']);
+                }
+                if ($request->filled('resident_id') && $request->integer('resident_id') !== (int) $expected->resident_id) {
+                    throw ValidationException::withMessages(['resident_id' => 'This expected visit belongs to a different resident. Cancel it and schedule a new visit to change the host.']);
+                }
+                $request->merge([
+                    'purpose' => $request->input('purpose', $expected->purpose),
+                    'visitor_profile_id' => $expected->visitor_profile_id, 'visit_type' => 'resident',
+                    'resident_id' => $expected->resident_id, 'resident_house_id' => $expected->resident->house_id,
+                    'house_address_or_unit' => $expected->resident->house->display_address,
+                ]);
+                $request->attributes->set('expected_visit', $expected);
+            }
             if ($request->filled('visitor_profile_id')) {
                 $profile = VisitorProfile::lockForUpdate()->findOrFail($request->integer('visitor_profile_id'));
                 abort_unless($request->user()->canAccessSubdivision($profile->subdivision_id), 403);
@@ -330,7 +370,7 @@ class VisitorController extends Controller
             'first_name' => ['required', 'string', 'max:100', new PersonName],
             'middle_initials' => ['nullable', 'string', 'max:20', new PersonName],
             'extension' => ['nullable', 'string', 'max:20', new PersonName],
-            'phone' => ['required', 'string', 'max:40', 'regex:/^[0-9]+$/'],
+            'phone' => ['required', 'string', 'digits:11'],
             'purpose' => ['nullable', 'string'],
             'on_vehicle' => ['nullable', 'boolean'],
             'plate_number' => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
@@ -514,6 +554,10 @@ class VisitorController extends Controller
             'check_out' => null,
             'status' => VisitorStatus::Inside->value,
         ]);
+
+        if ($expected = $request->attributes->get('expected_visit')) {
+            $expected->update(['status' => 'Arrived', 'visitor_id' => $visitor->getKey()]);
+        }
 
         VisitorRequest::create([
             'visitor_id' => $visitor->visitor_id,
@@ -744,8 +788,12 @@ class VisitorController extends Controller
 
         $query = Visitor::query()
             ->with('subdivision')
-            ->when(! $request->boolean('chart_filter'), fn ($q) => $q->where('status', VisitorStatus::CheckedOut))
+            ->when(! $request->boolean('chart_filter') && ! $request->boolean('report'), fn ($q) => $q->where('status', VisitorStatus::CheckedOut))
             ->orderByDesc('check_in');
+
+        if ($request->has('report_max_id')) {
+            $query->where('visitor_id', '<=', $request->integer('report_max_id'));
+        }
 
         if ($filterQ !== '') {
             $query->where(function (Builder $builder) use ($filterQ) {
@@ -774,6 +822,11 @@ class VisitorController extends Controller
             $query->where('subdivision_id', $filterSubdivision);
         }
 
+        if ($request->filled('report_status')) {
+            $request->validate(['report_status' => [Rule::in(['Inside', 'Checked Out'])]]);
+            $query->where('status', $request->query('report_status'));
+        }
+
         if ($request->boolean('chart_filter') && $request->filled('weekday')) {
             $weekday = $request->query('weekday');
             abort_unless(in_array($weekday, ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], true) && $filterDateFrom && $filterDateTo, 422);
@@ -797,7 +850,7 @@ class VisitorController extends Controller
     ): array {
         $query = $this->buildVisitorHistoryQuery($request)->orderByDesc('visitor_id');
         $totalMatching = $renderingPdf ? (clone $query)->count() : null;
-        $visitors = $query->when($renderingPdf, fn ($query) => $query->limit(100))->get();
+        $visitors = $query->when($renderingPdf || $request->boolean('report'), fn ($query) => \App\Support\ReportBatch::apply($query, $request))->get();
         $reportRows = $this->buildVisitorReportRows($visitors, $includePhotos, $renderingPdf);
 
         return [

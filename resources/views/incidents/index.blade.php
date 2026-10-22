@@ -13,16 +13,6 @@
             'date_from' => $filterDateFrom ?: null,
             'date_to' => $filterDateTo ?: null,
         ]);
-        $reportQuery = array_filter([
-            ...request()->only(['chart_filter', 'category', 'status', 'house_id']),
-            'q' => $filterQ ?: null,
-            'subdivision_id' => $filterSubdivision ?: null,
-            'view' => $historyView !== 'active' ? $historyView : null,
-            'reported_sort' => $reportedSort !== 'desc' ? $reportedSort : null,
-            'date_from' => $filterDateFrom ?: null,
-            'date_to' => $filterDateTo ?: null,
-        ]);
-        $exportPreviewUrl = route('incidents.print', $reportQuery + ['view' => 'history', 'preview' => 1, 'embed' => 1]);
         $emptyStateColspan = 1
             + ($activeIncidentTab === 'history' ? 5 : 4);
     @endphp
@@ -33,12 +23,6 @@
                 previewImage: null,
                 previewLabel: '',
                 activeIncidentTab: @js($activeIncidentTab),
-                exportPreviewOpen: false,
-                exportPreviewUrl: @js($exportPreviewUrl),
-                excelConfirmOpen: false,
-                excelExportUrl: '',
-                pdfConfirmOpen: false,
-                pdfExportUrl: '',
                 openPreview(url, label) {
                     this.previewImage = url;
                     this.previewLabel = label || 'Proof image preview';
@@ -47,40 +31,6 @@
                     this.previewImage = null;
                     this.previewLabel = '';
                 },
-                openExportPreview() {
-                    this.exportPreviewOpen = true;
-                },
-                closeExportPreview() {
-                    this.exportPreviewOpen = false;
-                },
-                openExcelConfirm(url) {
-                    this.excelExportUrl = url;
-                    this.excelConfirmOpen = true;
-                },
-                closeExcelConfirm() {
-                    this.excelConfirmOpen = false;
-                    this.excelExportUrl = '';
-                },
-                proceedExcelExport() {
-                    if (this.excelExportUrl) {
-                        window.location.href = this.excelExportUrl;
-                    }
-                    this.closeExcelConfirm();
-                },
-                openPdfConfirm(url) {
-                    this.pdfExportUrl = url;
-                    this.pdfConfirmOpen = true;
-                },
-                closePdfConfirm() {
-                    this.pdfConfirmOpen = false;
-                    this.pdfExportUrl = '';
-                },
-                proceedPdfExport() {
-                    if (this.pdfExportUrl) {
-                        window.location.href = this.pdfExportUrl;
-                    }
-                    this.closePdfConfirm();
-                }
             }"
             class="page-shell flex flex-col gap-4 min-[1600px]:gap-6"
         >
@@ -115,15 +65,7 @@
                             Incident History
                         </a>
                     </nav>
-                    <template x-if="activeIncidentTab === 'history'">
-                        <button
-                            type="button"
-                            @click="openExportPreview()"
-                            class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                        >
-                            Export
-                        </button>
-                    </template>
+                    <a href="{{ route('reports.index', ['type' => 'incidents']) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reports</a>
                 </div>
             </div>
 
@@ -256,120 +198,6 @@
             @if (auth()->user()->hasRole(['staff', 'security']) || auth()->user()->isAdmin())
                 @include('incidents.partials.report-modal')
             @endif
-
-            <div
-                x-cloak
-                x-show="exportPreviewOpen"
-                x-on:keydown.escape.window="closeExportPreview()"
-                class="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-slate-950/80"
-                style="display: none;"
-            >
-                <div class="absolute inset-0" @click="closeExportPreview()"></div>
-                <div class="relative w-full max-w-6xl overflow-hidden bg-white shadow-2xl rounded-2xl">
-                    <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
-                        <h3 class="text-base font-semibold text-slate-900">Incident Report Preview</h3>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <button
-                                type="button"
-                                @click="openExcelConfirm('{{ route('incidents.export', $reportQuery + ['view' => 'history', 'format' => 'excel']) }}')"
-                                class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700"
-                            >
-                                To Excel
-                            </button>
-                            <button
-                                type="button"
-                                @click="openPdfConfirm('{{ route('incidents.export', $reportQuery + ['view' => 'history', 'format' => 'pdf']) }}')"
-                                class="px-3 py-2 text-xs font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700"
-                            >
-                                To PDF
-                            </button>
-                            <a
-                                href="{{ route('incidents.print', $reportQuery + ['view' => 'history', 'autoprint' => 1]) }}"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
-                            >
-                                Print
-                            </a>
-                            <button
-                                type="button"
-                                @click="closeExportPreview()"
-                                class="px-3 py-2 text-xs font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                    <div class="h-[70vh] bg-slate-100">
-                        <iframe :src="exportPreviewUrl" class="w-full h-full border-0" title="Incident report preview"></iframe>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                x-cloak
-                x-show="excelConfirmOpen"
-                x-on:keydown.escape.window="closeExcelConfirm()"
-                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/80"
-                style="display: none;"
-            >
-                <div class="absolute inset-0" @click="closeExcelConfirm()"></div>
-                <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl ring-1 ring-emerald-200">
-                    <div class="px-5 py-4 border-b border-emerald-100 bg-emerald-50">
-                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Export</p>
-                        <h3 class="mt-1 text-base font-semibold text-slate-900">Confirm Excel Export</h3>
-                        <p class="mt-1 text-sm text-slate-700">Download up to 100 incidents matching your filters as an Excel-compatible CSV, newest reported date first.</p>
-                    </div>
-                    <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
-                        <button
-                            type="button"
-                            @click="closeExcelConfirm()"
-                            class="px-3 py-2 text-sm font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-white"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            @click="proceedExcelExport()"
-                            class="px-3 py-2 text-sm font-semibold text-white rounded-lg bg-emerald-600 hover:bg-emerald-700"
-                        >
-                            Continue
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                x-cloak
-                x-show="pdfConfirmOpen"
-                x-on:keydown.escape.window="closePdfConfirm()"
-                class="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-slate-950/80"
-                style="display: none;"
-            >
-                <div class="absolute inset-0" @click="closePdfConfirm()"></div>
-                <div class="relative w-full max-w-md overflow-hidden bg-white shadow-2xl rounded-2xl">
-                    <div class="px-5 py-4 border-b border-slate-200">
-                        <h3 class="text-base font-semibold text-slate-900">Confirm PDF Export</h3>
-                        <p class="mt-1 text-sm text-slate-600">Download up to 100 incidents matching your filters as a PDF, newest reported date first.</p>
-                    </div>
-                    <div class="flex items-center justify-end gap-2 px-5 py-4 bg-slate-50">
-                        <button
-                            type="button"
-                            @click="closePdfConfirm()"
-                            class="px-3 py-2 text-sm font-semibold border rounded-lg border-slate-300 text-slate-700 hover:bg-white"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            @click="proceedPdfExport()"
-                            class="px-3 py-2 text-sm font-semibold text-white rounded-lg bg-rose-600 hover:bg-rose-700"
-                        >
-                            Continue
-                        </button>
-                    </div>
-                </div>
-            </div>
 
             <div
                 x-cloak
