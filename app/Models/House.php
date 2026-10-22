@@ -34,6 +34,20 @@ class House extends Model
         return $this->hasMany(Resident::class, 'house_id', 'house_id');
     }
 
+    public function incidents(): HasMany
+    {
+        return $this->hasMany(Incident::class, 'house_id', 'house_id')->withTrashed();
+    }
+
+    public function canDelete(): bool
+    {
+        $hasResidents = $this->relationLoaded('residents')
+            ? $this->residents->isNotEmpty()
+            : $this->residents()->exists();
+
+        return ! $hasResidents && ! ($this->incidents_exists ?? $this->incidents()->exists());
+    }
+
     public function getDisplayAddressAttribute(): string
     {
         return self::formatDisplayAddress($this->street, $this->block, $this->lot);

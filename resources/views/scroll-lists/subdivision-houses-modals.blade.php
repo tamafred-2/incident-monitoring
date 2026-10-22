@@ -29,7 +29,8 @@
                 </div>
             </x-modal>
 
-            <x-modal name="delete-house-{{ $house->house_id }}" maxWidth="md" focusable>
+            @if ($house->canDelete())
+<x-modal name="delete-house-{{ $house->house_id }}" maxWidth="md" focusable>
                 <div class="p-6 bg-white sm:p-8">
                     <div class="flex items-start gap-4">
                         <div class="flex items-center justify-center w-12 h-12 shrink-0 rounded-2xl bg-rose-100 text-rose-600">
@@ -51,5 +52,6 @@
                     </form>
                 </div>
             </x-modal>
+            @endif
         </div>
 @endforeach

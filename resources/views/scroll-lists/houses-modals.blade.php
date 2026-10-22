@@ -25,7 +25,8 @@
                     </div>
                 </x-modal>
 
-                <x-modal name="delete-house-{{ $house->house_id }}" maxWidth="sm" focusable>
+                @if ($house->canDelete())
+<x-modal name="delete-house-{{ $house->house_id }}" maxWidth="sm" focusable>
                     <div class="bg-white p-6 sm:p-8">
                         <h3 class="text-base font-semibold text-slate-900">Delete {{ $house->display_address }}?</h3>
                         <p class="mt-2 text-sm text-slate-500">This will remove the house from the registry. This cannot be undone.</p>
@@ -39,5 +40,6 @@
                         </form>
                     </div>
                 </x-modal>
+            @endif
             </div>
 @endforeach

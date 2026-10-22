@@ -38,7 +38,7 @@ class SubdivisionController extends Controller
         $filterQ = trim((string) $request->query('q', ''));
         $perPage = 10;
 
-        $housesQuery = $subdivision->houses()->with('residents');
+        $housesQuery = $subdivision->houses()->with('residents')->withExists('incidents');
 
         if ($filterQ !== '') {
             $housesQuery->where(function ($builder) use ($filterQ) {
@@ -97,10 +97,10 @@ class SubdivisionController extends Controller
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'contact_person' => ['required', 'string', 'max:100'],
-            'contact_number' => ['required', 'string', 'max:20'],
+            'contact_number' => ['required', 'string', 'digits:11'],
             'email' => ['required', 'email', 'max:100'],
             'secondary_contact_person' => ['nullable', 'string', 'max:100'],
-            'secondary_contact_number' => ['nullable', 'string', 'max:20'],
+            'secondary_contact_number' => ['nullable', 'string', 'digits:11'],
             'secondary_email' => ['nullable', 'email', 'max:100'],
             'status' => ['required', Rule::enum(ActiveStatus::class)],
         ]);

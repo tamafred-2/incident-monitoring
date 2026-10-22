@@ -25,6 +25,7 @@ class HouseController extends Controller
         $filterSubdivision = (int) $request->query('subdivision_id', 0);
 
         $query = House::query()
+            ->withExists('incidents')
             ->with([
                 'subdivision',
                 'residents' => fn ($residentQuery) => $residentQuery->select('resident_id', 'house_id', 'full_name', 'relation_to_owner', 'status')->orderBy('full_name'),
@@ -130,9 +131,14 @@ class HouseController extends Controller
 
     public function destroy(Request $request, House $house): RedirectResponse
     {
-        $house->delete();
-
         $redirect = $request->input('_redirect');
+
+        if (! $house->canDelete()) {
+            return redirect($redirect ?? route('houses.index', $this->indexContext($request)))
+                ->with('error', 'This house cannot be deleted because it has linked residents or incident records. Use Edit to update the house instead.');
+        }
+
+        $house->delete();
 
         return redirect($redirect ?? route('houses.index', $this->indexContext($request)))
             ->with('success', 'House deleted successfully.');
@@ -172,7 +178,7 @@ class HouseController extends Controller
                 'owner.first_name' => ['required', 'string', 'max:50', new PersonName],
                 'owner.middle_name' => ['nullable', 'string', 'max:50', new PersonName],
                 'owner.extension' => ['nullable', 'string', 'max:20', new PersonName],
-                'owner.phone' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+                'owner.phone' => ['required', 'string', 'digits:11'],
                 'owner.email' => ['required', 'email', 'max:100'],
             ];
         }

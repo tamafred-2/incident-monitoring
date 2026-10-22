@@ -24,12 +24,14 @@
                     x-on:click="$dispatch('open-modal', 'edit-house-{{ $house->house_id }}')"
                     class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
                 >Edit</button>
-                <button
+                @if ($house->canDelete())
+<button
                     type="button"
                     x-data
                     x-on:click="$dispatch('open-modal', 'delete-house-{{ $house->house_id }}')"
                     class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-rose-500 hover:bg-rose-50"
                 >Delete</button>
+                @endif
             </div>
         </td>
     </tr>

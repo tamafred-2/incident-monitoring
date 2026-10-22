@@ -40,7 +40,8 @@
                     >
                         Edit
                     </button>
-                    <button
+                    @if ($house->canDelete())
+<button
                         type="button"
                         x-data
                         x-on:click="$dispatch('open-modal', 'delete-house-{{ $house->house_id }}')"
@@ -48,6 +49,7 @@
                     >
                         Delete
                     </button>
+                @endif
                 @endif
             </div>
         </td>

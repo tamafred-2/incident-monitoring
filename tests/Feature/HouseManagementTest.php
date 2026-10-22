@@ -247,4 +247,45 @@ class HouseManagementTest extends TestCase
             'house_id' => $house->house_id,
         ]);
     }
+
+    public function test_houses_with_linked_records_cannot_be_deleted(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $subdivision = Subdivision::create(['subdivision_name' => 'Brookside', 'status' => 'Active']);
+        $this->actingAs($admin);
+
+        foreach (['resident', 'inactive_resident', 'incident', 'archived_incident', 'empty'] as $index => $case) {
+            $house = House::create(['subdivision_id' => $subdivision->getKey(), 'block' => '1', 'lot' => (string) ($index + 1)]);
+            if (in_array($case, ['resident', 'inactive_resident'])) {
+                Resident::create([
+                    'subdivision_id' => $subdivision->getKey(), 'house_id' => $house->getKey(),
+                    'full_name' => 'Ana Cruz', 'status' => $case === 'resident' ? 'Active' : 'Inactive',
+                ]);
+            } elseif ($case !== 'empty') {
+                $incident = \App\Models\Incident::create([
+                    'subdivision_id' => $subdivision->getKey(), 'house_id' => $house->getKey(),
+                    'description' => 'Existing incident', 'category' => 'Other', 'location' => 'Gate',
+                    'incident_date' => now(), 'reported_at' => now(), 'reported_by' => $admin->getKey(), 'status' => 'Open',
+                ]);
+                if ($case === 'archived_incident') {
+                    $incident->delete();
+                }
+            }
+
+            foreach ([route('houses.index'), route('subdivisions.show', $subdivision)] as $url) {
+                $page = $this->get($url)->assertOk();
+                if ($case === 'empty') {
+                    $page->assertSee('delete-house-'.$house->getKey(), false);
+                } else {
+                    $page->assertDontSee('delete-house-'.$house->getKey(), false);
+                }
+            }
+
+            if ($case !== 'empty') {
+                $this->delete(route('houses.destroy', $house))->assertRedirect(route('houses.index'))->assertSessionHas('error');
+                $this->assertDatabaseHas('houses', ['house_id' => $house->getKey()]);
+                $this->assertTrue($house->residents()->exists() || $house->incidents()->exists());
+            }
+        }
+    }
 }
