@@ -127,7 +127,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700">Incident Date & Time</label>
-                <input type="datetime-local" name="incident_date" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                <input type="datetime-local" name="incident_date" max="{{ now()->format('Y-m-d\TH:i') }}" value="{{ old('incident_date', now()->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 <x-input-error class="mt-1" :messages="$errors->get('incident_date')" />
             </div>
                 <div>

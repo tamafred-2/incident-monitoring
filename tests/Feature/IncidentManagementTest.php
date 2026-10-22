@@ -17,6 +17,27 @@ class IncidentManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_incident_reports_reject_future_dates_and_times(): void
+    {
+        $this->travelTo(now()->startOfDay()->setTime(12, 0));
+        $subdivision = Subdivision::create(['subdivision_name' => 'Oak Ridge', 'status' => 'Active']);
+        $guard = User::factory()->create(['role' => 'security', 'subdivision_id' => $subdivision->getKey()]);
+        $house = House::create(['subdivision_id' => $subdivision->getKey(), 'block' => '1', 'lot' => '2']);
+        $payload = ['house_id' => $house->getKey(), 'description' => 'Broken gate', 'category' => 'Security', 'status' => 'Open'];
+        $this->actingAs($guard);
+
+        foreach ([now()->addMinute(), now()->addDay()] as $future) {
+            $this->postJson(route('incidents.store'), $payload + ['incident_date' => $future->format('Y-m-d\TH:i')])
+                ->assertUnprocessable()->assertJsonValidationErrors('incident_date');
+        }
+        $this->assertDatabaseCount('incidents', 0);
+        foreach ([now()->subDay(), now()] as $allowed) {
+            $this->post(route('incidents.store'), $payload + ['incident_date' => $allowed->format('Y-m-d\TH:i')])
+                ->assertSessionHasNoErrors();
+        }
+        $this->assertDatabaseCount('incidents', 2);
+    }
+
     public function test_incident_detail_page_shows_full_information(): void
     {
         $subdivision = Subdivision::create([
