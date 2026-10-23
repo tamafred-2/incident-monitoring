@@ -21,6 +21,16 @@ class DemoSeederDateRangeTest extends TestCase
         $this->assertDatabaseCount('houses', 124);
         $this->assertDatabaseCount('residents', 302);
         $this->assertDatabaseCount('incidents', 200);
+        $admin = \App\Models\User::where('role', 'admin')->firstOrFail();
+        $this->actingAs($admin);
+        $incident = Incident::whereNotNull('resolved_at')->with('proofPhotos')->firstOrFail();
+        $this->assertSame(2, $incident->proofPhotos->pluck('photo_path')->unique()->count());
+        foreach ($incident->proofPhotos as $photo) {
+            $this->get(route('incidents.photos.show', ['path' => $photo->photo_path]))->assertOk();
+        }
+        $visitor = Visitor::firstOrFail();
+        $this->get(route('visitors.photo', $visitor))->assertOk();
+        $this->get(route('visitor-profiles.photo', $visitor->visitor_profile_id))->assertOk();
         $this->assertDatabaseCount('house_ownership_transfers', 3);
         $this->assertDatabaseCount('expected_visits', 8);
         $this->assertSame(6, \App\Models\Resident::where('is_deceased', true)->count());

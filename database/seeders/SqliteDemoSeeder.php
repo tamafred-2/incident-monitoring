@@ -643,11 +643,13 @@ class SqliteDemoSeeder extends Seeder
 
     private function completeDemoDetails(User $security): void
     {
-        $directory = storage_path('app/public/uploads/demo');
-        File::ensureDirectoryExists($directory);
-        File::copy(public_path('uploads/incidents/incident-image-example.png'), $directory.'/incident.png');
-        File::copy(public_path('uploads/visitors/sample-id.png'), $directory.'/sample-id.png');
-        $idPath = 'uploads/demo/sample-id.png';
+        File::ensureDirectoryExists(storage_path('app/public/uploads/incidents'));
+        File::ensureDirectoryExists(storage_path('app/public/uploads/visitors/id-photos'));
+        foreach (['investigation', 'resolution'] as $stage) {
+            File::copy(public_path('uploads/incidents/incident-image-example.png'), storage_path('app/public/uploads/incidents/demo-'.$stage.'.png'));
+        }
+        $idPath = 'uploads/visitors/id-photos/sample-id.png';
+        File::copy(public_path('uploads/visitors/sample-id.png'), storage_path('app/public/'.$idPath));
         VisitorProfile::query()->update(['id_photo_path' => $idPath]);
         Visitor::query()->update(['id_photo_path' => $idPath]);
         VisitorRequest::query()->update(['id_photo_path' => $idPath]);
@@ -688,12 +690,12 @@ class SqliteDemoSeeder extends Seeder
                 'description' => $incident->description.' Reported at '.$incident->location.'. The duty team logged the concern and coordinated with the household. This is a fictional training record.',
                 'investigation_description' => $investigation.'The report and supporting sample image were reviewed by the duty team.',
                 'resolution_description' => $resolved ? $action.' Follow-up completed on '.$incident->resolved_at->format('M j, Y g:i A').'.' : null,
-                'proof_photo_path' => 'uploads/demo/incident.png',
+                'proof_photo_path' => 'uploads/incidents/demo-investigation.png',
             ]);
             IncidentPhoto::where('incident_id', $incident->getKey())->delete();
             foreach ($resolved ? ['investigation', 'resolution'] : ['investigation'] as $order => $stage) {
                 IncidentPhoto::forceCreate([
-                    'incident_id' => $incident->getKey(), 'photo_path' => 'uploads/demo/incident.png',
+                    'incident_id' => $incident->getKey(), 'photo_path' => 'uploads/incidents/demo-'.$stage.'.png',
                     'stage' => $stage, 'sort_order' => $order,
                     'created_at' => $stage === 'resolution' ? $incident->resolved_at : $incident->reported_at,
                 ]);
