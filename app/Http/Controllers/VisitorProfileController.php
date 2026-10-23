@@ -17,7 +17,17 @@ class VisitorProfileController extends Controller
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
+        $sortOptions = [
+            'name_asc' => ['full_name', 'asc'], 'name_desc' => ['full_name', 'desc'],
+            'newest' => ['created_at', 'desc'], 'oldest' => ['created_at', 'asc'],
+        ];
+        $sort = (string) $request->query('sort', 'name_asc');
+        if (!isset($sortOptions[$sort])) $sort = 'name_asc';
+        $status = (string) $request->query('status', '');
+        if (!in_array($status, ['inside', 'outside'], true)) $status = '';
         $profiles = $this->query($request)
+            ->when($status === 'inside', fn ($query) => $query->whereHas('visits', fn ($visit) => $visit->where('status', VisitorStatus::Inside)))
+            ->when($status === 'outside', fn ($query) => $query->whereDoesntHave('visits', fn ($visit) => $visit->where('status', VisitorStatus::Inside)))
             ->when($q !== '', function ($query) use ($q): void {
                 $query->where(function ($query) use ($q): void {
                     $query->where('full_name', 'like', '%'.$q.'%')->orWhere('phone', 'like', '%'.$q.'%');
@@ -27,13 +37,13 @@ class VisitorProfileController extends Controller
                 });
             })
             ->withCount(['visits' => fn ($query) => $query->withTrashed()])->withExists(['visits as is_inside' => fn ($query) => $query->where('status', VisitorStatus::Inside)])
-            ->orderBy('full_name')->orderBy('profile_id')->simplePaginate(10)->withQueryString();
+            ->orderBy(...$sortOptions[$sort])->orderBy('profile_id', $sortOptions[$sort][1])->simplePaginate(10)->withQueryString();
 
         if ($request->wantsJson() && !$request->hasHeader('X-Scroll-List')) {
             return response()->json(['profiles' => $profiles->map(fn ($profile) => $this->format($profile)), 'has_more' => $profiles->hasMorePages()]);
         }
 
-        return $this->scrollView('visitor-profiles.index', compact('profiles', 'q'), ['visitor-profiles' => 'profiles']);
+        return $this->scrollView('visitor-profiles.index', compact('profiles', 'q', 'sort', 'status'), ['visitor-profiles' => 'profiles']);
     }
 
     public function store(Request $request)

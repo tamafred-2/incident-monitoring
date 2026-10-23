@@ -66,10 +66,19 @@
                 selectedProfile: @js($selectedProfile),
                 visitorSearch: @js($selectedProfile['name'] ?? ''),
                 profileChoices: [],
+                profileDropdownOpen: false,
                 profileLookupBusy: false,
                 profileLookupError: '',
                 profileLookupVersion: 0,
+                closeProfileDropdown() {
+                    this.profileDropdownOpen = false;
+                    this.profileLookupVersion++;
+                    this.profileChoices = [];
+                    this.profileLookupBusy = false;
+                    this.profileLookupError = '';
+                },
                 async lookupProfiles() {
+                    if (!this.profileDropdownOpen) return;
                     const version = ++this.profileLookupVersion;
                     const term = this.visitorSearch;
                     this.profileLookupBusy = true;
@@ -89,8 +98,7 @@
                     }
                 },
                 chooseProfile(profile) {
-                    this.profileLookupVersion++;
-                    this.profileLookupBusy = false;
+                    this.closeProfileDropdown();
                     this.selectedProfile = profile;
                     this.visitorSearch = profile.name;
                     this.profileChoices = [];
@@ -412,16 +420,18 @@
                         <section class="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
                             <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Select Visitor</h4>
                             <label for="visit-profile-search" class="block text-sm text-slate-600">Search by name or phone</label>
-                            <input id="visit-profile-search" type="search" x-model="visitorSearch" @input="selectedProfile = null; profileChoices = []; profileLookupVersion++" @input.debounce.250ms="lookupProfiles()" @focus="lookupProfiles()" class="w-full rounded-xl border-slate-300 text-sm" autocomplete="off">
-                            <p x-show="profileLookupBusy" class="text-sm text-slate-500">Searching?</p>
+                            <div class="space-y-3" @click.outside="closeProfileDropdown()" @keydown.escape.stop.prevent="closeProfileDropdown()" @focusout="if (!$el.contains($event.relatedTarget)) closeProfileDropdown()">
+                            <input id="visit-profile-search" type="search" x-model="visitorSearch" @input="profileDropdownOpen = true; selectedProfile = null; profileChoices = []; profileLookupVersion++" @input.debounce.250ms="lookupProfiles()" @focus="profileDropdownOpen = true; lookupProfiles()" @click="if (!profileDropdownOpen) { profileDropdownOpen = true; lookupProfiles(); }" :aria-expanded="profileDropdownOpen" aria-controls="visit-profile-options" class="w-full rounded-xl border-slate-300 text-sm" autocomplete="off">
+                            <p x-show="profileLookupBusy" class="text-sm text-slate-500">Searching...</p>
                             <p x-show="profileLookupError" x-text="profileLookupError" role="alert" class="text-sm text-rose-700"></p>
-                            <div x-show="profileChoices.length" class="max-h-52 overflow-y-auto rounded-xl border border-slate-200">
+                            <div id="visit-profile-options" x-cloak x-show="profileDropdownOpen && profileChoices.length" class="max-h-52 overflow-y-auto rounded-xl border border-slate-200">
                                 <template x-for="profile in profileChoices" :key="profile.id">
                                     <button type="button" @click="chooseProfile(profile)" class="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm hover:bg-slate-50">
                                         <span class="font-semibold text-slate-900" x-text="profile.name"></span>
                                         <span class="ml-2 text-slate-500" x-text="(profile.phone || 'No phone') + (profile.is_inside ? ' - Currently inside' : '')"></span>
                                     </button>
                                 </template>
+                            </div>
                             </div>
                             <input type="hidden" name="visitor_profile_id" :value="selectedProfile?.id || ''">
                             <div x-show="selectedProfile" class="rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm">

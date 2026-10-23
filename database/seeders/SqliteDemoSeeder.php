@@ -393,6 +393,7 @@ class SqliteDemoSeeder extends Seeder
             ], $incidentStatuses);
 
             $this->completeDemoDetails($securityUser);
+            $this->call(VisitorProfileDatesSeeder::class);
 
             DB::commit();
         } catch (\Throwable $exception) {

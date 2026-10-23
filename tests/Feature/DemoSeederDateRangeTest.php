@@ -50,7 +50,7 @@ class DemoSeederDateRangeTest extends TestCase
         $this->assertFalse(Visitor::whereNull('id_photo_path')->orWhereNull('visitor_profile_id')->exists());
         $this->assertSame([], \Illuminate\Support\Facades\DB::select('PRAGMA foreign_key_check'));
 
-        foreach ([[Incident::class, 'reported_at'], [Visitor::class, 'check_in'], [VisitorRequest::class, 'requested_at']] as [$model, $column]) {
+        foreach ([[\App\Models\VisitorProfile::class, 'created_at'], [Incident::class, 'reported_at'], [Visitor::class, 'check_in'], [VisitorRequest::class, 'requested_at']] as [$model, $column]) {
             $this->assertFalse($model::where($column, '<', '2026-01-01 00:00:00')->exists());
             $this->assertFalse($model::where($column, '>', now())->exists());
             $this->assertTrue($model::whereBetween($column, ['2026-01-01 00:00:00', '2026-01-07 23:59:59'])->exists());
@@ -63,5 +63,10 @@ class DemoSeederDateRangeTest extends TestCase
         $this->assertFalse(Incident::whereColumn('resolved_at', '<', 'reported_at')->orWhere('resolved_at', '>', now())->exists());
         $this->assertFalse(Visitor::whereColumn('check_out', '<', 'check_in')->orWhere('check_out', '>', now())->exists());
         $this->assertFalse(VisitorRequest::whereColumn('responded_at', '<', 'requested_at')->orWhere('responded_at', '>', now())->exists());
+        foreach (\App\Models\VisitorProfile::withMin('visits', 'check_in')->get() as $profile) {
+            if ($profile->visits_min_check_in) {
+                $this->assertTrue($profile->created_at->lte($profile->visits_min_check_in));
+            }
+        }
     }
 }
