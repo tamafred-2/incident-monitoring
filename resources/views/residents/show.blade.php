@@ -16,6 +16,35 @@
         <div class="page-shell flex flex-col gap-4 min-[1600px]:gap-6">
             @include('partials.alerts')
 
+            @if (auth()->user()->isAdmin() && $resident->is_deceased && ($resident->relation_to_owner === 'Owner' || $ownershipTransfer))
+                <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-slate-900">Transfer House Ownership</h3>
+                    @if ($ownershipTransfer)
+                        <p class="mt-2 text-sm text-slate-600">Ownership assigned to {{ $ownershipTransfer->new_owner_name }} on {{ \Illuminate\Support\Carbon::parse($ownershipTransfer->created_at)->format('M j, Y g:i A') }}. The previous owner's record is retained.</p>
+                    @elseif ($successors->isNotEmpty())
+                        <form method="POST" action="{{ route('residents.transfer-ownership', $resident) }}" class="mt-4 space-y-4">
+                            @csrf
+                            <p class="text-sm text-slate-600">Choose a living resident of this house. Confirming changes their household role to Owner and records the transfer.</p>
+                            <div class="max-w-md">
+                                <label for="successor" class="block text-sm font-medium">New owner</label>
+                                <select data-ownership-successor id="successor" name="successor_id" required class="mt-1 w-full rounded-xl border-slate-300 text-sm">
+                                    <option value="">Select a resident</option>
+                                    @foreach ($successors as $successor)
+                                        <option data-name="{{ $successor->full_name }}" data-relationship="{{ $successor->relation_to_owner ?: 'Unspecified' }}" value="{{ $successor->getKey() }}" @selected(old('successor_id') == $successor->getKey())>{{ $successor->full_name }} — {{ $successor->relation_to_owner ?: 'Unspecified' }}</option>
+                                    @endforeach
+                                </select>
+                                <x-input-error :messages="$errors->get('successor_id')" />
+                            </div>
+                            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="confirm_transfer" value="1" required class="rounded border-slate-300">I confirm assigning this resident as the new owner.</label>
+                            <x-input-error :messages="$errors->get('confirm_transfer')" />
+                            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Assign New Owner</button>
+                        </form>
+                    @else
+                        <p class="mt-2 text-sm text-slate-600">Add or activate a living resident in this house before assigning a new owner.</p>
+                    @endif
+                </section>
+            @endif
+
             <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
                 <div class="flex flex-col gap-4 pb-5 border-b border-slate-200 lg:flex-row lg:items-start lg:justify-between">
                     <div>
@@ -25,7 +54,7 @@
                     </div>
                     @if (auth()->user()->isAdmin())
                     <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $resident->status === ActiveStatus::Active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-700' }}">
-                        {{ $resident->status }}
+                        {{ $resident->is_deceased ? 'Deceased' : $resident->status->value }}
                     </span>
                     @endif
                 </div>

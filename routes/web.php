@@ -90,8 +90,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::get('/residents', [ResidentController::class, 'index'])->middleware('role:admin,staff,security')->name('residents.index');
     Route::get('/residents/{resident}', [ResidentController::class, 'show'])->middleware(['role:admin,staff,security', 'subdivision'])->name('residents.show');
     Route::post('/residents', [ResidentController::class, 'store'])->middleware('role:admin')->name('residents.store');
+    Route::post('/residents/{resident}/transfer-ownership', [ResidentController::class, 'transferOwnership'])->middleware(['role:admin', 'subdivision'])->name('residents.transfer-ownership');
     Route::put('/residents/{resident}', [ResidentController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('residents.update');
-    Route::delete('/residents/{resident}', [ResidentController::class, 'destroy'])->middleware(['role:admin', 'subdivision'])->name('residents.destroy');
     Route::get('/visitor-profiles', [VisitorProfileController::class, 'index'])->middleware('role:security,staff')->name('visitor-profiles.index');
     Route::post('/visitor-profiles', [VisitorProfileController::class, 'store'])->middleware('role:security')->name('visitor-profiles.store');
     Route::get('/visitor-profiles/{profile}', [VisitorProfileController::class, 'show'])->middleware('role:security,staff')->name('visitor-profiles.show');

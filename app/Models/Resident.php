@@ -23,6 +23,7 @@ class Resident extends Model
         'address_or_unit',
         'relation_to_owner',
         'status',
+        'is_deceased',
     ];
 
     protected static function booted(): void
@@ -47,6 +48,7 @@ class Resident extends Model
     {
         return [
             'status' => ActiveStatus::class,
+            'is_deceased' => 'boolean',
         ];
     }
 

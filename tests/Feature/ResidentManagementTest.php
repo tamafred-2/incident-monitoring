@@ -172,7 +172,7 @@ class ResidentManagementTest extends TestCase
         ]);
     }
 
-    public function test_admin_can_delete_resident_without_linked_account(): void
+    public function test_admin_cannot_delete_resident_without_linked_account(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
@@ -193,18 +193,17 @@ class ResidentManagementTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->delete(route('residents.destroy', $resident));
+            ->delete('/residents/'.$resident->getKey());
 
-        $response
-            ->assertRedirect(route('residents.index', ['per_page' => 10]))
-            ->assertSessionHas('success', 'Resident deleted successfully.');
+        $response->assertStatus(405);
+        $this->get(route('residents.index'))->assertOk()->assertDontSee('delete-resident-');
 
-        $this->assertDatabaseMissing('residents', [
+        $this->assertDatabaseHas('residents', [
             'resident_id' => $resident->resident_id,
         ]);
     }
 
-    public function test_admin_can_delete_resident_even_with_linked_incident_history(): void
+    public function test_admin_cannot_delete_resident_with_incident_history(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
@@ -241,18 +240,17 @@ class ResidentManagementTest extends TestCase
 
         $response = $this
             ->actingAs($admin)
-            ->delete(route('residents.destroy', $resident));
+            ->delete('/residents/'.$resident->getKey());
 
-        $response
-            ->assertRedirect(route('residents.index', ['per_page' => 10]))
-            ->assertSessionHas('success', 'Resident deleted successfully.');
+        $response->assertStatus(405);
+        $this->get(route('residents.index'))->assertOk()->assertDontSee('delete-resident-');
 
-        $this->assertDatabaseMissing('residents', [
+        $this->assertDatabaseHas('residents', [
             'resident_id' => $resident->resident_id,
         ]);
     }
 
-    public function test_only_one_owner_is_allowed_per_house(): void
+    public function test_two_owners_are_allowed_but_a_third_is_rejected(): void
     {
         $admin = User::factory()->create([
             'role' => 'admin',
@@ -296,10 +294,12 @@ class ResidentManagementTest extends TestCase
                 'status' => 'Active',
             ]);
 
-        $response->assertSessionHasErrors(['relation_to_owner']);
-
-        $this->assertDatabaseMissing('residents', [
-            'email' => 'owner2@example.com',
-        ]);
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('residents', ['email' => 'owner2@example.com']);
+        $this->post(route('residents.store'), [
+            'full_name' => 'Third Owner', 'phone' => '09170000003', 'email' => 'owner3@example.com',
+            'subdivision_id' => $subdivision->getKey(), 'house_id' => $house->getKey(),
+            'address_or_unit' => '', 'relation_to_owner' => 'Owner', 'status' => 'Active',
+        ])->assertSessionHasErrors('relation_to_owner');
     }
 }

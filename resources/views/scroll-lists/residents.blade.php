@@ -3,6 +3,7 @@
         <td class="px-6 py-4">
             <div class="min-w-[12rem]">
                 <div class="font-medium text-slate-900">{{ $resident->full_name }}</div>
+                @if ($resident->is_deceased)<span class="text-xs font-medium text-slate-500">Deceased</span>@endif
                 <div class="mt-2">
                     @include('residents.partials.phone-link')
                 </div>
@@ -46,16 +47,7 @@
                         Edit
                     </button>
                 @endif
-                @if (auth()->user()->isAdmin())
-                    <button
-                        type="button"
-                        x-data
-                        x-on:click="$dispatch('open-modal', 'delete-resident-{{ $resident->resident_id }}')"
-                        class="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700 transition hover:border-rose-300 hover:bg-rose-100 hover:text-rose-800"
-                    >
-                        Delete
-                    </button>
-                @endif
+
             </div>
         </td>
     </tr>

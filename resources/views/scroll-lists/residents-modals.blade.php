@@ -46,43 +46,7 @@
                         </div>
                     </x-modal>
 
-                    <x-modal name="delete-resident-{{ $resident->resident_id }}" maxWidth="md" focusable>
-                        <div class="p-6 bg-white sm:p-8">
-                            <div class="flex items-start gap-4">
-                                <div class="flex items-center justify-center w-12 h-12 shrink-0 rounded-2xl bg-rose-100 text-rose-600">
-                                    <svg class="w-6 h-6" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l5.58 9.92c.75 1.334-.213 2.981-1.742 2.981H4.42c-1.53 0-2.492-1.647-1.743-2.98l5.58-9.92zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-6a.75.75 0 00-.75.75v3.5a.75.75 0 001.5 0v-3.5A.75.75 0 0010 7z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-semibold text-slate-900">Delete Resident?</h3>
-                                    <p class="mt-2 text-sm text-slate-600">
-                                        {{ $resident->full_name }} will be removed from resident monitoring.
-                                    </p>
-                                </div>
-                            </div>
 
-                            <form method="POST" action="{{ route('residents.destroy', $resident) }}" class="flex flex-wrap justify-end gap-3 mt-6">
-                                @csrf
-                                @method('DELETE')
-                                <input type="hidden" name="q" value="{{ $filterQ }}">
-                                <input type="hidden" name="status" value="{{ $filterStatus }}">
-                                <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
-                                <input type="hidden" name="per_page" value="{{ $perPage }}">
-
-                                <button
-                                    type="button"
-                                    x-on:click="$dispatch('close')"
-                                    class="px-4 py-2 text-sm font-semibold border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button class="px-4 py-2 text-sm font-semibold text-white rounded-xl bg-rose-600 hover:bg-rose-700">
-                                    Delete Resident
-                                </button>
-                            </form>
-                        </div>
-                    </x-modal>
                 @endif
             </div>
 @endforeach

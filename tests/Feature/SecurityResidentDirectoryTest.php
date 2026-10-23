@@ -79,7 +79,7 @@ class SecurityResidentDirectoryTest extends TestCase
         $this->get(route('residents.show', $otherResident))->assertRedirect(route('dashboard'));
         $this->post(route('residents.store'), [])->assertRedirect(route('dashboard'));
         $this->put(route('residents.update', $resident), ['full_name' => 'Changed'])->assertRedirect(route('dashboard'));
-        $this->delete(route('residents.destroy', $resident))->assertRedirect(route('dashboard'));
+        $this->delete('/residents/'.$resident->getKey())->assertStatus(405);
         $this->assertDatabaseHas('residents', ['resident_id' => $resident->resident_id, 'full_name' => 'Ana Rivera']);
 
         $this->get(route('residents.index', ['q' => 'Leo']))

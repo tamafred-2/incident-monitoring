@@ -227,7 +227,7 @@
         <div class="mt-4">
             <label class="block text-sm font-medium text-slate-700">Relation to Head/Owner</label>
             @php
-                $relationOptions = ['Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
+                $relationOptions = ['Owner', 'Former Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Friend', 'Tenant', 'Helper'];
                 $savedRelation = $fieldValue('relation_to_owner', $resident?->relation_to_owner ?? '');
                 $isCustomRelation = $savedRelation !== '' && !in_array($savedRelation, $relationOptions, true);
                 $selectedRelation = $isCustomRelation ? 'Other' : $savedRelation;
@@ -261,8 +261,41 @@
             @if ($formErrors->has('relation_to_owner_other'))
                 <p data-validation-error class="mt-1 text-xs text-rose-600">{{ $formErrors->first('relation_to_owner_other') }}</p>
             @endif
-            <p class="mt-1 text-xs text-slate-500">Define how this resident is related to the lot/house head or owner.</p>
+            <p class="mt-1 text-xs text-slate-500">Choose Owner for a house owner (maximum two living owners). Husband and Wife remain available as relationship options.</p>
         </div>
     </section>
 
+    @if ($resident)
+        <section x-data="{ deceased: @js((bool) $fieldValue('is_deceased', $resident->is_deceased)) }" class="rounded-2xl border border-slate-200 p-5">
+            <input type="hidden" name="is_deceased" value="0">
+            <label class="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input type="checkbox" x-model="deceased" name="is_deceased" value="1" @checked($fieldValue('is_deceased', $resident->is_deceased)) class="rounded border-slate-300">
+                Mark as deceased
+            </label>
+            <p class="mt-2 text-xs text-slate-500">Keeps the resident's history and marks their record inactive. A deceased owner no longer occupies an owner slot. For an owner, change the relationship to Former Owner (or another appropriate relationship) and choose a successor below. Saving completes both changes together.</p>
+            @if ($resident->relation_to_owner === 'Owner')
+                @php
+                    $successorOptions = $resident->house_id ? \App\Models\Resident::where('house_id', $resident->house_id)
+                        ->where('is_deceased', false)->where('status', 'Active')->whereKeyNot($resident->getKey())
+                        ->where(fn ($query) => $query->whereNull('relation_to_owner')->orWhere('relation_to_owner', '!=', 'Owner'))
+                        ->orderBy('full_name')->get() : collect();
+                @endphp
+                <div x-show="deceased" x-cloak class="mt-4 space-y-3">
+                    <label class="block text-sm font-medium">Who will take ownership of this house?
+                        <select data-ownership-successor name="successor_id" :required="deceased" :disabled="!deceased" class="mt-1 w-full rounded-xl border-slate-300 text-sm">
+                            <option value="">Select new owner</option>
+                            @foreach ($successorOptions as $successor)
+                                <option data-name="{{ $successor->full_name }}" data-relationship="{{ $successor->relation_to_owner ?: 'Unspecified' }}" value="{{ $successor->getKey() }}" @selected($fieldValue('successor_id') == $successor->getKey())>{{ $successor->full_name }} - {{ $successor->relation_to_owner ?: 'Unspecified' }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    @if ($successorOptions->isEmpty())<p class="text-sm text-amber-700">Add an eligible living resident to this house before completing the ownership transition.</p>@endif
+                    @if ($formErrors->has('successor_id'))<p class="text-xs text-rose-600">{{ $formErrors->first('successor_id') }}</p>@endif
+                    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="confirm_transfer" value="1" :required="deceased" :disabled="!deceased" class="rounded border-slate-300">Confirm assigning the selected resident as owner when saving.</label>
+                    @if ($formErrors->has('confirm_transfer'))<p class="text-xs text-rose-600">{{ $formErrors->first('confirm_transfer') }}</p>@endif
+                </div>
+            @endif
+            @error('is_deceased') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
+        </section>
+    @endif
 </div>

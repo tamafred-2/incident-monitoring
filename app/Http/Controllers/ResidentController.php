@@ -106,15 +106,65 @@ class ResidentController extends Controller
 
         return view('residents.show', [
             'resident' => $resident,
+            'ownershipTransfer' => DB::table('house_ownership_transfers')->where('from_resident_id', $resident->getKey())->first(),
+            'successors' => $request->user()->isAdmin() && $resident->is_deceased && $resident->house_id
+                ? Resident::where('house_id', $resident->house_id)->where('is_deceased', false)
+                    ->where('status', ActiveStatus::Active->value)
+                    ->where(fn ($q) => $q->whereNull('relation_to_owner')->orWhere('relation_to_owner', '!=', 'Owner'))
+                    ->orderBy('full_name')->get()
+                : collect(),
             'indexContext' => $this->indexContext($request),
         ]);
     }
 
+    public function transferOwnership(Request $request, Resident $resident): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin(), 403);
+        $data = $request->validate([
+            'successor_id' => ['required', 'integer'],
+            'confirm_transfer' => ['accepted'],
+        ]);
+        DB::transaction(function () use ($request, $resident, $data): void {
+            $this->assignOwnership($request, $resident, (int) $data['successor_id']);
+        });
+        return redirect()->route('residents.show', $resident)->with('success', 'House ownership transferred successfully.');
+    }
+
+    private function assignOwnership(Request $request, Resident $resident, int $successorId, bool $transition = false): void
+    {
+            $house = House::whereKey($resident->house_id)->lockForUpdate()->first();
+            $previous = Resident::whereKey($resident->getKey())->lockForUpdate()->firstOrFail();
+            $fail = fn ($message) => throw ValidationException::withMessages(['successor_id' => $message]);
+            if (! $house || $previous->house_id !== $house->getKey() || ! $previous->is_deceased || (! $transition && $previous->relation_to_owner !== 'Owner')) {
+                $fail('Only a deceased owner with an assigned house can have ownership transferred.');
+            }
+            if (DB::table('house_ownership_transfers')->where('from_resident_id', $previous->getKey())->exists()) {
+                $fail('Ownership has already been transferred from this resident.');
+            }
+            $next = Resident::whereKey($successorId)->where('house_id', $house->getKey())
+                ->where('is_deceased', false)->where('status', ActiveStatus::Active->value)->lockForUpdate()->first();
+            if (! $next || $next->relation_to_owner === 'Owner') {
+                $fail('Choose a living, active resident of this house who is not already an owner.');
+            }
+            if (Resident::where('house_id', $house->getKey())->where('relation_to_owner', 'Owner')->where('is_deceased', false)->count() >= 2) {
+                $fail('This house already has two living owners.');
+            }
+            DB::table('house_ownership_transfers')->insert([
+                'house_id' => $house->getKey(), 'from_resident_id' => $previous->getKey(), 'to_resident_id' => $next->getKey(),
+                'previous_owner_name' => $previous->full_name, 'new_owner_name' => $next->full_name,
+                'previous_relationship' => $next->relation_to_owner,
+                'confirmed_by' => $request->user()->getKey(), 'created_at' => now(),
+            ]);
+            $next->update(['relation_to_owner' => 'Owner']);
+            if ($previous->relation_to_owner === 'Owner') {
+                $previous->update(['relation_to_owner' => 'Former Owner']);
+            }
+    }
+
     public function store(Request $request): RedirectResponse
     {
-        $data = $this->validateResident($request);
-
-        DB::transaction(function () use ($data): void {
+        DB::transaction(function () use ($request): void {
+            $data = $this->validateResident($request);
             Resident::create($data);
         });
 
@@ -124,24 +174,28 @@ class ResidentController extends Controller
 
     public function update(Request $request, Resident $resident): RedirectResponse
     {
-        $data = $this->validateResident($request, $resident);
-
-        DB::transaction(function () use ($data, $resident): void {
+        DB::transaction(function () use ($request, $resident): void {
+            House::whereKey($resident->house_id)->lockForUpdate()->first();
+            $resident = Resident::whereKey($resident->getKey())->lockForUpdate()->firstOrFail();
+            $data = $this->validateResident($request, $resident);
+            $transition = $resident->relation_to_owner === 'Owner' && $data['is_deceased'];
+            if ($transition) {
+                if (! $data['relation_to_owner'] || $data['relation_to_owner'] === 'Owner') {
+                    throw ValidationException::withMessages(['relation_to_owner' => "Change the deceased owner's relationship, for example to Former Owner."]);
+                }
+                if ((int) $data['house_id'] !== (int) $resident->house_id) {
+                    throw ValidationException::withMessages(['house_id' => 'Keep the same house while transferring ownership.']);
+                }
+                $request->validate(['successor_id' => ['required', 'integer'], 'confirm_transfer' => ['accepted']]);
+            }
             $resident->update($data);
+            if ($transition) {
+                $this->assignOwnership($request, $resident, (int) $request->input('successor_id'), true);
+            }
         });
 
         return redirect()->route('residents.index')
             ->with('success', 'Resident updated successfully.');
-    }
-
-    public function destroy(Request $request, Resident $resident): RedirectResponse
-    {
-        DB::transaction(function () use ($resident): void {
-            $resident->delete();
-        });
-
-        return redirect()->route('residents.index', $this->indexContext($request))
-            ->with('success', 'Resident deleted successfully.');
     }
 
     private function validateResident(Request $request, ?Resident $resident = null): array
@@ -160,6 +214,7 @@ class ResidentController extends Controller
             'relation_to_owner' => ['nullable', 'string', 'max:50'],
             'relation_to_owner_other' => ['nullable', 'string', 'max:50'],
             'status' => ['nullable', Rule::enum(ActiveStatus::class)],
+            'is_deceased' => ['sometimes', 'boolean'],
         ]);
 
         $relation = trim((string) ($data['relation_to_owner'] ?? ''));
@@ -185,7 +240,7 @@ class ResidentController extends Controller
         $house = null;
 
         if (! empty($data['house_id'])) {
-            $house = House::query()->find($data['house_id']);
+            $house = House::query()->lockForUpdate()->find($data['house_id']);
 
             if (! $house || (int) $house->subdivision_id !== (int) $data['subdivision_id']) {
                 throw ValidationException::withMessages([
@@ -194,39 +249,16 @@ class ResidentController extends Controller
             }
         }
 
-        if (in_array($relation, ['Owner', 'Husband', 'Wife'], true) && $house) {
-            $houseResidents = Resident::query()
-                ->where('house_id', $house->house_id)
-                ->when($resident, fn ($query) => $query->where('resident_id', '!=', $resident->resident_id))
-                ->get(['relation_to_owner']);
-
-            $hasOwner = $houseResidents->contains(fn (Resident $existing) => strcasecmp((string) $existing->relation_to_owner, 'Owner') === 0);
-            $hasHusband = $houseResidents->contains(fn (Resident $existing) => strcasecmp((string) $existing->relation_to_owner, 'Husband') === 0);
-            $hasWife = $houseResidents->contains(fn (Resident $existing) => strcasecmp((string) $existing->relation_to_owner, 'Wife') === 0);
-
-            $husbandSlotTaken = $hasHusband || ($hasOwner && $hasWife);
-            $wifeSlotTaken = $hasWife || ($hasOwner && $hasHusband);
-
-            if (($relation === 'Husband' && $husbandSlotTaken) || ($relation === 'Wife' && $wifeSlotTaken)) {
-                throw ValidationException::withMessages([
-                    'relation_to_owner' => 'Cannot add this relation. This house already has a spouse pair: Owner + Wife (owner is husband) or Owner + Husband (owner is wife).',
-                ]);
-            }
-
-            if ($relation === 'Owner') {
-                if ($hasOwner) {
-                    throw ValidationException::withMessages([
-                        'relation_to_owner' => 'This house already has an owner.',
-                    ]);
-                }
-
-                // Owner + Wife implies owner is husband; Owner + Husband implies owner is wife.
-                // If both spouse roles already exist, adding owner would create an invalid duplicate spouse mapping.
-                if ($hasHusband && $hasWife) {
-                    throw ValidationException::withMessages([
-                        'relation_to_owner' => 'Cannot set Owner for this house because both Husband and Wife are already assigned.',
-                    ]);
-                }
+        $deceased = $request->has('is_deceased') ? $request->boolean('is_deceased') : (bool) $resident?->is_deceased;
+        if ($deceased && $relation === 'Owner') {
+            throw ValidationException::withMessages(['relation_to_owner' => 'A deceased resident cannot remain Owner. Select another relationship, such as Former Owner.']);
+        }
+        if ($relation === 'Owner' && $house && ! $deceased) {
+            $ownerCount = Resident::query()->where('house_id', $house->house_id)
+                ->where('relation_to_owner', 'Owner')->where('is_deceased', false)
+                ->when($resident, fn ($query) => $query->whereKeyNot($resident->getKey()))->count();
+            if ($ownerCount >= 2) {
+                throw ValidationException::withMessages(['relation_to_owner' => 'A house can have at most two living owners.']);
             }
         }
 
@@ -238,7 +270,8 @@ class ResidentController extends Controller
             'email' => $data['email'],
             'address_or_unit' => $house?->display_address ?? ($data['address_or_unit'] ?: null),
             'relation_to_owner' => $relation !== '' ? $relation : null,
-            'status' => $data['status'] ?? $resident?->status ?? ActiveStatus::Active->value,
+            'is_deceased' => $deceased,
+            'status' => $deceased ? ActiveStatus::Inactive->value : ($data['status'] ?? $resident?->status ?? ActiveStatus::Active->value),
         ];
     }
 
