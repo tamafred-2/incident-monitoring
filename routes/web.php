@@ -110,6 +110,7 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::put('/visitors/{visitor}', [VisitorController::class, 'update'])->middleware(['role:admin', 'subdivision'])->name('visitors.update');
     Route::post('/visitors', [VisitorController::class, 'store'])->middleware('role:security')->name('visitors.store');
     Route::post('/visitors/{visitor}/checkout', [VisitorController::class, 'checkout'])->middleware(['role:security', 'subdivision'])->name('visitors.checkout');
+    Route::post('/visitors/{visitor}/overdue-action', [VisitorController::class, 'recordOverdueAction'])->middleware(['role:security', 'subdivision'])->name('visitors.overdue-action');
     Route::delete('/visitors/{visitor}', [VisitorController::class, 'destroy'])->middleware(['role:admin,security', 'subdivision'])->name('visitors.destroy');
     Route::post('/visitors/{visitorId}/restore', [VisitorController::class, 'restore'])->middleware('role:admin,security')->name('visitors.restore');
     Route::delete('/visitors/{visitorId}/force', [VisitorController::class, 'forceDelete'])->middleware('role:admin,security')->name('visitors.force-delete');

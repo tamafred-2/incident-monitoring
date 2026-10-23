@@ -20,7 +20,7 @@ class VisitorCheckInFlowTest extends TestCase
         $subdivision = Subdivision::create(['subdivision_name' => 'Northview', 'status' => 'Active']);
         $security = User::factory()->create(['role' => 'security', 'subdivision_id' => $subdivision->subdivision_id]);
         $payload = [
-            '_submission_token' => str_repeat('d', 32), 'visit_type' => 'walk_in',
+            '_submission_token' => str_repeat('d', 32), 'visit_type' => 'walk_in', 'allowed_minutes' => 15,
             'surname' => 'Cruz', 'first_name' => 'Ana', 'phone' => '09181234567',
             'house_address_or_unit' => 'Clubhouse',
             'id_photo' => UploadedFile::fake()->create('id.jpg', 120, 'image/jpeg'),
@@ -151,7 +151,7 @@ class VisitorCheckInFlowTest extends TestCase
         $response = $this
             ->actingAs($security)
             ->post(route('visitors.store'), [
-                'visit_type' => 'walk_in',
+                'visit_type' => 'walk_in', 'allowed_minutes' => 15,
                 'subdivision_id' => $subdivision->subdivision_id,
                 'surname' => 'Santos',
                 'first_name' => 'Leo',
@@ -200,7 +200,7 @@ class VisitorCheckInFlowTest extends TestCase
         $response = $this
             ->actingAs($security)
             ->post(route('visitors.store'), [
-                'visit_type' => 'walk_in',
+                'visit_type' => 'walk_in', 'allowed_minutes' => 15,
                 'subdivision_id' => $subdivision->subdivision_id,
                 'surname' => 'Santos',
                 'first_name' => 'Leo',

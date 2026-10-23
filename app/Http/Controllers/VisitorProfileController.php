@@ -38,6 +38,7 @@ class VisitorProfileController extends Controller
 
     public function store(Request $request)
     {
+        abort_unless($request->user()->isSecurity(), 403);
         $data = $this->validated($request);
         $subdivisionId = $request->user()->isAdmin() ? $request->integer('subdivision_id') : $request->user()->allowedSubdivisionId();
         if ($request->user()->isAdmin() && !$subdivisionId) {

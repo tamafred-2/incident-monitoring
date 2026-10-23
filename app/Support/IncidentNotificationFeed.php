@@ -29,11 +29,13 @@ class IncidentNotificationFeed
                 'time_label' => $notification->created_at->format('M j, Y h:i A'),
                 'relative_time' => $notification->created_at->diffForHumans(),
                 'is_unread' => $notification->read_at === null,
-            ]);
+                'sort_at' => $notification->created_at->timestamp,
+            ])->concat(OverdueVisitFeed::forUser($user))->sortByDesc('sort_at')->take(8)->values();
     }
 
     public static function unreadCountForUser(User $user): int
     {
-        return $user->unreadNotifications()->where('type', IncidentUpdatedNotification::class)->count();
+        return $user->unreadNotifications()->where('type', IncidentUpdatedNotification::class)->count()
+            + OverdueVisitFeed::forUser($user)->where('is_unread', true)->count();
     }
 }

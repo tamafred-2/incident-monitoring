@@ -42,7 +42,7 @@
             <div class="flex items-start justify-between gap-4">
                 <div>
                     <p class="text-sm font-semibold text-slate-900">Notifications</p>
-                    <p class="mt-1 text-xs text-slate-500">New incidents and visitor check-ins and check-outs.</p>
+                    <p class="mt-1 text-xs text-slate-500">Incident updates, visitor activity, and overdue visits.</p>
                 </div>
                 <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600" x-text="`${notifications.length} items`"></span>
             </div>

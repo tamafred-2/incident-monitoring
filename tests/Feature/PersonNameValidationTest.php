@@ -82,7 +82,7 @@ class PersonNameValidationTest extends TestCase
         $payload = [
             'surname' => 'Cruz1', 'first_name' => 'Ana2', 'middle_initials' => 'M3.',
             'extension' => '4', 'host_employee' => 'Jose5', 'phone' => '09171234567',
-            'visit_type' => 'walk_in', 'house_address_or_unit' => 'Clubhouse',
+            'visit_type' => 'walk_in', 'allowed_minutes' => 15, 'house_address_or_unit' => 'Clubhouse',
             'check_in' => now()->toDateTimeString(), 'status' => 'Inside',
         ];
         $fields = ['surname', 'first_name', 'middle_initials', 'extension', 'host_employee'];

@@ -321,6 +321,7 @@ class VisitorController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->isSecurity(), 403);
         $request->validate(['visitor_profile_id' => ['nullable', 'integer'], 'expected_visit_id' => ['nullable', 'integer']]);
         return DB::transaction(function () use ($request): RedirectResponse {
             if ($request->filled('expected_visit_id')) {
@@ -366,6 +367,9 @@ class VisitorController extends Controller
         $data = $request->validate([
             'subdivision_id' => ['nullable', 'integer'],
             'visit_type' => ['required', Rule::in(['resident', 'walk_in'])],
+            'allowed_minutes' => ['exclude_unless:visit_type,walk_in', 'required', Rule::in(['5', '10', '15', '30', 'other'])],
+            'custom_duration' => ['exclude_unless:visit_type,walk_in', 'exclude_unless:allowed_minutes,other', 'required', 'integer', 'min:1', 'max:720'],
+            'custom_duration_unit' => ['exclude_unless:visit_type,walk_in', 'exclude_unless:allowed_minutes,other', 'required', Rule::in(['minutes', 'hours'])],
             'surname' => ['required', 'string', 'max:100', new PersonName],
             'first_name' => ['required', 'string', 'max:100', new PersonName],
             'middle_initials' => ['nullable', 'string', 'max:20', new PersonName],
@@ -387,6 +391,14 @@ class VisitorController extends Controller
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
         if (! $subdivisionId) {
             return back()->withErrors(['subdivision_id' => 'Please select a valid subdivision.'])->withInput();
+        }
+
+        if (($data['allowed_minutes'] ?? null) === 'other') {
+            $minutes = (int) $data['custom_duration'] * ($data['custom_duration_unit'] === 'hours' ? 60 : 1);
+            if ($minutes > 720) {
+                throw ValidationException::withMessages(['custom_duration' => 'The visit duration cannot exceed 12 hours (720 minutes).']);
+            }
+            $data['allowed_minutes'] = $minutes;
         }
 
         // Older check-in clients can still submit identity fields; link them to the saved person.
@@ -420,6 +432,7 @@ class VisitorController extends Controller
                 : null;
 
             Visitor::create([
+                'allowed_minutes' => $data['allowed_minutes'],
                 'visitor_profile_id' => $request->attributes->get('visitor_profile')?->getKey(),
                 'subdivision_id' => $subdivisionId,
                 'surname' => $data['surname'],
@@ -588,6 +601,20 @@ class VisitorController extends Controller
 
         return redirect()->route('visitors.index', $this->visitorRouteContext($request, $subdivisionId))
             ->with('success', 'Resident visit checked in successfully.');
+    }
+
+    public function recordOverdueAction(Request $request, Visitor $visitor): RedirectResponse
+    {
+        abort_unless($request->user()->isSecurity() || $request->user()->isAdmin(), 403);
+        $data = $request->validate(['overdue_action' => ['required', 'string', 'max:2000']]);
+        if (! $visitor->is_overdue) {
+            throw ValidationException::withMessages(['overdue_action' => 'This visit has not exceeded its time limit.']);
+        }
+        $visitor->update($data + [
+            'overdue_action_by' => $request->user()->full_name,
+            'overdue_action_at' => now(),
+        ]);
+        return back()->with('success', 'Overdue follow-up recorded.');
     }
 
     public function checkout(Request $request, Visitor $visitor): RedirectResponse

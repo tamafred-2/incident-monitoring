@@ -158,7 +158,7 @@ class VisitorManagementTest extends TestCase
         $response = $this
             ->actingAs($security)
             ->post(route('visitors.store'), [
-                'visit_type' => 'walk_in',
+                'visit_type' => 'walk_in', 'allowed_minutes' => 15,
                 'subdivision_id' => $subdivision->subdivision_id,
                 'surname' => 'Cruz',
                 'first_name' => 'Ana',

@@ -5,6 +5,7 @@
             <div class="min-w-[12rem]">
                 <div class="font-medium text-slate-900">{{ $visitor->full_name }}</div>
                 <div class="mt-1 text-xs text-slate-500">{{ $visitor->phone ?: 'No phone provided' }}</div>
+                @include('visitors.partials.time-limit')
             </div>
         </td>
         <td class="px-6 py-4 text-slate-600">

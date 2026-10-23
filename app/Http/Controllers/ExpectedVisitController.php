@@ -23,12 +23,14 @@ class ExpectedVisitController extends Controller
 
     public function create(Request $request, VisitorProfile $profile)
     {
+        abort_unless($request->user()->isSecurity(), 403);
         abort_unless($request->user()->canAccessSubdivision($profile->subdivision_id), 403);
         return redirect()->route('visitor-profiles.show', ['profile' => $profile, 'schedule' => 1]);
     }
 
     public function store(Request $request, VisitorProfile $profile)
     {
+        abort_unless($request->user()->isSecurity(), 403);
         abort_unless($request->user()->canAccessSubdivision($profile->subdivision_id), 403);
         $data = $request->validate([
             'resident_id' => ['required', 'integer'],

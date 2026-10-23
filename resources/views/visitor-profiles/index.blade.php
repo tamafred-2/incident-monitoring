@@ -12,7 +12,7 @@
             </form>
             <div class="flex flex-wrap items-center gap-3">
                 <a href="{{ route('expected-visits.index') }}" class="text-sm font-semibold text-brand-700">Expected Visits</a>
-            @if (auth()->user()->hasRole('security'))
+            @if (auth()->user()->isSecurity())
                 <button type="button" x-data @click="$dispatch('open-modal', 'add-visitor-profile')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Add Visitor</button>
             @endif
             </div>
@@ -31,7 +31,7 @@
             </x-scroll-list>
         </div>
         </div>
-        @if (auth()->user()->hasRole('security'))
+        @if (auth()->user()->isSecurity())
             <x-modal name="add-visitor-profile" :show="$errors->any()" maxWidth="2xl" focusable>
                 <form method="POST" action="{{ route('visitor-profiles.store') }}" enctype="multipart/form-data" class="space-y-5 bg-white p-6 sm:p-8">
                     @csrf

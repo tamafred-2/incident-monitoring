@@ -18,6 +18,10 @@ class Visitor extends Model
     public const UPDATED_AT = null;
 
     protected $fillable = [
+        'allowed_minutes',
+        'overdue_action',
+        'overdue_action_by',
+        'overdue_action_at',
         'owner_approval',
         'visitor_profile_id',
         'subdivision_id',
@@ -68,11 +72,24 @@ class Visitor extends Model
     protected function casts(): array
     {
         return [
+            'allowed_minutes' => 'integer',
+            'overdue_action_at' => 'datetime',
             'owner_approval' => 'array',
             'check_in' => 'datetime',
             'check_out' => 'datetime',
             'status' => VisitorStatus::class,
         ];
+    }
+
+    public function getVisitDeadlineAttribute(): ?\Illuminate\Support\Carbon
+    {
+        return $this->allowed_minutes && $this->check_in
+            ? $this->check_in->copy()->addMinutes($this->allowed_minutes) : null;
+    }
+
+    public function getIsOverdueAttribute(): bool
+    {
+        return $this->visit_deadline !== null && ($this->check_out ?? now())->gt($this->visit_deadline);
     }
 
     public function subdivision(): BelongsTo

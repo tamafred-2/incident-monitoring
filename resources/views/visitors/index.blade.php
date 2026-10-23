@@ -10,7 +10,6 @@
     <x-slot name="header">
         <div class="flex items-start justify-between gap-4">
             <x-page-header title="Visitors" subtitle="Search a saved visitor profile, record a new visit, and monitor entry and checkout." />
-            <a href="{{ route('expected-visits.index') }}" class="shrink-0 rounded-xl border border-brand-200 px-4 py-2 text-sm font-semibold text-brand-700">Expected Visits</a>
 
             <div
                 x-data="{ reminderOpen: false }"
@@ -220,7 +219,7 @@
         >
             @include('partials.alerts')
 
-            @if (auth()->user()->hasRole('security'))
+            @if (auth()->user()->isSecurity())
                 <x-modal name="visitor-check-in" :show="$errors->any() || (bool) $selectedProfile" maxWidth="6xl" contentOverflow="visible" focusable>
                     <div class="p-6 bg-white sm:p-8">
                         <div class="flex items-center justify-between gap-4 mb-5">
@@ -525,6 +524,34 @@
                         </div>
 
                         <div x-show="visitType === 'walk_in'" x-cloak class="p-5 bg-white border rounded-2xl border-slate-200">
+                            <div class="mb-4" x-data="{ durationChoice: @js((string) old('allowed_minutes', '')), durationUnit: @js(old('custom_duration_unit', 'minutes')) }">
+                                <label for="walk-in-duration" class="block text-sm font-medium text-slate-700">Allowed visit duration</label>
+                                <select id="walk-in-duration" name="allowed_minutes" x-model="durationChoice" :required="visitType === 'walk_in'" :disabled="visitType !== 'walk_in'" class="mt-1 w-full rounded-xl border-slate-300 text-sm">
+                                    <option value="">Select time limit</option>
+                                    @foreach ([5, 10, 15, 30] as $minutes)
+                                        <option value="{{ $minutes }}" @selected(old('allowed_minutes') == $minutes)>{{ $minutes }} minutes</option>
+                                    @endforeach
+                                    <option value="other">Other (custom duration)</option>
+                                </select>
+                                <div x-show="durationChoice === 'other'" x-cloak class="mt-3 grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label for="custom-duration" class="block text-sm font-medium text-slate-700">Duration</label>
+                                        <input id="custom-duration" name="custom_duration" type="number" min="1" :max="durationUnit === 'hours' ? 12 : 720" step="1" value="{{ old('custom_duration') }}" :required="visitType === 'walk_in' && durationChoice === 'other'" :disabled="visitType !== 'walk_in' || durationChoice !== 'other'" class="mt-1 w-full rounded-xl border-slate-300 text-sm">
+                                        <x-input-error :messages="$errors->get('custom_duration')" />
+                                    </div>
+                                    <div>
+                                        <label for="custom-duration-unit" class="block text-sm font-medium text-slate-700">Unit</label>
+                                        <select id="custom-duration-unit" name="custom_duration_unit" x-model="durationUnit" :disabled="visitType !== 'walk_in' || durationChoice !== 'other'" class="mt-1 w-full rounded-xl border-slate-300 text-sm">
+                                            <option value="minutes">Minutes</option><option value="hours">Hours</option>
+                                        </select>
+                                        <x-input-error :messages="$errors->get('custom_duration_unit')" />
+                                    </div>
+                                    <p class="col-span-2 text-xs text-slate-500">Enter a whole number, up to 12 hours (720 minutes).</p>
+                                </div>
+                                <p class="mt-1 text-xs text-slate-500">Starts at check-in, at any time of day. Visitors who exceed the limit are flagged as overdue.</p>
+                                <x-input-error :messages="$errors->get('allowed_minutes')" />
+                            </div>
+
                             <div class="mb-4">
                                 <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Walk-in Details</h4>
                                 <p class="mt-1 text-sm text-slate-500">Enter where the visitor is going inside the subdivision.</p>
@@ -583,7 +610,12 @@
                             Visitor History
                         </a>
                     </nav>
-                    @if (auth()->user()->hasRole('security'))<a href="{{ route('reports.index', ['type' => 'visitors']) }}" class="mb-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reports</a>@endif
+                    <div class="mb-2 flex flex-wrap items-center gap-2">
+                        <a href="{{ route('expected-visits.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Expected Visits</a>
+                        @if (auth()->user()->hasRole('security'))
+                            <a href="{{ route('reports.index', ['type' => 'visitors']) }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Reports</a>
+                        @endif
+                    </div>
                 </div>
             </div>
 
@@ -626,7 +658,7 @@
                                             class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
                                         >
                                     </div>
-                                    @if (auth()->user()->hasRole('security'))
+                                    @if (auth()->user()->isSecurity())
                                         <div class="flex items-end">
                                             <button
                                                 type="button"

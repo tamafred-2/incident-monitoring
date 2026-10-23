@@ -12,6 +12,8 @@ class VisitorActivityFeed
     public static function recentForUser(User $user, int $limit = 8): Collection
     {
         return self::baseEvents(max($limit * 4, 40))
+            ->concat(OverdueVisitFeed::forUser($user))
+            ->sortByDesc('sort_at')
             ->filter(fn (array $activity): bool => self::isVisibleToUser($activity, $user))
             ->take($limit)
             ->values()

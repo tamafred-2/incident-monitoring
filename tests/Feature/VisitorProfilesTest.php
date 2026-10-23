@@ -38,14 +38,22 @@ class VisitorProfilesTest extends TestCase
         return VisitorProfile::latest('profile_id')->firstOrFail();
     }
 
-    public function test_admin_registration_uses_the_only_subdivision_without_a_selector(): void
+    public function test_admin_can_view_but_cannot_create_profiles_visits_or_schedules(): void
     {
         [$subdivision] = $this->setupGate();
+        $profile = $this->register();
         $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin);
-        $this->get(route('visitor-profiles.index'))->assertOk()->assertDontSee('id="profile-subdivision"', false);
-        $profile = $this->register();
-        $this->assertSame($subdivision->getKey(), $profile->subdivision_id);
+        $this->get(route('visitor-profiles.index'))->assertOk()->assertDontSee('Add Visitor');
+        $this->get(route('visitor-profiles.show', $profile))->assertOk()->assertDontSee('Schedule Expected Visit')->assertDontSee('Add Visit');
+        $this->get(route('visitors.index'))->assertOk()->assertDontSee('Add Visit');
+        $this->post(route('visitor-profiles.store'), [])->assertForbidden();
+        $this->post(route('visitors.store'), [])->assertForbidden();
+        $this->get(route('expected-visits.create', $profile))->assertForbidden();
+        $this->post(route('expected-visits.store', $profile), [])->assertForbidden();
+        $this->assertDatabaseCount('visitors', 0);
+        $this->assertDatabaseCount('expected_visits', 0);
+        $this->assertDatabaseCount('visitor_profiles', 1);
     }
 
     public function test_registering_a_visitor_creates_a_profile_without_checking_in(): void
@@ -104,7 +112,7 @@ class VisitorProfilesTest extends TestCase
     {
         $this->setupGate();
         $profile = $this->register();
-        $payload = ['visitor_profile_id' => $profile->getKey(), 'visit_type' => 'walk_in', 'house_address_or_unit' => 'Clubhouse', 'purpose' => 'Delivery'];
+        $payload = ['visitor_profile_id' => $profile->getKey(), 'visit_type' => 'walk_in', 'allowed_minutes' => 15, 'house_address_or_unit' => 'Clubhouse', 'purpose' => 'Delivery'];
         $this->post(route('visitors.store'), $payload + [
             'on_vehicle' => 1, 'plate_number' => 'ABC 123', 'passenger_count' => 1, 'vehicle_type' => 'Motorcycle', 'vehicle_color' => 'Black',
         ])->assertSessionHasNoErrors();
@@ -162,7 +170,7 @@ class VisitorProfilesTest extends TestCase
     {
         $this->setupGate();
         $profile = $this->register();
-        $payload = ['visitor_profile_id' => $profile->getKey(), 'visit_type' => 'walk_in', 'house_address_or_unit' => 'Gate'];
+        $payload = ['visitor_profile_id' => $profile->getKey(), 'visit_type' => 'walk_in', 'allowed_minutes' => 15, 'house_address_or_unit' => 'Gate'];
         $this->post(route('visitors.store'), $payload)->assertSessionHasNoErrors();
         $first = Visitor::sole();
         $this->post(route('visitors.checkout', $first));
@@ -177,7 +185,7 @@ class VisitorProfilesTest extends TestCase
     {
         $this->setupGate();
         $profile = $this->register();
-        $payload = ['first_name' => 'Ana', 'surname' => 'Cruz', 'phone' => '09171234567', 'visit_type' => 'walk_in', 'house_address_or_unit' => 'Gate'];
+        $payload = ['first_name' => 'Ana', 'surname' => 'Cruz', 'phone' => '09171234567', 'visit_type' => 'walk_in', 'allowed_minutes' => 15, 'house_address_or_unit' => 'Gate'];
         $this->post(route('visitors.store'), $payload + ['id_photo' => UploadedFile::fake()->create('id.jpg', 10, 'image/jpeg')])->assertSessionHasNoErrors();
         $this->assertSame($profile->getKey(), Visitor::sole()->visitor_profile_id);
         $this->post(route('visitors.store'), $payload + ['id_photo' => UploadedFile::fake()->create('id.jpg', 10, 'image/jpeg')])->assertSessionHasErrors('visitor_profile_id');

@@ -50,6 +50,26 @@
             class="page-shell flex flex-col gap-4 min-[1600px]:gap-6"
         >
             @include('partials.alerts')
+        @include('visitors.partials.time-limit')
+        @if ($visitor->is_overdue)
+            <section class="mt-4 rounded-2xl border border-rose-200 bg-white p-5">
+                <h3 class="font-semibold text-slate-900">Overdue follow-up</h3>
+                @if ($visitor->overdue_action)
+                    <p class="mt-2 whitespace-pre-wrap text-sm text-slate-700">{{ $visitor->overdue_action }}</p>
+                    <p class="mt-1 text-xs text-slate-500">Recorded by {{ $visitor->overdue_action_by }} on {{ $visitor->overdue_action_at?->format('M j, Y g:i A') }}</p>
+                @endif
+                @if (auth()->user()->isSecurity() || auth()->user()->isAdmin())
+                    <form method="POST" action="{{ route('visitors.overdue-action', $visitor) }}" class="mt-3">
+                        @csrf
+                        <label for="overdue-action" class="block text-sm font-medium text-slate-700">Action taken</label>
+                        <textarea id="overdue-action" name="overdue_action" required maxlength="2000" rows="3" class="mt-1 w-full rounded-xl border-slate-300 text-sm" placeholder="Record the reminder, contact attempt, or action taken under subdivision rules.">{{ old('overdue_action', $visitor->overdue_action) }}</textarea>
+                        <x-input-error :messages="$errors->get('overdue_action')" />
+                        <button type="submit" class="mt-3 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Save Follow-up</button>
+                    </form>
+                @endif
+            </section>
+        @endif
+        @include('visitors.partials.time-limit')
 
             <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div class="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-start sm:justify-between">

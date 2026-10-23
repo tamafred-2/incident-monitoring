@@ -3,7 +3,7 @@
     <div class="page-section"><div class="page-shell space-y-4">
         @include('partials.alerts')
         <div class="flex flex-wrap gap-3">
-            <a href="{{ route('visitor-profiles.index') }}" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Choose or Create Visitor Profile</a>
+            <a href="{{ route('visitor-profiles.index') }}" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">{{ auth()->user()->isSecurity() ? 'Choose or Create Visitor Profile' : 'View Visitor Profiles' }}</a>
             <a href="{{ route('visitors.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Back to Gate</a>
         </div>
         <section class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
@@ -20,7 +20,9 @@
                         <td class="px-5 py-4">
                             @if (auth()->user()->hasRole('security'))
                             <div class="flex flex-wrap gap-2">
+@if (auth()->user()->isSecurity())
                                 <a href="{{ route('visitors.index', ['expected_visit' => $visit->getKey()]) }}" class="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white">Check In on Arrival</a>
+@endif
                                 <form method="POST" action="{{ route('expected-visits.cancel', $visit) }}">@csrf<button class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Cancel Visit</button></form>
                             </div>
                             @endif
