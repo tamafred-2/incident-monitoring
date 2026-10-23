@@ -50,9 +50,10 @@ class ReportController extends Controller
         $filters['report_max_id'] = $filters['report_max_id'] ?? $summary['max_id'];
         $subdivisions = $request->user()->isAdmin() ? Subdivision::orderBy('subdivision_name')->get() : collect();
         $previewUrl = route($type.'.print', $filters + ['preview' => 1, 'embed' => 1], false);
+        $printUrl = route($type.'.print', $filters + ['autoprint' => 1], false);
         $pdfUrl = route($type.'.export', $filters + ['format' => 'pdf'], false);
         $excelUrl = route($type.'.export', $filters + ['format' => 'excel'], false);
 
-        return view('reports.index', compact('type', 'filters', 'canReportVisitors', 'subdivisions', 'previewUrl', 'pdfUrl', 'excelUrl', 'totalRecords', 'totalParts', 'part'));
+        return view('reports.index', compact('type', 'filters', 'canReportVisitors', 'subdivisions', 'previewUrl', 'printUrl', 'pdfUrl', 'excelUrl', 'totalRecords', 'totalParts', 'part'));
     }
 }
