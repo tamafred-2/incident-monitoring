@@ -164,7 +164,7 @@ class IncidentController extends Controller
 
         return response()->streamDownload(function () use ($reportRows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Category', 'Location', 'Status', 'Reporter', 'Date Reported', 'Date Resolved', 'Proof Image URL']);
+            fputcsv($handle, ['Category', 'Location', 'Status', 'Reporter', 'Date Reported', 'Date Resolved', 'Proof Image URL', 'Investigation Description', 'Resolution Description']);
 
             foreach ($reportRows as $row) {
                 fputcsv($handle, [
@@ -175,6 +175,8 @@ class IncidentController extends Controller
                     $row['reported_at'],
                     $row['resolved_at'],
                     $row['proof_url'] ?: '-',
+                    $row['investigation_description'],
+                    $row['resolution_description'],
                 ]);
             }
 
@@ -231,6 +233,7 @@ class IncidentController extends Controller
             'subdivision_id' => $subdivisionId,
             'house_id' => $houseId,
             'description' => $data['description'] ?: null,
+            ...array_intersect_key($data, array_flip(['investigation_description', 'resolution_description'])),
             'category' => $this->resolveCategory($data),
             'location' => $this->resolveLocation($data),
             'incident_date' => $data['incident_date'],
@@ -340,6 +343,7 @@ class IncidentController extends Controller
                     'subdivision_id' => $subdivisionId,
                     'house_id' => $houseId,
                     'description' => $data['description'] ?: null,
+            ...array_intersect_key($data, array_flip(['investigation_description', 'resolution_description'])),
                     'category' => $this->resolveCategory($data),
                     'location' => $this->resolveLocation($data),
                     'incident_date' => $data['incident_date'],
@@ -352,6 +356,7 @@ class IncidentController extends Controller
                 $this->notifyIncidentStatusIfNeeded($incident, $previousStatus);
             } else {
                 $incident->update([
+                    ...array_intersect_key($data, array_flip(['investigation_description', 'resolution_description'])),
                     'resolved_at' => $this->resolveResolvedAt([
                         'status' => $status,
                         'resolved_at' => $data['resolved_at'] ?? null,
@@ -376,7 +381,7 @@ class IncidentController extends Controller
 
             $this->syncIncidentPhotoRecords($incident, $finalProofPhotoPaths, false);
             foreach ($newProofPhotoPaths as $path) {
-                $incident->proofPhotos()->where('photo_path', $path)->update(['stage' => $this->requiresProofPhotoForStatus($status) ? 'resolution' : 'supporting']);
+                $incident->proofPhotos()->where('photo_path', $path)->update(['stage' => 'resolution']);
             }
             foreach ($this->storeProofPhotos($request, 'investigation_photos') as $path) {
                 $incident->proofPhotos()->create(['photo_path' => $path, 'stage' => 'investigation', 'sort_order' => $incident->proofPhotos()->count()]);
@@ -467,10 +472,12 @@ class IncidentController extends Controller
             'location_other' => ['nullable', 'string', 'max:150', 'required_if:location,__other__'],
             'incident_date' => ['required', 'date', 'before_or_equal:now'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,user_id'],
+            'investigation_description' => ['nullable', 'string', 'max:5000'],
+            'resolution_description' => ['nullable', 'string', 'max:5000'],
             'investigation_photos' => ['nullable', 'array', 'max:10'],
-            'investigation_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'investigation_photos.*' => ['file', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
             'proof_photos' => ['nullable', 'array', 'max:10'],
-            'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
             'remove_proof_photos' => ['nullable', 'array'],
             'remove_proof_photos.*' => ['string'],
         ];
@@ -487,10 +494,12 @@ class IncidentController extends Controller
         return [
             'status' => ['required', Rule::in($this->allowedIncidentStatusesForInput())],
             'resolved_at' => ['nullable', 'date'],
+            'investigation_description' => ['nullable', 'string', 'max:5000'],
+            'resolution_description' => ['nullable', 'string', 'max:5000'],
             'investigation_photos' => ['nullable', 'array', 'max:10'],
-            'investigation_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'investigation_photos.*' => ['file', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
             'proof_photos' => ['nullable', 'array', 'max:10'],
-            'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
             'remove_proof_photos' => ['nullable', 'array'],
             'remove_proof_photos.*' => ['string'],
         ];
@@ -692,7 +701,7 @@ class IncidentController extends Controller
 
             if (! is_string($storedPath)) {
                 throw ValidationException::withMessages([
-                    'proof_photos' => 'Unable to save uploaded proof photos. Please try again.',
+                    $field => 'Unable to save uploaded photos. Please try again.',
                 ]);
             }
 
@@ -1191,6 +1200,8 @@ class IncidentController extends Controller
                 'location' => $incident->location ?: '-',
                 'status' => IncidentStatus::displayLabel($incident->status),
                 'reporter' => $incident->reporter?->full_name ?: '-',
+                'investigation_description' => $incident->investigation_description ?: '-',
+                'resolution_description' => $incident->resolution_description ?: '-',
                 'reported_at' => $incident->reported_at?->format('Y-m-d H:i:s') ?: '-',
                 'resolved_at' => $incident->resolved_at?->format('Y-m-d H:i:s') ?: '-',
                 'proof_url' => $proofUrl,

@@ -72,13 +72,29 @@ class IncidentNotificationsTest extends TestCase
             ->assertJsonPath('notifications.0.message', 'Security at Palm Street.');
 
         $incident->update(['assigned_to' => $staff->getKey()]);
+        foreach (['investigation_photos', 'proof_photos'] as $field) {
+            $this->put(route('incidents.update', $incident->getKey()), [
+                'status' => 'Under Investigation',
+                $field => [UploadedFile::fake()->create('wrong.pdf', 10, 'application/pdf')],
+            ])->assertSessionHasErrors($field.'.0')->assertSessionMissing('success');
+            $this->assertSame('Open', $incident->fresh()->status);
+            $this->assertSame(0, $incident->proofPhotos()->count());
+        }
+
         $this->put(route('incidents.update', $incident->getKey()), [
-            'status' => 'Under Investigation', 'investigation_photos' => [UploadedFile::fake()->create('before.jpg', 100, 'image/jpeg')],
+            'investigation_description' => 'Inspected the damaged gate.', 'status' => 'Under Investigation', 'investigation_photos' => [UploadedFile::fake()->create('before.jpg', 100, 'image/jpeg')],
         ])->assertSessionHasNoErrors();
+        $this->put(route('incidents.update', $incident->getKey()), [
+            'status' => 'Under Investigation', 'resolution_description' => 'Repair completed, awaiting confirmation.',
+            'proof_photos' => [UploadedFile::fake()->create('repair.jpg', 100, 'image/jpeg')],
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(1, $incident->proofPhotos()->where('stage', 'resolution')->count());
+        $this->assertSame(0, $incident->proofPhotos()->where('stage', 'supporting')->count());
+        $this->get(route('incidents.show', $incident->getKey()))->assertOk()->assertSee('Repair completed, awaiting confirmation.')->assertDontSee('Supporting images');
         $guard->notifications()->delete();
         $otherGuard->notifications()->delete();
         $this->put(route('incidents.update', $incident->getKey()), [
-            'status' => 'Resolved', 'proof_photos' => [UploadedFile::fake()->create('after.jpg', 100, 'image/jpeg')],
+            'resolution_description' => 'Repaired and tested the gate.', 'status' => 'Resolved', 'proof_photos' => [UploadedFile::fake()->create('after.jpg', 100, 'image/jpeg')],
         ])->assertSessionHasNoErrors();
         $this->assertSame(1, $guard->notifications()->count());
         $this->assertSame(1, $otherGuard->notifications()->count());
@@ -86,6 +102,9 @@ class IncidentNotificationsTest extends TestCase
             ->assertJsonPath('notifications.0.title', 'Incident Resolved')->assertJsonPath('unread_count', 1)
             ->assertJsonPath('notifications.0.detail_url', route('incidents.show', $incident->getKey()));
         $this->get(route('dashboard'))->assertOk()->assertSee('Incident Resolved');
+        $this->assertSame('Inspected the damaged gate.', $incident->fresh()->investigation_description);
+        $this->assertSame('Repaired and tested the gate.', $incident->fresh()->resolution_description);
+        $this->get(route('incidents.show', $incident->getKey()))->assertOk()->assertSee('Inspected the damaged gate.')->assertSee('Repaired and tested the gate.');
     }
 
     public function test_read_and_clear_controls_affect_only_the_current_users_notifications(): void

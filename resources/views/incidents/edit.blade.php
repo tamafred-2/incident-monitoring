@@ -143,7 +143,7 @@
                     </div>
                     <div class="md:col-span-2" data-resolved-wrapper>
                         <label class="block text-sm font-medium text-slate-700">Date Resolved</label>
-                        <p class="mt-2 text-sm text-slate-600">{{ $incident->resolved_at?->format('M j, Y h:i:s A') ?? 'Recorded automatically when resolved' }} ({{ config('app.timezone') }})</p>
+                        <p class="mt-2 text-sm text-slate-600">{{ $incident->resolved_at?->format('M j, Y h:i:s A') ?? 'Recorded automatically when resolved' }}</p>
                     </div>
 
                     <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-5" data-proof-section>
@@ -183,33 +183,47 @@
                     @if (!$isResolvedIncident)
                         <div class="md:col-span-2 rounded-2xl border border-slate-200 p-5">
                             <label for="investigation-photos" class="font-semibold text-slate-700">Investigation proof — Before</label>
-                            <input id="investigation-photos" type="file" name="investigation_photos[]" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="mt-3 block w-full text-sm">
-                            <p class="mt-2 text-sm text-slate-500">Save these photos first. This records the investigation step before a later resolution. Upload times are recorded by the server in {{ config('app.timezone') }}.</p>
+                            <input id="investigation-photos" type="file" name="investigation_photos[]" multiple accept="image/jpeg,image/png,.jpg,.jpeg,.png" onchange="this.setCustomValidity(Array.from(this.files).some(file => !/\.(png|jpe?g)$/i.test(file.name) || !['image/png', 'image/jpeg'].includes(file.type)) ? 'Only PNG and JPEG images are allowed.' : (Array.from(this.files).some(file => file.size > 5 * 1024 * 1024) ? 'Each image must be 5 MB or smaller.' : (this.files.length > 10 ? 'Select at most 10 images.' : ''))); this.reportValidity();" class="mt-3 block w-full text-sm">
+                            <x-input-error class="mt-2" :messages="array_merge($errors->get('investigation_photos'), collect($errors->get('investigation_photos.*'))->flatten()->all())" />
+                            <p class="mt-2 text-xs text-slate-500">PNG or JPEG only. Maximum 5 MB per image, 10 images per upload. Click Save Changes to upload.</p>
+                            <p class="mt-2 text-sm text-slate-500">Save these photos first. This records the investigation step before a later resolution. Upload times are recorded automatically.</p>
+                            @include('incidents.partials.stage-descriptions', ['descriptionStage' => 'investigation'])
+                        </div>
+                    @endif
+                    @if ($isResolvedIncident && $incident->investigation_description)
+                        <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                            <h3 class="font-semibold text-slate-700">Saved Investigation Notes</h3>
+                            <p class="mt-2 whitespace-pre-wrap break-words text-sm text-slate-600">{{ $incident->investigation_description }}</p>
                         </div>
                     @endif
                     @if ($isResolvedIncident || $proofPhotos->where('stage', 'investigation')->isNotEmpty())
-                    <div class="md:col-span-2" data-proof-preview-root>
+                    <div class="md:col-span-2 rounded-2xl border border-slate-200 p-5" data-proof-preview-root>
                         <h3 class="mb-2 font-semibold text-slate-700">Resolution proof — After</h3>
                         <label class="block text-sm font-medium text-slate-700">Upload Resolution Photos</label>
                         <input
                             type="file"
                             name="proof_photos[]"
-                            accept="image/*"
+                            accept="image/jpeg,image/png,.jpg,.jpeg,.png" onchange="this.setCustomValidity(Array.from(this.files).some(file => !/\.(png|jpe?g)$/i.test(file.name) || !['image/png', 'image/jpeg'].includes(file.type)) ? 'Only PNG and JPEG images are allowed.' : (Array.from(this.files).some(file => file.size > 5 * 1024 * 1024) ? 'Each image must be 5 MB or smaller.' : (this.files.length > 10 ? 'Select at most 10 images.' : ''))); this.reportValidity();"
                             multiple
                             class="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
                             data-proof-input
                         >
+                        <x-input-error class="mt-2" :messages="array_merge($errors->get('proof_photos'), collect($errors->get('proof_photos.*'))->flatten()->all())" />
+                        <p class="mt-2 text-xs text-slate-500">PNG or JPEG only. Maximum 5 MB per image. Click Save Changes to upload.</p>
                         <p class="mt-2 text-xs text-slate-500" data-proof-help>Upload separate after-resolution images here. Up to 10 files per upload.</p>
                         <div class="mt-4 hidden grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-proof-preview-list></div>
+                        @include('incidents.partials.stage-descriptions', ['descriptionStage' => 'resolution'])
                     </div>
                     @endif
 
-                    <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
+
+                <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
                         <a href="{{ route('incidents.show', array_merge(['incidentId' => $incident->incident_id], $indexContext)) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</a>
-                        <button class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Save Changes</button>
+                        <button type="submit" class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Save Changes</button>
                     </div>
 
-                </form>
+                
+</form>
             </div>
 
             <div

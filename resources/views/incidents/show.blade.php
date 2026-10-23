@@ -82,7 +82,6 @@
                     </section>
                     <section class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Timeline</h4>
-                        <p class="mt-2 text-xs text-slate-500">{{ config('app.timezone') }}</p>
                         @php
                             $sameDates = $incident->incident_date && $incident->reported_at && $incident->incident_date->equalTo($incident->reported_at);
                             $timeline = $sameDates
@@ -111,7 +110,6 @@
                     <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Description</h4>
                     <p class="mt-3 text-sm leading-7 whitespace-pre-line text-slate-700">{{ $incident->description ?: 'No description provided.' }}</p>
                 </div>
-
                 @include('incidents.partials.evidence-gallery')
             </div>
             <div x-cloak

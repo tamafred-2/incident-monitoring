@@ -20,6 +20,8 @@ class Incident extends Model
         'subdivision_id',
         'house_id',
         'description',
+        'investigation_description',
+        'resolution_description',
         'category',
         'location',
         'incident_date',

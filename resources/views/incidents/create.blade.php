@@ -86,11 +86,13 @@
                         </select>
                     </div>
 
-                    <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
+                    @include('incidents.partials.stage-descriptions')
+                <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
                         <a href="{{ route('incidents.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</a>
                         <button class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Submit Report</button>
                     </div>
-                </form>
+                
+</form>
             </div>
         </div>
     </div>

@@ -48,7 +48,7 @@
                 @forelse (($reportRows ?? []) as $row)
                     <tr>
                         <td>{{ $row['category'] }}</td>
-                        <td>{{ $row['location'] }}</td>
+                        <td>{{ $row['location'] }}<p><strong>Investigation:</strong> {{ $row['investigation_description'] }}</p><p><strong>Resolution:</strong> {{ $row['resolution_description'] }}</p></td>
                         <td>{{ $row['status'] }}</td>
                         <td>{{ $row['reporter'] }}</td>
                         <td>{{ $row['reported_at'] }}</td>

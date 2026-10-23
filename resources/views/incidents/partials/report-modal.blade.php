@@ -148,12 +148,14 @@
                     </div>
                     <div>
                         <label for="report-resolution-photos" class="block text-sm font-medium text-slate-700">Resolution Photos</label>
-                        <input id="report-resolution-photos" type="file" name="proof_photos[]" accept="image/jpeg,image/png,image/webp,image/gif" multiple :disabled="!['Resolved', 'Closed'].includes(reportStatus)" class="mt-1 block w-full text-sm text-slate-600">
+                        <input id="report-resolution-photos" type="file" name="proof_photos[]" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onchange="this.setCustomValidity(Array.from(this.files).some(file => !/\.(png|jpe?g)$/i.test(file.name) || !['image/png', 'image/jpeg'].includes(file.type)) ? 'Only PNG and JPEG images are allowed.' : (Array.from(this.files).some(file => file.size > 5 * 1024 * 1024) ? 'Each image must be 5 MB or smaller.' : (this.files.length > 10 ? 'Select at most 10 images.' : ''))); this.reportValidity();" multiple :disabled="!['Resolved', 'Closed'].includes(reportStatus)" class="mt-1 block w-full text-sm text-slate-600">
                         <p class="mt-1 text-xs text-slate-500">Attach available photos showing the completed work. Up to 10 images, 5 MB each.</p>
                         <x-input-error class="mt-1" :messages="array_merge($errors->get('proof_photos'), collect($errors->get('proof_photos.*'))->flatten()->all())" />
+                        @include('incidents.partials.stage-descriptions', ['descriptionStage' => 'resolution'])
                     </div>
                 </div>
-            <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
+
+                <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
                 <button
                     type="button"
                     x-on:click="$dispatch('close')"
@@ -163,7 +165,8 @@
                 </button>
                 <button class="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">Submit Report</button>
             </div>
-        </form>
+        
+</form>
     </div>
 
     <script>
