@@ -8,6 +8,8 @@ use App\Enums\UserRole;
 use App\Enums\VisitorRequestStatus;
 use App\Enums\VisitorStatus;
 use App\Models\House;
+use App\Models\ExpectedVisit;
+use App\Models\VisitorProfile;
 use App\Models\Incident;
 use App\Models\IncidentPhoto;
 use App\Models\Resident;
@@ -40,6 +42,10 @@ class SqliteDemoSeeder extends Seeder
             $incidentStatuses = $this->incidentStatusPreset();
 
             foreach ([
+                'house_ownership_transfers',
+                'expected_visits',
+                'visitor_profiles',
+                'notifications',
                 'incident_photos',
                 'incidents',
                 'visitor_requests',
@@ -66,7 +72,10 @@ class SqliteDemoSeeder extends Seeder
                 'zip' => '2418',
                 'contact_person' => 'Clara Mendoza',
                 'contact_number' => '09171234567',
-                'email' => 'maplegrove@example.com',
+                'email' => 'office@dmd.example.com',
+                'secondary_contact_person' => 'Miguel Santos',
+                'secondary_contact_number' => '09180000002',
+                'secondary_email' => 'security@dmd.example.com',
                 'status' => ActiveStatus::Active->value,
             ]);
 
@@ -383,6 +392,8 @@ class SqliteDemoSeeder extends Seeder
                 $adminUser, $staffUser, $staffUser2, $securityUser, $securityUser2,
             ], $incidentStatuses);
 
+            $this->completeDemoDetails($securityUser);
+
             DB::commit();
         } catch (\Throwable $exception) {
             DB::rollBack();
@@ -405,8 +416,8 @@ class SqliteDemoSeeder extends Seeder
         $middleInits = ['A.', 'B.', 'C.', 'D.', 'E.', 'F.', 'G.', 'H.', 'J.', 'L.', 'M.', 'P.', 'R.', 'S.', 'T.'];
         $relations   = ['Owner', 'Husband', 'Wife', 'Child', 'Relative', 'Helper', 'Friend', 'Tenant'];
         $streets     = ['Imperial Street', 'Plaza Boulevard', 'Sunrise Lane', 'Heritage Avenue', 'Maple Drive'];
-        $vehicleTypes  = ['Car', 'Motorcycle', 'Van', 'Truck', null, null];
-        $vehicleColors = ['White', 'Black', 'Silver', 'Red', 'Blue', 'Gray', 'Yellow', null];
+        $vehicleTypes  = ['Car', 'Motorcycle', 'Van', 'Truck'];
+        $vehicleColors = ['White', 'Black', 'Silver', 'Red', 'Blue', 'Gray', 'Yellow'];
         $platePrefixes = ['ABC', 'XYZ', 'BAG', 'PAN', 'ILO', 'CEB', 'DAV', 'MNL'];
         $purposes    = ['Family visit', 'Delivery', 'Repair service', 'Plumbing repair', 'Electrical work', 'Grocery delivery', 'Medical visit', 'Catering', 'Business meeting', 'Social visit', 'Maintenance check', 'Moving in assistance'];
         $reqStatuses = [
@@ -455,11 +466,13 @@ class SqliteDemoSeeder extends Seeder
         $plate   = function () use ($platePrefixes) { return $platePrefixes[mt_rand(0, count($platePrefixes) - 1)] . ' ' . str_pad((string) mt_rand(1, 9999), 4, '0', STR_PAD_LEFT); };
         $phone   = static function (int $seed) { return '09' . str_pad((string)(100000000 + $seed), 9, '0', STR_PAD_LEFT); };
 
-        // 200 extra houses: 5 streets × blocks 10–19 × lots 1–4
+        // 122 extra houses across the available streets; 124 overall.
+        // 5 streets × blocks 10–19 × lots 1–4
         $bulkHouses = [];
         foreach ($streets as $street) {
             for ($b = 3; $b <= 12; $b++) {
                 for ($l = 1; $l <= 4; $l++) {
+                    if (count($bulkHouses) >= 122) { break 3; }
                     $bulkHouses[] = House::create([
                         'subdivision_id' => $subdivision->subdivision_id,
                         'street' => $street,
@@ -472,24 +485,6 @@ class SqliteDemoSeeder extends Seeder
 
         $allHouses    = array_merge($houses, $bulkHouses);
         $houseCount   = count($allHouses);
-
-        // Residents: every bulk house gets 1-10, weighted toward small households
-        // (mean ≈ 2.7) so the total lands at 500+ and Avg. Residents / House ≈ 2.7.
-        $householdSize = static function (): int {
-            $r = mt_rand(1, 100);
-            return match (true) {
-                $r <= 30 => 1,
-                $r <= 58 => 2,
-                $r <= 76 => 3,
-                $r <= 86 => 4,
-                $r <= 92 => 5,
-                $r <= 95 => 6,
-                $r <= 97 => 7,
-                $r <= 98 => 8,
-                $r <= 99 => 9,
-                default  => 10,
-            };
-        };
 
         $bulkResidents = [];
         $residentSeq = 0;
@@ -512,31 +507,26 @@ class SqliteDemoSeeder extends Seeder
                 'status'          => ($isOwner || mt_rand(0, 9) > 0) ? ActiveStatus::Active->value : ActiveStatus::Inactive->value,
             ];
             if ($hasRelationCol) {
-                $payload['relation_to_owner'] = $isOwner ? 'Owner' : $rand(array_values(array_diff($relations, ['Owner'])));
+                $payload['relation_to_owner'] = $isOwner ? 'Owner' : $rand(['Husband', 'Wife', 'Child', 'Relative', 'Helper', 'Friend', 'Tenant']);
             }
 
             return Resident::create($payload);
         };
 
-        foreach ($bulkHouses as $house) {
-            $size = $householdSize();
+        foreach ($bulkHouses as $houseIndex => $house) {
+            $size = $houseIndex < 49 ? 3 : 2;
             for ($j = 0; $j < $size; $j++) {
                 $bulkResidents[] = $makeResident($house, $j === 0);
             }
         }
 
-        // Top up to guarantee 500+ residents overall.
-        while (count($bulkResidents) + count($residents) < 500) {
-            $bulkResidents[] = $makeResident($allHouses[mt_rand(0, $houseCount - 1)], false);
-        }
-
         $allResidents  = array_merge($residents, $bulkResidents);
         $residentCount = count($allResidents);
 
-        // 426 bulk incidents (430 with the 4 handcrafted ones above):
+        // 196 bulk incidents plus four handcrafted examples = 200.
         // 11 Open + 21 Under Investigation pending (12 Open / 34 pending overall)
-        // and 394 resolved, giving a 396/430 ≈ 92% resolution rate.
-        for ($i = 0; $i < 426; $i++) {
+        // and 164 resolved, giving 166/200 ≈ 92% resolution rate.
+        for ($i = 0; $i < 196; $i++) {
             $house      = $allHouses[mt_rand(0, $houseCount - 1)];
             $category   = $rand($incCategories);
             $status     = match (true) {
@@ -549,7 +539,7 @@ class SqliteDemoSeeder extends Seeder
             // Pending incidents cluster in the last 30 days; resolved ones spread
             // from Jan 1 and leave 36h of headroom so resolution isn't clipped by "now".
             $incidentTs = $isResolved
-                ? $spreadTs($i - 32, 394, max($startTs, $nowTs - 133200))
+                ? $spreadTs($i - 32, 164, max($startTs, $nowTs - 133200))
                 : mt_rand(max($startTs, $nowTs - 2592000), max($startTs, $nowTs - 3600));
             $reportedTs = min($incidentTs + mt_rand(600, 7200), $nowTs);
             // 12-36h to resolve → averages out to ~1 day.
@@ -572,7 +562,7 @@ class SqliteDemoSeeder extends Seeder
         // 100 visitor requests
         for ($i = 0; $i < 100; $i++) {
             $resident   = $allResidents[mt_rand(0, $residentCount - 1)];
-            $house      = $allHouses[mt_rand(0, $houseCount - 1)];
+            $house      = $resident->house;
             $fn         = $rand($firstNames);
             $sn         = $rand($surnames);
             $mi         = mt_rand(0, 2) === 0 ? $rand($middleInits) : null;
@@ -614,7 +604,7 @@ class SqliteDemoSeeder extends Seeder
         // the first 49 stay Inside (50 overall) with recent check-ins.
         for ($i = 0; $i < 1198; $i++) {
             $resident  = $allResidents[mt_rand(0, $residentCount - 1)];
-            $house     = $allHouses[mt_rand(0, $houseCount - 1)];
+            $house     = $resident->house;
             $fn        = $rand($firstNames);
             $sn        = $rand($surnames);
             $mi        = mt_rand(0, 2) === 0 ? $rand($middleInits) : null;
@@ -648,6 +638,81 @@ class SqliteDemoSeeder extends Seeder
             }
 
             Visitor::create($payload);
+        }
+    }
+
+    private function completeDemoDetails(User $security): void
+    {
+        $directory = storage_path('app/public/uploads/demo');
+        File::ensureDirectoryExists($directory);
+        File::copy(public_path('uploads/incidents/incident-image-example.png'), $directory.'/incident.png');
+        File::copy(public_path('uploads/visitors/sample-id.png'), $directory.'/sample-id.png');
+        $idPath = 'uploads/demo/sample-id.png';
+        VisitorProfile::query()->update(['id_photo_path' => $idPath]);
+        Visitor::query()->update(['id_photo_path' => $idPath]);
+        VisitorRequest::query()->update(['id_photo_path' => $idPath]);
+
+        $houses = House::with('residents')->orderBy('house_id')->get();
+        foreach ($houses as $index => $house) {
+            $members = $house->residents->sortBy('resident_id')->values();
+            if ($index < 3) {
+                $previous = $members[0];
+                $next = $members[1];
+                DB::table('house_ownership_transfers')->insert([
+                    'house_id' => $house->getKey(), 'from_resident_id' => $previous->getKey(), 'to_resident_id' => $next->getKey(),
+                    'previous_owner_name' => $previous->full_name, 'new_owner_name' => $next->full_name,
+                    'previous_relationship' => $next->relation_to_owner, 'confirmed_by' => User::where('role', 'admin')->value('user_id'),
+                    'created_at' => $this->seedNow->subDays(30 + $index),
+                ]);
+                $previous->update(['is_deceased' => true, 'status' => 'Inactive', 'relation_to_owner' => 'Former Owner']);
+                $next->update(['relation_to_owner' => 'Owner', 'status' => 'Active']);
+            } elseif ($index < 6) {
+                $members[1]->update(['is_deceased' => true, 'status' => 'Inactive', 'relation_to_owner' => 'Relative']);
+            } elseif ($index < 16) {
+                $members[1]->update(['relation_to_owner' => 'Owner', 'status' => 'Active']);
+            }
+        }
+
+        foreach (Incident::with('house')->get() as $incident) {
+            $resolved = $incident->resolved_at !== null;
+            $investigation = 'The duty guard visited '.$incident->location.', interviewed the reporting household, and recorded the time and affected area. ';
+            $action = match ($incident->category) {
+                'Noise Complaint' => 'The household was reminded of quiet hours; a follow-up patrol confirmed the noise had stopped.',
+                'Flooding' => 'Maintenance cleared the blocked drainage and confirmed that standing water had subsided.',
+                'Fire Hazard' => 'The hazardous area was secured and the source was removed by maintenance before access was restored.',
+                'Property Damage', 'Vandalism' => 'Maintenance repaired the affected property and the guard checked the area before closing the report.',
+                'Security', 'Trespassing' => 'Security verified the entry log, contacted the host, and escorted the individual to the gate.',
+                default => 'Maintenance removed the obstruction and security confirmed the area was safe during a follow-up inspection.',
+            };
+            $incident->update([
+                'description' => $incident->description.' Reported at '.$incident->location.'. The duty team logged the concern and coordinated with the household. This is a fictional training record.',
+                'investigation_description' => $investigation.'The report and supporting sample image were reviewed by the duty team.',
+                'resolution_description' => $resolved ? $action.' Follow-up completed on '.$incident->resolved_at->format('M j, Y g:i A').'.' : null,
+                'proof_photo_path' => 'uploads/demo/incident.png',
+            ]);
+            IncidentPhoto::where('incident_id', $incident->getKey())->delete();
+            foreach ($resolved ? ['investigation', 'resolution'] : ['investigation'] as $order => $stage) {
+                IncidentPhoto::forceCreate([
+                    'incident_id' => $incident->getKey(), 'photo_path' => 'uploads/demo/incident.png',
+                    'stage' => $stage, 'sort_order' => $order,
+                    'created_at' => $stage === 'resolution' ? $incident->resolved_at : $incident->reported_at,
+                ]);
+            }
+        }
+
+        $hosts = Resident::where('status', 'Active')->where('is_deceased', false)->orderBy('resident_id')->take(8)->get();
+        foreach ($hosts as $index => $host) {
+            $profile = VisitorProfile::create([
+                'subdivision_id' => $host->subdivision_id, 'first_name' => ['Paolo', 'Celine', 'Ramon', 'Lara', 'Miguel', 'Elena', 'Rico', 'Diana'][$index],
+                'surname' => 'Santos', 'middle_initials' => 'M.', 'phone' => '09990000'.str_pad((string) $index, 3, '0', STR_PAD_LEFT),
+                'id_photo_path' => $idPath,
+            ]);
+            ExpectedVisit::create([
+                'visitor_profile_id' => $profile->getKey(), 'subdivision_id' => $host->subdivision_id, 'resident_id' => $host->getKey(),
+                'recorded_by' => $security->getKey(), 'expected_at' => $this->seedNow->addDays(1 + intdiv($index, 4))->setTime(9 + ($index % 4) * 2, 0),
+                'purpose' => 'Scheduled family visit to '.$host->full_name.'. Resident called security to arrange arrival and requested verification at the gate.',
+                'status' => 'Expected',
+            ]);
         }
     }
 

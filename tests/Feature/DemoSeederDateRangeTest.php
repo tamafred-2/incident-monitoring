@@ -18,6 +18,27 @@ class DemoSeederDateRangeTest extends TestCase
     {
         $this->travelTo(Carbon::parse('2026-09-12 14:30:00', config('app.timezone')));
         $this->seed(DatabaseSeeder::class);
+        $this->assertDatabaseCount('houses', 124);
+        $this->assertDatabaseCount('residents', 302);
+        $this->assertDatabaseCount('incidents', 200);
+        $this->assertDatabaseCount('house_ownership_transfers', 3);
+        $this->assertDatabaseCount('expected_visits', 8);
+        $this->assertSame(6, \App\Models\Resident::where('is_deceased', true)->count());
+        $this->assertFalse(\App\Models\Resident::where('is_deceased', true)->where('status', 'Active')->exists());
+        foreach (\App\Models\House::with('residents')->get() as $house) {
+            $owners = $house->residents->where('relation_to_owner', 'Owner')->where('is_deceased', false);
+            $this->assertGreaterThanOrEqual(1, $owners->count());
+            $this->assertLessThanOrEqual(2, $owners->count());
+            foreach ($house->residents as $resident) {
+                $this->assertMatchesRegularExpression('/^[0-9]{11}$/', $resident->phone);
+                $this->assertNotEmpty($resident->email);
+                $this->assertSame($house->display_address, $resident->address_or_unit);
+            }
+        }
+        $this->assertFalse(Incident::whereNull('investigation_description')->exists());
+        $this->assertFalse(Incident::whereNotNull('resolved_at')->whereNull('resolution_description')->exists());
+        $this->assertFalse(Visitor::whereNull('id_photo_path')->orWhereNull('visitor_profile_id')->exists());
+        $this->assertSame([], \Illuminate\Support\Facades\DB::select('PRAGMA foreign_key_check'));
 
         foreach ([[Incident::class, 'reported_at'], [Visitor::class, 'check_in'], [VisitorRequest::class, 'requested_at']] as [$model, $column]) {
             $this->assertFalse($model::where($column, '<', '2026-01-01 00:00:00')->exists());
