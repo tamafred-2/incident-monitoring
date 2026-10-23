@@ -1,3 +1,7 @@
+import './ownership-confirmation';
+import '../css/ownership-confirmation.css';
+import './date-time-picker';
+import './phone-validation';
 import './bootstrap';
 import './form-submission';
 import './visitor-check-in';

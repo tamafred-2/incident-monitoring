@@ -1,0 +1,31 @@
+.datetime-field { position:relative; min-width:0; }
+.datetime-editable { padding-right:38px!important; }
+.datetime-editable::-webkit-calendar-picker-indicator { display:none; }
+.datetime-trigger { position:absolute; right:5px; top:50%; transform:translateY(-50%); display:flex; align-items:center; justify-content:center; width:30px; height:30px; margin-top:2px; border-radius:6px; background:transparent; }
+.datetime-trigger:hover { background:#eff6ff; }
+.datetime-trigger:focus-visible { outline:2px solid #2563eb; }
+.datetime-trigger::after { content:''; flex-shrink:0; width:16px; height:16px; background:center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='1.7'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M16 3v4M8 3v4M3 11h18'/%3E%3C/svg%3E"); }
+.datetime-trigger:disabled { opacity:.5; cursor:not-allowed; background:#f1f5f9; }
+.datetime-popup { position:fixed; z-index:10000; width:410px; max-width:calc(100vw - 16px); max-height:calc(100vh - 16px); overflow:auto; padding:12px; border:1px solid #dbe3ed; border-radius:12px; background:white; color:#0f172a; box-shadow:0 12px 36px #0f172a26; font:12px/1.4 ui-sans-serif,system-ui,sans-serif; }
+.datetime-panels { display:flex; gap:10px; }
+.datetime-calendar { flex:1; min-width:0; }
+.datetime-heading { display:flex; align-items:center; height:36px; margin-bottom:4px; }
+.datetime-heading strong { flex:1; }
+.datetime-heading button { padding:4px 8px; font-size:20px; color:#64748b; }
+.datetime-days { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); text-align:center; }
+.datetime-days span,.datetime-days button { padding:7px 0; }
+.datetime-popup button { border-radius:4px; cursor:pointer; }
+.datetime-popup button:hover { background:#eff6ff; }
+.datetime-popup button:focus-visible { outline:2px solid #2563eb; outline-offset:-2px; }
+.datetime-popup button[aria-pressed=true] { background:#2563eb; color:white; font-weight:600; }
+.datetime-popup button:disabled { opacity:.3; cursor:not-allowed; }
+.datetime-popup .muted { color:#94a3b8; }
+.datetime-time { display:flex; width:44%; gap:3px; border-left:1px solid #e2e8f0; padding-left:6px; }
+.datetime-column { flex:1; min-width:0; height:256px; overflow-y:auto; scrollbar-width:none; }
+.datetime-column::-webkit-scrollbar { display:none; }
+.datetime-column button { display:block; width:100%; height:34px; margin-bottom:2px; }
+.datetime-footer { display:flex; align-items:center; gap:12px; margin-top:10px; border-top:1px solid #f1f5f9; padding-top:10px; }
+.datetime-footer button { padding:7px 10px; color:#2563eb; }
+.datetime-footer button[data-action=okay] { margin-left:auto; padding:8px 18px; background:#2563eb; color:white; font-weight:600; }
+.datetime-footer button[data-action=okay]:hover { background:#1d4ed8; }
+.datetime-error { margin-top:8px; color:#b91c1c; }
