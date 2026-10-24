@@ -40,6 +40,13 @@ class VisitorController extends Controller
         $filterDateTo = $this->normalizeDateTimeInput($request->query('date_to'));
         $historyPerPage = 10;
         $checkOutPerPage = 10;
+        $sortOptions = [
+            'name_asc' => ['full_name', 'asc'], 'name_desc' => ['full_name', 'desc'],
+            'newest' => ['check_in', 'desc'], 'oldest' => ['check_in', 'asc'],
+        ];
+        $sort = (string) $request->query('sort', 'newest');
+        if (! isset($sortOptions[$sort])) $sort = 'newest';
+
 
         $visitors = $this->buildVisitorHistoryQuery($request)
             ->orderByDesc('visitor_id')->simplePaginate($historyPerPage, ['*'], 'history_page')
@@ -115,8 +122,8 @@ class VisitorController extends Controller
             $filterDateTo
         );
         $insideVisitors = $insideVisitorQuery
-            ->orderByDesc('check_in')
-            ->orderByDesc('visitor_id')->simplePaginate($checkOutPerPage, ['*'], 'check_out_page')
+            ->orderBy(...$sortOptions[$sort])
+            ->orderBy('visitor_id', $sortOptions[$sort][1])->simplePaginate($checkOutPerPage, ['*'], 'check_out_page')
             ->withQueryString();
 
         $expectedVisit = null;
@@ -147,6 +154,7 @@ class VisitorController extends Controller
             'residentsByHouse',
             'historyPerPage',
             'checkOutPerPage',
+            'sort',
             'filterDateFrom',
             'filterDateTo',
         ), ['visitor-history' => 'visitors', 'visitor-inside' => 'insideVisitors']);

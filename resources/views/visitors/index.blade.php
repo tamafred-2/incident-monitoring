@@ -647,6 +647,7 @@
                                 <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
                                 @include('visitors.partials.chart-filters')
                                     <input type="hidden" name="tab" value="check-out">
+                                    <input type="hidden" name="sort" value="{{ $sort }}">
                                     <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
                                     <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
                                     <div>
@@ -686,11 +687,27 @@
                             <table class="min-w-full text-sm divide-y divide-slate-200">
                                 <thead class="sticky top-0 z-10 bg-slate-50">
                                     <tr>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Name</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Resident / Host</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">House / Unit</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Checked In</th>
-                                        <th class="px-6 py-3 font-semibold text-left text-slate-600">Actions</th>
+                    @foreach (['Name' => ['name_asc', 'name_desc'], 'Resident / Host' => null, 'House / Unit' => null, 'Checked In' => ['oldest', 'newest'], 'Actions' => null] as $heading => $directions)
+                        <th class="px-6 py-3 font-semibold" @if ($directions) aria-sort="{{ $sort === $directions[0] ? 'ascending' : ($sort === $directions[1] ? 'descending' : 'none') }}" @endif>
+                                @if ($directions)
+                                    @php
+                                        $ascending = $sort === $directions[0];
+                                        $descending = $sort === $directions[1];
+                                        $nextSort = $ascending ? $directions[1] : ($descending ? $directions[0] : ($heading === 'Checked In' ? $directions[1] : $directions[0]));
+                                        $nextAscending = $nextSort === $directions[0];
+                                    @endphp
+                                    <a href="{{ route('visitors.index', array_merge(request()->except('page', 'check_out_page', 'sort'), ['sort' => $nextSort, 'tab' => 'check-out'])) }}"
+                                       aria-label="Sort {{ $heading }} {{ $nextAscending ? 'ascending' : 'descending' }}"
+                                       title="{{ $heading === 'Name' ? ($nextAscending ? 'Sort A-Z' : 'Sort Z-A') : ($nextAscending ? 'Oldest first' : 'Newest first') }}"
+                                       class="inline-flex items-center gap-1 whitespace-nowrap hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 {{ $ascending || $descending ? 'text-brand-700' : 'text-slate-600' }}">
+                                        <span>{{ $heading }}</span>
+                                        <span class="text-xs" aria-hidden="true">{!! $ascending ? '&uarr;' : ($descending ? '&darr;' : '&#8597;') !!}</span>
+                                    </a>
+                                @else
+                                    {{ $heading }}
+                                @endif
+                        </th>
+                    @endforeach
                                     </tr>
                                 </thead>
                                 <tbody data-scroll-rows id="inside-visitors-rows" class="bg-white divide-y divide-slate-100">
