@@ -10,6 +10,23 @@ class WalkInTimeLimitTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_checkout_table_shows_allowed_duration_remaining_and_overdue_time(): void
+    {
+        $this->travelTo(now()->setTime(10, 0, 0));
+        $home = Subdivision::create(['subdivision_name' => 'Timed Estate', 'status' => 'Active']);
+        $guard = User::factory()->create(['role' => 'security', 'subdivision_id' => $home->getKey()]);
+        foreach ([[15, 5], [5, 8], [5, 5], [null, 2]] as [$limit, $elapsed]) {
+            Visitor::create([
+                'subdivision_id' => $home->getKey(), 'first_name' => 'Timed', 'surname' => 'Visitor',
+                'check_in' => now()->subMinutes($elapsed), 'allowed_minutes' => $limit, 'status' => 'Inside',
+            ]);
+        }
+        $this->actingAs($guard)->withoutVite()->get(route('visitors.index', ['tab' => 'check-out']))
+            ->assertOk()->assertSee('Allowed duration:')->assertDontSee('Time Remaining / Overdue')
+            ->assertSee('15 minutes')->assertSee('10 min remaining')->assertSee('Overdue by 3 min')
+            ->assertSee('Due now')->assertSee('No time limit set');
+    }
+
     public function test_custom_hours_are_validated_converted_and_notify_when_overdue(): void
     {
         $home = Subdivision::create(['subdivision_name' => 'Custom Estate', 'status' => 'Active']);
