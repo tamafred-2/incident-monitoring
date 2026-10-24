@@ -20,6 +20,7 @@ class UserController extends Controller
         $filterRole = trim((string) $request->query('role', ''));
         $filterSubdivision = $request->query('subdivision_id');
         $filterView = trim((string) $request->query('view', 'all'));
+        if (! in_array($filterView, ['all', 'active', 'inactive'], true)) $filterView = 'all';
         $perPage = 10;
 
         $query = User::query()
@@ -30,9 +31,6 @@ class UserController extends Controller
 
         if (in_array($filterView, ['active', 'inactive'], true)) {
             $query->where('is_active', $filterView === 'active');
-        } elseif ($filterView === 'deleted') {
-            $query->onlyTrashed();
-
         }
 
         if ($filterQ !== '') {
@@ -127,7 +125,6 @@ class UserController extends Controller
                 'role' => ['required', Rule::in(UserRole::manageableValues())],
                 'is_active' => ['nullable', 'boolean'],
                 'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],
-                'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             ]
         );
 
@@ -141,13 +138,6 @@ class UserController extends Controller
 
         if ($data['role'] === UserRole::Admin->value) {
             $data['subdivision_id'] = null;
-        }
-
-        if (empty($data['password'])) {
-            unset($data['password']);
-        } else {
-            // An admin-set password supersedes any pending temporary password.
-            $data['temporary_password'] = null;
         }
 
         $data['is_active'] = $request->boolean('is_active', $user->is_active);
@@ -185,21 +175,6 @@ class UserController extends Controller
         return null;
     }
 
-    public function restore(Request $request, int $userId)
-    {
-        $user = User::withTrashed()->whereIn('role', UserRole::manageableValues())->findOrFail($userId);
-
-        if (! $user->trashed()) {
-            return redirect()->route('users.index', $this->indexContext($request))
-                ->with('error', 'That user is already active.');
-        }
-
-        $user->restore();
-
-        return redirect()->route('users.index', $this->indexContext($request))
-            ->with('success', 'User restored successfully.');
-    }
-
     private function indexContext(Request $request): array
     {
         $context = array_filter([
@@ -214,7 +189,7 @@ class UserController extends Controller
         ], static fn ($value) => $value !== null && $value !== '');
 
         $view = $request->input('view', $request->query('view', 'all'));
-        if ($view !== 'all') {
+        if (in_array($view, ['active', 'inactive'], true)) {
             $context['view'] = $view;
         }
 

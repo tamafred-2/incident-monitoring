@@ -1,6 +1,6 @@
 @foreach ($users as $user)
 <div data-record-modal="{{ $user->getKey() }}">
-    @if (!$user->trashed() && auth()->id() !== $user->user_id)
+    @if (auth()->id() !== $user->user_id)
         <x-modal name="confirm-user-status-{{ $user->user_id }}" maxWidth="md" focusable>
             <div class="p-6" role="alertdialog" aria-modal="true" aria-labelledby="user-status-title-{{ $user->user_id }}" aria-describedby="user-status-description-{{ $user->user_id }}">
                 <h3 id="user-status-title-{{ $user->user_id }}" class="text-lg font-semibold text-slate-900">
@@ -56,7 +56,6 @@
 
                             @include('users.partials.form-fields', [
                                 'user' => $user,
-                                'showPasswordFields' => true,
                             ])
 
                             <div class="flex flex-wrap gap-3 pt-2">

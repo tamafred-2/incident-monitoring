@@ -25,8 +25,8 @@
                         <h3 class="mt-2 text-2xl font-semibold text-slate-900">{{ $managedUser->full_name }}</h3>
                         <p class="mt-2 text-sm text-slate-500">{{ $managedUser->email }}</p>
                     </div>
-                    <span class="rounded-full px-3 py-1 text-xs font-semibold {{ $managedUser->trashed() ? 'bg-rose-100 text-rose-700' : 'bg-brand-100 text-brand-700' }}">
-                        {{ $managedUser->trashed() ? 'Archived' : $managedUser->role?->label() }}
+                    <span class="rounded-full px-3 py-1 text-xs font-semibold bg-brand-100 text-brand-700">
+                        {{ $managedUser->role?->label() }}
                     </span>
                 </div>
 
@@ -68,17 +68,6 @@
                                 <dt class="text-slate-500">Account Status</dt>
                                 <dd class="text-right font-medium {{ $managedUser->is_active ? 'text-emerald-700' : 'text-amber-700' }}">
                                     {{ $managedUser->is_active ? 'Active' : 'Inactive' }}
-                                </dd>
-                            </div>
-                            <div class="flex items-start justify-between gap-4">
-                                <dt class="text-slate-500">Archived</dt>
-                                <dd class="text-right font-medium text-slate-900">
-                                    @if ($managedUser->deleted_at)
-                                        <span class="block whitespace-nowrap">{{ $managedUser->deleted_at->format('M j, Y') }}</span>
-                                        <span class="mt-1 block whitespace-nowrap text-xs font-medium text-slate-500">{{ $managedUser->deleted_at->format('h:i A') }}</span>
-                                    @else
-                                        No
-                                    @endif
                                 </dd>
                             </div>
                         </dl>

@@ -57,34 +57,38 @@ class UserManagementTest extends TestCase
         $this->assertTrue($targetUser->fresh()->is_active);
     }
 
-    public function test_archived_user_can_be_restored(): void
+    public function test_user_archive_features_are_unavailable(): void
     {
-        $admin = User::factory()->create([
-            'role' => 'admin',
-            'subdivision_id' => null,
-        ]);
-
-        $targetUser = User::factory()->create([
-            'role' => 'staff',
-            'subdivision_id' => null,
-        ]);
-
+        $admin = User::factory()->create(['role' => 'admin']);
+        $targetUser = User::factory()->create(['role' => 'staff']);
         $targetUser->delete();
 
-        $response = $this
-            ->actingAs($admin)
-            ->post(route('users.restore', $targetUser->user_id), [
-                'view' => 'deleted',
-            ]);
+        $this->actingAs($admin)->get(route('users.index', ['view' => 'deleted']))
+            ->assertOk()
+            ->assertDontSee('Archived')
+            ->assertDontSee($targetUser->email)
+            ->assertViewHas('filterView', 'all');
+        $this->post('/users/'.$targetUser->getKey().'/restore')->assertNotFound();
+        $this->assertSoftDeleted($targetUser);
+    }
 
-        $response
-            ->assertRedirectContains(route('users.index'))
-            ->assertSessionHas('success', 'User restored successfully.');
+    public function test_user_details_update_cannot_set_a_manual_password(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $targetUser = User::factory()->create(['role' => 'admin']);
+        $originalPassword = $targetUser->password;
 
-        $this->assertDatabaseHas('users', [
-            'user_id' => $targetUser->user_id,
-            'deleted_at' => null,
-        ]);
+        $this->actingAs($admin)->get(route('users.index'))->assertOk()
+            ->assertDontSee('name="password"', false)
+            ->assertDontSee('name="password_confirmation"', false);
+        $this->put(route('users.update', $targetUser), [
+            'surname' => 'Cruz', 'first_name' => 'Ana',
+            'email' => $targetUser->email, 'role' => 'admin',
+            'password' => 'manual-password', 'password_confirmation' => 'manual-password',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('users.index'));
+
+        $this->assertSame($originalPassword, $targetUser->fresh()->password);
+        $this->assertSame('Ana', $targetUser->fresh()->first_name);
     }
 
     public function test_user_deletion_endpoints_are_unavailable(): void

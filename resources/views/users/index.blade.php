@@ -102,7 +102,6 @@
                                 <option value="all" @selected($filterView === 'all')>All accounts</option>
                                 <option value="active" @selected($filterView === 'active')>Active</option>
                                 <option value="inactive" @selected($filterView === 'inactive')>Inactive</option>
-                                <option value="deleted" @selected($filterView === 'deleted')>Archived</option>
                             </select>
                         </div>
                         <div class="min-w-[220px] flex-1 xl:flex-none">
@@ -129,9 +128,6 @@
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Email</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Role</th>
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Account Status</th>
-                                @if ($filterView === 'deleted')
-                                    <th class="px-6 py-3 text-left font-semibold text-slate-600">Archived</th>
-                                @endif
                                 <th class="px-6 py-3 text-left font-semibold text-slate-600">Action</th>
                             </tr>
                         </thead>

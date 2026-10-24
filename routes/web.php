@@ -71,7 +71,6 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::post('/users', [UserController::class, 'store'])->middleware('role:admin')->name('users.store');
     Route::put('/users/{user}', [UserController::class, 'update'])->middleware('role:admin')->name('users.update');
     Route::patch('/users/{user}/status', [UserController::class, 'setStatus'])->middleware('role:admin')->name('users.status');
-    Route::post('/users/{userId}/restore', [UserController::class, 'restore'])->middleware('role:admin')->name('users.restore');
 
     Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
     Route::get('/incidents/export', [IncidentController::class, 'export'])->middleware('role:admin,staff')->name('incidents.export');
