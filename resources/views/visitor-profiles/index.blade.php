@@ -7,9 +7,6 @@
         <div class="flex flex-wrap items-end justify-between gap-3">
             <div class="flex flex-wrap items-center gap-3">
                 <a href="{{ route('expected-visits.index') }}" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Expected Visits</a>
-                @if (auth()->user()->isSecurity())
-                    <button type="button" x-data @click="$dispatch('open-modal', 'add-visitor-profile')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Add Visitor</button>
-                @endif
             </div>
             <form method="GET" action="{{ route('visitor-profiles.index') }}" class="flex w-full flex-wrap items-end gap-3 lg:ml-auto lg:w-auto">
                 @if (request('subdivision_id'))<input type="hidden" name="subdivision_id" value="{{ request('subdivision_id') }}">@endif
@@ -26,6 +23,9 @@
                 <label for="profile-search" class="sr-only">Search visitors</label>
                 <input id="profile-search" name="q" value="{{ $q }}" type="search" placeholder="Search name or phone" data-live-search="#visitor-profile-results" autocomplete="off" class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 </div>
+                @if (auth()->user()->isSecurity())
+                    <button type="button" x-data @click="$dispatch('open-modal', 'add-visitor-profile')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Add Visitor</button>
+                @endif
             </form>
         </div>
         <div id="visitor-profile-results" class="space-y-4">
