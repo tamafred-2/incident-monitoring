@@ -140,7 +140,7 @@ class VisitorProfileController extends Controller
             'extension' => ['nullable', 'string', 'max:20', new PersonName],
             'phone' => ['required', 'string', 'digits:11'],
             'advance_registration' => ['nullable', 'boolean'],
-            'id_photo' => [$editing || $request->boolean('advance_registration') ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'id_photo' => [$editing || $request->boolean('advance_registration') ? 'nullable' : 'required', 'image', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
         ]);
         foreach (['first_name', 'middle_initials', 'surname', 'extension'] as $field) {
             if (isset($data[$field])) {

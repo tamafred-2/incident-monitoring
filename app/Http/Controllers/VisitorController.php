@@ -391,7 +391,7 @@ class VisitorController extends Controller
             'passenger_count' => ['nullable', 'integer', 'min:1', 'max:20', 'required_if:on_vehicle,1'],
             'vehicle_type' => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
             'vehicle_color' => ['nullable', 'string', 'max:30', 'required_if:on_vehicle,1'],
-            'id_photo' => [$request->attributes->get('visitor_profile')?->id_photo_path ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+            'id_photo' => [$request->attributes->get('visitor_profile')?->id_photo_path ? 'nullable' : 'required', 'image', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
             'host_employee' => ['nullable', 'string', 'max:150', new PersonName],
             'house_address_or_unit' => ['nullable', 'string', 'max:120', 'required_if:visit_type,resident', 'required_if:visit_type,walk_in'],
             'resident_house_id' => ['nullable', 'integer'],

@@ -102,6 +102,36 @@ class VisitorProfilesTest extends TestCase
         $this->actingAs($staff)->get($newUrl)->assertRedirect(route('dashboard'));
     }
 
+    public function test_unsupported_files_are_rejected_for_registration_profile_edits_and_check_in(): void
+    {
+        $this->setupGate();
+        $profile = $this->register();
+        $originalPath = $profile->id_photo_path;
+
+        foreach (['video.mp4' => 'video/mp4', 'renamed-video.jpg' => 'video/mp4', 'animation.gif' => 'image/gif', 'photo.webp' => 'image/webp'] as $filename => $mime) {
+            $this->post(route('visitor-profiles.store'), [
+                'first_name' => 'Ben', 'surname' => 'Reyes', 'phone' => '09171234567',
+                'id_photo' => UploadedFile::fake()->create($filename, 10, $mime),
+            ])->assertSessionHasErrors('id_photo');
+
+            $this->put(route('visitor-profiles.update', $profile), [
+                'first_name' => $profile->first_name, 'surname' => $profile->surname, 'phone' => $profile->phone,
+                'id_photo' => UploadedFile::fake()->create($filename, 10, $mime),
+            ])->assertSessionHasErrors('id_photo');
+
+            $this->post(route('visitors.store'), [
+                'visitor_profile_id' => $profile->getKey(), 'visit_type' => 'walk_in',
+                'allowed_minutes' => 15, 'house_address_or_unit' => 'Gate',
+                'id_photo' => UploadedFile::fake()->create($filename, 10, $mime),
+            ])->assertSessionHasErrors('id_photo');
+        }
+
+        $this->assertSame($originalPath, $profile->fresh()->id_photo_path);
+        $this->assertDatabaseCount('visitor_profiles', 1);
+        $this->assertDatabaseCount('visitors', 0);
+        $this->assertCount(1, Storage::disk('public')->allFiles());
+    }
+
     public function test_exact_full_name_is_rejected_even_with_a_different_phone(): void
     {
         $this->setupGate();

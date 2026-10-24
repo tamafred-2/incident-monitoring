@@ -12,7 +12,8 @@
     @endforeach
     <div>
         <label for="profile-photo" class="block text-sm font-medium text-slate-700">ID Photo</label>
-        <input id="profile-photo" name="id_photo" type="file" accept="image/jpeg,image/png,image/webp,image/gif" :required="!advanceRegistration && @js(!$profile)" class="mt-2 w-full text-sm text-slate-600">
+        <input id="profile-photo" name="id_photo" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" @change="const file = $el.files[0]; $el.setCustomValidity(file && (!['image/jpeg', 'image/png'].includes(file.type) || !/\.(jpe?g|png)$/i.test(file.name)) ? 'Please select a JPG/JPEG or PNG photo. Videos are not allowed.' : file && file.size > 5 * 1024 * 1024 ? 'This photo exceeds the maximum size of 5 MB. Please choose a smaller photo.' : ''); $el.reportValidity()" :required="!advanceRegistration && @js(!$profile)" class="mt-2 w-full text-sm text-slate-600">
+        <p class="mt-1 text-xs text-slate-500">Photos only: JPG/JPEG or PNG (maximum 5 MB). Videos are not allowed.</p>
         <p class="mt-1 text-xs text-slate-500">{{ $profile ? 'Leave blank to keep the current photo.' : 'An ID photo is required at check-in. For an expected visit, you may collect it on arrival.' }}</p>
         <x-input-error :messages="$errors->get('id_photo')" class="mt-1" />
     </div>
