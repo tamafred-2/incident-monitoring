@@ -61,8 +61,10 @@ class ResidentAccountRemovalTest extends TestCase
         $this->assertSame('Ana Cruz', $incident->fresh()->reporter->full_name);
         $this->post(route('login'), ['email' => 'former-resident@example.test', 'password' => 'password'])->assertSessionHasErrors('email');
         $this->assertGuest();
-        $this->actingAs($admin)->get(route('users.index', ['view' => 'deleted']))->assertOk()->assertViewHas('users', fn ($users) => $users->isEmpty());
-        $this->post(route('users.restore', ['userId' => $id]))->assertNotFound();
+        $this->actingAs($admin)->get(route('users.index', ['view' => 'deleted']))->assertOk()
+            ->assertViewHas('filterView', 'all')
+            ->assertViewHas('users', fn ($users) => ! $users->contains('user_id', $id));
+        $this->post('/users/'.$id.'/restore')->assertNotFound();
         $this->assertSame(UserRole::Admin, $admin->fresh()->role);
     }
 }
