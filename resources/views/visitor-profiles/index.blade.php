@@ -4,8 +4,14 @@
     </x-slot>
     <div class="page-section"><div class="page-shell space-y-4">
         @include('partials.alerts')
-        <div class="flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <form method="GET" action="{{ route('visitor-profiles.index') }}" class="flex w-full flex-wrap items-end gap-3 lg:w-auto">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+                <a href="{{ route('expected-visits.index') }}" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Expected Visits</a>
+                @if (auth()->user()->isSecurity())
+                    <button type="button" x-data @click="$dispatch('open-modal', 'add-visitor-profile')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Add Visitor</button>
+                @endif
+            </div>
+            <form method="GET" action="{{ route('visitor-profiles.index') }}" class="flex w-full flex-wrap items-end gap-3 lg:ml-auto lg:w-auto">
                 @if (request('subdivision_id'))<input type="hidden" name="subdivision_id" value="{{ request('subdivision_id') }}">@endif
                 <div>
                     <label for="profile-status" class="block text-xs font-medium text-slate-600">Status</label>
@@ -21,12 +27,6 @@
                 <input id="profile-search" name="q" value="{{ $q }}" type="search" placeholder="Search name or phone" data-live-search="#visitor-profile-results" autocomplete="off" class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 </div>
             </form>
-            <div class="flex flex-wrap items-center gap-3">
-                <a href="{{ route('expected-visits.index') }}" class="text-sm font-semibold text-brand-700">Expected Visits</a>
-            @if (auth()->user()->isSecurity())
-                <button type="button" x-data @click="$dispatch('open-modal', 'add-visitor-profile')" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800">Add Visitor</button>
-            @endif
-            </div>
         </div>
         <div id="visitor-profile-results" class="space-y-4">
         <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
