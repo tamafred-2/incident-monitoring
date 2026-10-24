@@ -74,6 +74,40 @@ class WalkInTimeLimitTest extends TestCase
         $this->assertTrue($visitor->fresh()->is_overdue);
     }
 
+    public function test_follow_ups_append_and_preserve_the_existing_note_and_authorship(): void
+    {
+        $this->freezeTime();
+        $home = Subdivision::create(['subdivision_name' => 'Follow-up Estate', 'status' => 'Active']);
+        $guard = User::factory()->create(['role' => 'security', 'subdivision_id' => $home->getKey()]);
+        $originalTime = now()->subMinutes(2);
+        $visitor = Visitor::create([
+            'subdivision_id' => $home->getKey(), 'first_name' => 'Ana', 'surname' => 'Cruz',
+            'check_in' => now()->subMinutes(15), 'allowed_minutes' => 5, 'status' => 'Inside',
+            'overdue_action' => 'First reminder', 'overdue_action_by' => 'Previous Guard',
+            'overdue_action_at' => $originalTime,
+        ]);
+        $this->actingAs($guard);
+        foreach (['Called resident', 'Requested return to gate'] as $note) {
+            $this->post(route('visitors.overdue-action', $visitor), ['overdue_action' => $note])
+                ->assertSessionHasNoErrors();
+            $this->travel(1)->minutes();
+        }
+        $history = $visitor->fresh()->overdue_follow_ups;
+        $this->assertSame(['First reminder', 'Called resident', 'Requested return to gate'], array_column($history, 'action'));
+        $this->assertSame('Previous Guard', $history[0]['recorded_by']);
+        $this->assertSame($originalTime->toIso8601String(), $history[0]['recorded_at']);
+        $this->assertSame($guard->full_name, $history[1]['recorded_by']);
+        $this->assertNotSame($history[1]['recorded_at'], $history[2]['recorded_at']);
+        $this->get(route('visitors.show', $visitor))->assertOk()
+            ->assertSeeInOrder(['First reminder', 'Called resident', 'Requested return to gate'])
+            ->assertDontSee('Add another follow-up')
+            ->assertDontSee('Save Follow-up')
+            ->assertDontSee('name="overdue_action"', false);
+        $this->post(route('visitors.overdue-action', $visitor), ['overdue_action' => ''])
+            ->assertSessionHasErrors('overdue_action');
+        $this->assertCount(3, $visitor->fresh()->overdue_follow_ups);
+    }
+
     public function test_deadline_crosses_midnight_and_on_time_checkout_stays_on_time(): void
     {
         $visitor = new Visitor(['check_in' => '2026-10-23 23:55:00', 'allowed_minutes' => 15, 'check_out' => '2026-10-24 00:05:00']);

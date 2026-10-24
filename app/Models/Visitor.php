@@ -22,6 +22,7 @@ class Visitor extends Model
         'overdue_action',
         'overdue_action_by',
         'overdue_action_at',
+        'overdue_action_history',
         'owner_approval',
         'visitor_profile_id',
         'subdivision_id',
@@ -74,11 +75,21 @@ class Visitor extends Model
         return [
             'allowed_minutes' => 'integer',
             'overdue_action_at' => 'datetime',
+            'overdue_action_history' => 'array',
             'owner_approval' => 'array',
             'check_in' => 'datetime',
             'check_out' => 'datetime',
             'status' => VisitorStatus::class,
         ];
+    }
+
+    public function getOverdueFollowUpsAttribute(): array
+    {
+        return $this->overdue_action_history ?: ($this->overdue_action ? [[
+            'action' => $this->overdue_action,
+            'recorded_by' => $this->overdue_action_by,
+            'recorded_at' => $this->overdue_action_at?->toIso8601String(),
+        ]] : []);
     }
 
     public function getVisitDeadlineAttribute(): ?\Illuminate\Support\Carbon

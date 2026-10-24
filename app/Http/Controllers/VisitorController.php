@@ -618,10 +618,22 @@ class VisitorController extends Controller
         if (! $visitor->is_overdue) {
             throw ValidationException::withMessages(['overdue_action' => 'This visit has not exceeded its time limit.']);
         }
-        $visitor->update($data + [
-            'overdue_action_by' => $request->user()->full_name,
-            'overdue_action_at' => now(),
-        ]);
+        DB::transaction(function () use ($visitor, $request, $data) {
+            $lockedVisitor = Visitor::whereKey($visitor->getKey())->lockForUpdate()->firstOrFail();
+            $recordedAt = now();
+            $history = $lockedVisitor->overdue_follow_ups;
+            $history[] = [
+                'action' => $data['overdue_action'],
+                'recorded_by' => $request->user()->full_name,
+                'recorded_by_id' => $request->user()->getKey(),
+                'recorded_at' => $recordedAt->toIso8601String(),
+            ];
+            $lockedVisitor->update($data + [
+                'overdue_action_by' => $request->user()->full_name,
+                'overdue_action_at' => $recordedAt,
+                'overdue_action_history' => $history,
+            ]);
+        });
         return back()->with('success', 'Overdue follow-up recorded.');
     }
 
