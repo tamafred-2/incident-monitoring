@@ -2,10 +2,18 @@
     <x-slot name="header"><x-page-header title="Expected Visits" subtitle="Visits arranged by resident phone calls. Check visitors in only when they arrive." /></x-slot>
     <div class="page-section"><div class="page-shell space-y-4">
         @include('partials.alerts')
-        <div class="flex flex-wrap gap-3">
-            <a href="{{ route('visitor-profiles.index') }}" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">{{ auth()->user()->isSecurity() ? 'Choose or Create Visitor Profile' : 'View Visitor Profiles' }}</a>
-            <a href="{{ route('visitors.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Back to Gate</a>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+                <a href="{{ route('visitors.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold">Back to Gate</a>
+                <a href="{{ route('visitor-profiles.index') }}" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">{{ auth()->user()->isSecurity() ? 'Choose or Create Visitor Profile' : 'View Visitor Profiles' }}</a>
+            </div>
+            <form method="GET" action="{{ route('expected-visits.index') }}" class="w-full sm:ml-auto sm:w-80">
+                <input type="hidden" name="sort" value="{{ $sort }}">
+                <label for="expected-visit-search" class="sr-only">Search expected visitors by name or phone</label>
+                <input id="expected-visit-search" name="q" value="{{ $q }}" type="search" placeholder="Search name or phone" data-live-search="#expected-visit-results" autocomplete="off" class="w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+            </form>
         </div>
+        <div id="expected-visit-results" class="space-y-4">
         <section class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
             <table class="min-w-full text-left text-sm">
                 <thead class="bg-slate-50 text-slate-600"><tr>
@@ -51,10 +59,11 @@
                             @endif
                         </td>
                     </tr>
-                    @empty<tr><td colspan="7" class="px-5 py-10 text-center text-slate-500">No expected visits. Open a visitor profile to schedule one.</td></tr>@endforelse
+                    @empty<tr><td colspan="7" class="px-5 py-10 text-center text-slate-500">{{ $q !== '' ? 'No expected visitors match your search.' : 'No expected visits. Open a visitor profile to schedule one.' }}</td></tr>@endforelse
                 </tbody>
             </table>
         </section>
         {{ $visits->links() }}
+        </div>
     </div></div>
 </x-app-layout>

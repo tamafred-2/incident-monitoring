@@ -14,6 +14,7 @@ class ExpectedVisitController extends Controller
 {
     public function index(Request $request)
     {
+        $q = trim((string) $request->query('q', ''));
         $sortOptions = [
             'name_asc' => ['name', 'asc'], 'name_desc' => ['name', 'desc'],
             'newest' => ['created_at', 'desc'], 'oldest' => ['created_at', 'asc'],
@@ -27,10 +28,12 @@ class ExpectedVisitController extends Controller
 
         $visits = ExpectedVisit::with(['profile', 'resident.house', 'recorder'])
             ->when(! $request->user()->isAdmin(), fn ($q) => $q->where('subdivision_id', $request->user()->allowedSubdivisionId()))
+            ->when($q !== '', fn ($query) => $query->whereHas('profile', fn ($profile) => $profile
+                ->where(fn ($profile) => $profile->where('full_name', 'like', '%'.$q.'%')->orWhere('phone', 'like', '%'.$q.'%'))))
             ->where('status', 'Expected')->orderBy($orderColumn, $direction)
             ->orderBy('expected_visits.id', $direction)->paginate(15)->withQueryString();
 
-        return view('expected-visits.index', compact('visits', 'sort'));
+        return view('expected-visits.index', compact('visits', 'sort', 'q'));
     }
 
     public function create(Request $request, VisitorProfile $profile)
