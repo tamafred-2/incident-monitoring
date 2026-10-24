@@ -622,7 +622,7 @@
                     </nav>
                     <div class="mb-2 flex flex-wrap items-center gap-2">
                         <a href="{{ route('expected-visits.index') }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Expected Visits</a>
-                        @if (auth()->user()->hasRole('security'))
+                        @if (auth()->user()->isAdmin())
                             <a href="{{ route('reports.index', ['type' => 'visitors']) }}" class="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Reports</a>
                         @endif
                     </div>

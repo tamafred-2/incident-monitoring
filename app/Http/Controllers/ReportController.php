@@ -28,7 +28,7 @@ class ReportController extends Controller
             'report_status' => ['nullable', Rule::in(['Inside', 'Checked Out'])],
         ]);
         $type = $filters['type'] ?? 'incidents';
-        $canReportVisitors = $request->user()->hasRole('security');
+        $canReportVisitors = $request->user()->isAdmin();
         abort_if($type === 'visitors' && ! $canReportVisitors, 403);
         unset($filters['type']);
         if ($request->boolean('all_dates')) unset($filters['date_from'], $filters['date_to']);

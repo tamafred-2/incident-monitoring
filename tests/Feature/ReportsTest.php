@@ -10,6 +10,24 @@ class ReportsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_security_cannot_access_report_pages_previews_or_downloads(): void
+    {
+        $area = Subdivision::create(['subdivision_name' => 'North', 'status' => 'Active']);
+        $this->actingAs(User::factory()->create(['role' => 'security', 'subdivision_id' => $area->getKey()]));
+        foreach (['reports.index', 'incidents.print', 'visitors.print'] as $route) {
+            $this->get(route($route))->assertRedirect(route('dashboard'));
+        }
+        foreach (['incidents.export', 'visitors.export'] as $route) {
+            foreach (['excel', 'pdf'] as $format) {
+                $this->get(route($route, ['format' => $format]))->assertRedirect(route('dashboard'));
+            }
+        }
+        foreach (['incidents.index', 'visitors.index'] as $route) {
+            $this->withoutVite()->get(route($route))->assertOk()
+                ->assertDontSee(route('reports.index'), false);
+        }
+    }
+
     public function test_preview_and_print_use_photo_urls_without_reading_image_bytes(): void
     {
         $area = Subdivision::create(['subdivision_name' => 'North', 'status' => 'Active']);
@@ -37,7 +55,7 @@ class ReportsTest extends TestCase
     public function test_large_reports_download_in_bounded_non_overlapping_parts(): void
     {
         $subdivision = Subdivision::create(['subdivision_name' => 'North', 'status' => 'Active']);
-        $guard = User::factory()->create(['role' => 'security', 'subdivision_id' => $subdivision->getKey()]);
+        $guard = User::factory()->create(['role' => 'admin', 'subdivision_id' => $subdivision->getKey()]);
         $this->actingAs($guard);
         foreach (['visitors', 'incidents'] as $type) {
             for ($i = 1; $i <= 101; $i++) {
@@ -87,7 +105,7 @@ class ReportsTest extends TestCase
     {
         $subdivision = Subdivision::create(['subdivision_name' => 'North', 'status' => 'Active']);
         $other = Subdivision::create(['subdivision_name' => 'South', 'status' => 'Active']);
-        $guard = User::factory()->create(['role' => 'security', 'subdivision_id' => $subdivision->getKey()]);
+        $guard = User::factory()->create(['role' => 'staff', 'subdivision_id' => $subdivision->getKey()]);
         foreach ([[$subdivision, 'Open', 'Active gate'], [$subdivision, 'Closed', 'Closed gate'], [$other, 'Open', 'Foreign gate']] as [$area, $status, $location]) {
             Incident::create(['subdivision_id' => $area->getKey(), 'description' => $location, 'location' => $location, 'category' => 'Security', 'status' => $status, 'incident_date' => now(), 'reported_at' => now(), 'reported_by' => $guard->getKey()]);
         }
@@ -102,7 +120,7 @@ class ReportsTest extends TestCase
     public function test_visitor_reports_filter_status_and_check_in_dates_in_preview_and_download(): void
     {
         $subdivision = Subdivision::create(['subdivision_name' => 'North', 'status' => 'Active']);
-        $guard = User::factory()->create(['role' => 'security', 'subdivision_id' => $subdivision->getKey()]);
+        $guard = User::factory()->create(['role' => 'admin', 'subdivision_id' => $subdivision->getKey()]);
         foreach ([['Inside', 'Ralph', now()], ['Checked Out', 'Ana', now()], ['Inside', 'Old', now()->subDays(2)]] as [$status, $name, $time]) {
             Visitor::create(['subdivision_id' => $subdivision->getKey(), 'first_name' => $name, 'surname' => 'Cruz', 'status' => $status, 'check_in' => $time]);
         }

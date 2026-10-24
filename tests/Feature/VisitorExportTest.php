@@ -19,7 +19,7 @@ class VisitorExportTest extends TestCase
             'status' => 'Active',
         ]);
         $this->actingAs(User::factory()->create([
-            'role' => 'security',
+            'role' => 'admin',
             'subdivision_id' => $subdivision->getKey(),
         ]));
         Visitor::create([

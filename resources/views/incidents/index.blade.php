@@ -65,7 +65,9 @@
                             Incident History
                         </a>
                     </nav>
+                @if (auth()->user()->hasRole(['admin', 'staff']))
                     <a href="{{ route('reports.index', ['type' => 'incidents']) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Reports</a>
+                @endif
                 </div>
             </div>
 
