@@ -15,6 +15,12 @@
                         open: true,
                         password: @js($reveal['password']),
                         copied: false,
+                        closeHighlighted: false,
+                        highlightClose() {
+                            if (!this.open) return;
+                            this.closeHighlighted = true;
+                            this.$refs.closeButton.focus();
+                        },
                         copy() {
                             navigator.clipboard.writeText(this.password).then(() => {
                                 this.copied = true;
@@ -25,12 +31,21 @@
                     x-cloak
                     x-show="open"
                     x-transition.opacity
-                    @keydown.escape.window="open = false"
+                    @keydown.escape.window="if (open) { $event.preventDefault(); highlightClose(); }"
+                    @keydown.tab="if (open) {
+                        if ($event.shiftKey && document.activeElement === $refs.copyButton) {
+                            $event.preventDefault(); $refs.closeButton.focus();
+                        } else if (!$event.shiftKey && document.activeElement === $refs.closeButton) {
+                            $event.preventDefault(); $refs.copyButton.focus();
+                        }
+                    }"
+                    x-init="$nextTick(() => $refs.copyButton.focus())"
                     class="fixed inset-0 z-50 flex items-center justify-center px-4"
                     role="dialog"
                     aria-modal="true"
+                    aria-labelledby="reset-password-reveal-title"
                 >
-                    <div class="absolute inset-0 bg-slate-950/80" @click="open = false"></div>
+                    <div class="absolute inset-0 bg-slate-950/80" @click="highlightClose()" aria-hidden="true"></div>
 
                     <div
                         x-show="open"
@@ -43,7 +58,7 @@
                             </svg>
                         </div>
 
-                        <h3 class="mt-4 text-lg font-semibold text-slate-900">New password generated</h3>
+                        <h3 id="reset-password-reveal-title" class="mt-4 text-lg font-semibold text-slate-900">New password generated</h3>
                         <p class="mt-1 text-sm text-slate-500">For {{ $reveal['email'] }}</p>
 
                         <div class="mt-5 flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
@@ -53,6 +68,7 @@
                         <button
                             type="button"
                             @click="copy()"
+                            x-ref="copyButton"
                             class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
                         >
                             <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -67,10 +83,16 @@
                             Copy it now and give it to the user. For security it is shown only once &mdash; once you close, leave, or refresh this page it cannot be retrieved again.
                         </p>
 
+                        <p x-show="closeHighlighted" x-cloak role="status" class="mt-3 text-xs font-medium text-amber-700">
+                            Copy the password before clicking Close to dismiss this window.
+                        </p>
+
                         <button
                             type="button"
+                            x-ref="closeButton"
                             @click="open = false"
-                            class="mt-3 text-sm font-medium text-slate-500 transition hover:text-slate-700"
+                            :class="closeHighlighted ? 'ring-4 ring-amber-400 ring-offset-2' : ''"
+                            class="mt-3 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-amber-400 focus:ring-offset-2"
                         >
                             Close
                         </button>
