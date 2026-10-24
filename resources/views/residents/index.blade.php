@@ -7,44 +7,6 @@
         <div class="page-shell flex flex-col gap-4 min-[1600px]:gap-6">
             @include('partials.alerts')
 
-            <div class="p-6 bg-white border shadow-sm rounded-2xl border-slate-200">
-                <form method="GET" action="{{ route('residents.index') }}" class="grid gap-4 md:grid-cols-[1fr_180px_auto]">
-                    @if (request()->filled('relation_to_owner'))
-                        <input type="hidden" name="relation_to_owner" value="{{ request('relation_to_owner') }}">
-                    @endif
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Search</label>
-                        <input type="search" name="q" value="{{ $filterQ }}" placeholder="Name, address, house"
-                               data-live-search="#residents-results" autocomplete="off"
-                               class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
-                        <p class="mt-1 text-xs text-slate-400">Searches residents as you type</p>
-                    </div>
-                    @if (auth()->user()->isAdmin())
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700">Status</label>
-                        <select name="status" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
-                            <option value="">All</option>
-                            @foreach (\App\Enums\ActiveStatus::values() as $statusOption)
-                                <option value="{{ $statusOption }}" @selected($filterStatus === $statusOption)>{{ $statusOption }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    @endif
-                    <div class="flex items-start gap-3 md:pt-6">
-                        @if (auth()->user()->isAdmin())
-                            <button
-                                type="button"
-                                x-data
-                                x-on:click="$dispatch('open-modal', 'create-resident')"
-                                class="whitespace-nowrap rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                            >
-                                Add Resident
-                            </button>
-                        @endif
-                    </div>
-                </form>
-            </div>
-
             <div id="residents-results" class="flex flex-col gap-6">
             <div class="overflow-hidden bg-white border shadow-sm rounded-2xl border-slate-200">
                 <div class="flex flex-col gap-4 px-6 py-4 border-b border-slate-200 xl:flex-row xl:items-end xl:justify-between">
@@ -57,6 +19,40 @@
                         @endif
                         <p class="mt-1 text-sm text-slate-500">Find contact details and housing assignments.</p>
                     </div>
+                <form method="GET" action="{{ route('residents.index') }}" class="flex w-full flex-wrap items-end gap-3 xl:w-auto">
+                    @if (request()->filled('relation_to_owner'))
+                        <input type="hidden" name="relation_to_owner" value="{{ request('relation_to_owner') }}">
+                    @endif
+                    <div class="w-full sm:w-72">
+                        <label for="resident-search" class="block text-sm font-medium text-slate-700">Search</label>
+                        <input id="resident-search" type="search" name="q" value="{{ $filterQ }}" placeholder="Name, address, house"
+                               data-live-search="#residents-results" autocomplete="off"
+                               class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
+                    </div>
+                    @if (auth()->user()->isAdmin())
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Status</label>
+                        <select name="status" onchange="this.form.requestSubmit()" class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
+                            <option value="">All</option>
+                            @foreach (\App\Enums\ActiveStatus::values() as $statusOption)
+                                <option value="{{ $statusOption }}" @selected($filterStatus === $statusOption)>{{ $statusOption }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endif
+                    <div class="flex items-end gap-3">
+                        @if (auth()->user()->isAdmin())
+                            <button
+                                type="button"
+                                x-data
+                                x-on:click="$dispatch('open-modal', 'create-resident')"
+                                class="whitespace-nowrap rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                            >
+                                Add Resident
+                            </button>
+                        @endif
+                    </div>
+                </form>
                 </div>
                 <x-scroll-list name="residents" :records="$residents" modal-target="#residents-scroll-modals">
                     <table class="min-w-full text-sm divide-y divide-slate-200">
