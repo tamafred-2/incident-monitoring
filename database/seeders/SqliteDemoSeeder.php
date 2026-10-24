@@ -717,6 +717,7 @@ class SqliteDemoSeeder extends Seeder
                 'status' => 'Expected',
             ]);
         }
+        $this->call(ExpectedVisitDatesSeeder::class);
     }
 
     private function incidentStatusPreset(): array
