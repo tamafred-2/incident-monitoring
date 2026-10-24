@@ -732,6 +732,35 @@
                             <h3 class="text-lg font-semibold text-slate-900">{{ request()->boolean('chart_filter') ? 'Matching Visitor Check-ins' : 'Visitor History' }}</h3>
                             <p class="mt-1 text-sm text-slate-500">Browse visitor check-in/check-out records with host, purpose, and status history.</p>
                         </div>
+                        <form method="GET" action="{{ route('visitors.index') }}" class="flex flex-wrap items-end gap-3">
+                            @include('visitors.partials.chart-filters')
+                            @if ($filterSubdivision)
+                                <input type="hidden" name="subdivision_id" value="{{ $filterSubdivision }}">
+                            @endif
+                            <input type="hidden" name="tab" value="history">
+                            <input type="hidden" name="sort" value="{{ $sort }}">
+                            <input type="hidden" name="history_per_page" value="{{ $historyPerPage }}">
+                            <input type="hidden" name="check_out_per_page" value="{{ $checkOutPerPage }}">
+                            <div>
+                                <label for="history-date_from" class="block text-sm font-medium text-slate-700">Start</label>
+                                <input type="datetime-local" id="history-date_from" name="date_from" value="{{ $filterDateFrom ? \Illuminate\Support\Carbon::parse($filterDateFrom)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label for="history-date_to" class="block text-sm font-medium text-slate-700">End</label>
+                                <input type="datetime-local" id="history-date_to" name="date_to" value="{{ $filterDateTo ? \Illuminate\Support\Carbon::parse($filterDateTo)->format('Y-m-d\TH:i') : '' }}" onchange="this.form.requestSubmit()" class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label for="history-q" class="block text-sm font-medium text-slate-700">Search</label>
+                                <input
+                                    type="search"
+                                    id="history-q" name="q"
+                                    value="{{ $filterQ }}"
+                                    placeholder="Name, phone, house"
+                                    data-live-search="#visitor-inside-results,#visitor-history-results" autocomplete="off"
+                                    class="mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
+                                >
+                            </div>
+                        </form>
 
                     </div>
                     <div id="visitor-history-results"><x-scroll-list name="visitor-history" :records="$visitors">
