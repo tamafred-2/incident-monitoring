@@ -78,21 +78,22 @@
                 <a
                     :href="notification.detail_url"
                     @click.prevent="openNotification(notification)"
-                    class="block border-b border-slate-100 px-5 py-4 transition last:border-b-0 hover:bg-slate-50"
+                    class="flex h-36 flex-col border-b border-slate-100 px-4 py-3 transition last:border-b-0 hover:bg-slate-50"
                 >
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <p class="min-w-0 whitespace-normal break-words text-sm font-semibold text-slate-900" x-text="notification.title || notification.visitor_name"></p>
-                                <span
-                                    x-show="notification.is_unread"
-                                    class="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500"
-                                ></span>
-                            </div>
-                            <p class="mt-1 text-xs leading-5 text-slate-500" x-text="notification.message"></p>
-                            <p class="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400" x-text="notification.time_label"></p>
-                        </div>
-                        <span class="shrink-0 text-[11px] text-slate-400" x-text="notification.relative_time"></span>
+                    <div class="flex min-h-10 items-start gap-2">
+                        <p class="line-clamp-2 min-w-0 flex-1 break-words text-sm font-semibold leading-5 text-slate-900"
+                            :title="notification.title || notification.visitor_name"
+                            x-text="notification.title || notification.visitor_name"></p>
+                        <span
+                            x-show="notification.is_unread"
+                            class="mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-brand-500"
+                        ></span>
+                    </div>
+                    <p class="mt-1 line-clamp-2 h-10 shrink-0 break-words text-xs leading-5 text-slate-500"
+                        :title="notification.message" x-text="notification.message"></p>
+                    <div class="mt-auto flex min-w-0 items-center justify-between gap-2 pt-2 text-[11px] leading-4 text-slate-400">
+                        <span class="min-w-0 truncate font-medium uppercase" :title="notification.time_label" x-text="notification.time_label"></span>
+                        <span class="shrink-0" x-text="notification.relative_time"></span>
                     </div>
                 </a>
             </template>
