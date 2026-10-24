@@ -180,30 +180,77 @@
         <div class="grid gap-4 md:grid-cols-2">
             <input type="hidden" name="subdivision_id" value="{{ $selectedSubdivision !== '' ? $selectedSubdivision : $subdivisions->first()?->subdivision_id }}">
             <div>
-                <label class="block text-sm font-medium text-slate-700">Assigned House</label>
-                <select
-                    x-ref="houseSelect"
-                    name="house_id"
-                    aria-invalid="{{ $formErrors->has('house_id') ? 'true' : 'false' }}"
-                    aria-describedby="{{ $fieldPrefix }}-house_id-error"
-                    x-model="houseId"
-                    class="mt-1 w-full rounded-xl {{ $formErrors->has('house_id') ? 'border-rose-300' : 'border-slate-300' }} text-sm shadow-sm {{ $formErrors->has('house_id') ? 'focus:border-rose-500' : 'focus:border-brand-500' }} focus:ring-brand-500"
+                @php
+                    $houseOptions = $houses->map(fn ($house) => ['id' => (string) $house->house_id, 'label' => $house->display_address])->values();
+                @endphp
+                <div x-data="{
+                    options: @js($houseOptions),
+                    query: '',
+                    expanded: false,
+                    active: -1,
+                    visibleCount: 10,
+                    get visibleChoices() { return this.choices.slice(0, this.visibleCount); },
+                    loadMore() {
+                        const list = this.$refs.options;
+                        if (list.scrollTop + list.clientHeight >= list.scrollHeight - 24) {
+                            this.visibleCount = Math.min(this.visibleCount + 10, this.choices.length);
+                        }
+                    },
+                    get choices() {
+                        const words = this.query.toLowerCase().trim().split(/\s+/);
+                        return [{ id: '', label: 'No assigned house' }, ...this.options]
+                            .filter(option => words.every(word => option.label.toLowerCase().includes(word)));
+                    },
+                    get selectedLabel() {
+                        return this.options.find(option => option.id === this.houseId)?.label || 'No assigned house';
+                    },
+                    openList() { this.expanded = true; this.query = ''; this.active = -1; this.visibleCount = 10; this.$nextTick(() => { this.$refs.options.scrollTop = 0; }); },
+                    closeList() { this.expanded = false; this.query = ''; this.active = -1; },
+                    choose(option) { this.houseId = option.id; this.closeList(); },
+                    move(step) {
+                        if (!this.expanded) this.openList();
+                        const length = this.choices.length;
+                        if (!length) return;
+                        this.active = Math.max(0, Math.min(length - 1, this.active + step));
+                        if (this.active >= this.visibleCount) this.visibleCount = Math.min(this.visibleCount + 10, length);
+                        this.$nextTick(() => this.$refs.options.querySelectorAll('[role=option]')[this.active]?.scrollIntoView({ block: 'nearest' }));
+                    }
+                }"
+                    x-init="$watch('query', () => { visibleCount = 10; active = -1; $nextTick(() => { $refs.options.scrollTop = 0; }); })"
+                    @click.outside="closeList()"
+                    @open-modal.window="if ($event.detail === 'create-resident' && @js(!$resident)) { houseId = ''; closeList(); }"
                 >
-                    <option value="">No assigned house</option>
-                    @foreach ($houses as $house)
-                        <option
-                            value="{{ $house->house_id }}"
-                            data-subdivision="{{ $house->subdivision_id }}"
-                            @selected($selectedHouse === (string) $house->house_id)
-                        >
-                            {{ $house->display_address }}
-                        </option>
-                    @endforeach
-                </select>
+                    <label for="{{ $fieldPrefix }}-house-search" class="block text-sm font-medium text-slate-700">Assigned House</label>
+                    <input type="hidden" name="house_id" :value="houseId">
+                    <input id="{{ $fieldPrefix }}-house-search" type="text" role="combobox" autocomplete="off"
+                        :value="expanded ? query : selectedLabel"
+                        @focus="openList()" @click="if (!expanded) openList()"
+                        @input="query = $event.target.value; expanded = true; active = -1"
+                        @keydown.down.prevent="move(1)" @keydown.up.prevent="move(-1)"
+                        @keydown.enter.prevent="if (expanded && active >= 0 && choices[active]) choose(choices[active])"
+                        @keydown.escape.prevent.stop="closeList()" @blur="closeList()"
+                        :aria-expanded="expanded" aria-autocomplete="list" aria-controls="{{ $fieldPrefix }}-house-options"
+                        :aria-activedescendant="expanded && active >= 0 ? '{{ $fieldPrefix }}-house-option-' + active : null"
+                        aria-invalid="{{ $formErrors->has('house_id') ? 'true' : 'false' }}"
+                        aria-describedby="{{ $fieldPrefix }}-house_id-error"
+                        placeholder="Type street, block, or lot"
+                        class="mt-1 w-full rounded-xl {{ $formErrors->has('house_id') ? 'border-rose-300' : 'border-slate-300' }} text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                    <div x-show="expanded" x-cloak class="mt-1 rounded-xl border border-slate-200 bg-white shadow-sm">
+                        <ul id="{{ $fieldPrefix }}-house-options" x-ref="options" role="listbox" aria-label="Assigned house" @scroll.passive="loadMore()" class="max-h-48 overflow-y-auto overscroll-contain py-1">
+                            <template x-for="(option, index) in visibleChoices" :key="option.id">
+                                <li :id="'{{ $fieldPrefix }}-house-option-' + index" role="option"
+                                    :aria-selected="houseId === option.id"
+                                    @mousedown.prevent @click="choose(option)" @mouseenter="active = index"
+                                    :class="active === index ? 'bg-brand-50 text-brand-700' : 'text-slate-700'"
+                                    class="cursor-pointer px-3 py-2 text-sm" x-text="option.label"></li>
+                            </template>
+                        </ul>
+                        <p x-show="choices.length === 0" class="px-3 py-2 text-sm text-slate-500">No matching houses.</p>
+                    </div>
+                </div>
                 @if ($formErrors->has('house_id'))
                     <p id="{{ $fieldPrefix }}-house_id-error" data-validation-error class="mt-1 text-xs text-rose-600">{{ $formErrors->first('house_id') }}</p>
                 @endif
-                <p class="mt-1 text-xs text-slate-500">When a house is selected, the resident address will follow the managed house record.</p>
             </div>
         </div>
 
