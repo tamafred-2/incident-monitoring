@@ -62,7 +62,7 @@
                                     <td class="px-6 py-3 font-medium text-slate-900">{{ $resident->full_name }}</td>
                                     <td class="px-6 py-3 text-slate-500">{{ $resident->relation_to_owner ?: '—' }}</td>
                                     <td class="px-6 py-3 text-slate-500">{{ $resident->phone ?: '—' }}</td>
-                                    <td class="px-6 py-3 text-slate-500">{{ $resident->status }}</td>
+                                    <td class="px-6 py-3 text-slate-500">{{ $resident->is_deceased ? 'Deceased' : $resident->status }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
