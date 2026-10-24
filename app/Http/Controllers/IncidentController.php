@@ -1183,7 +1183,8 @@ class IncidentController extends Controller
             $proofDataUri = null;
             $proofOmitted = false;
 
-            if ($includeProofImages && $proofPath) {
+            // Browser previews use the protected photo URL; only PDF needs embedded bytes.
+            if ($includeProofImages && $renderingPdf && $proofPath) {
                 $absolutePath = $this->proofPhotoAbsolutePath($proofPath);
                 if ($absolutePath && File::exists($absolutePath)) {
                     if ($renderingPdf && ! \App\Support\PdfImage::supported($absolutePath)) {

@@ -54,7 +54,9 @@
                         <td>{{ $row['reported_at'] }}</td>
                         <td>{{ $row['resolved_at'] }}</td>
                         <td>
-                            @if (!empty($row['proof_data_uri']))
+                            @if (empty($renderingPdf) && !empty($includeProofImages) && !empty($row['proof_url']))
+                                <img src="{{ $row['proof_url'] }}" alt="Incident proof" class="proof-thumb">
+                            @elseif (!empty($row['proof_data_uri']))
                                 <img src="{{ $row['proof_data_uri'] }}" alt="Incident proof" class="proof-thumb">
                             @elseif (!empty($row['proof_omitted']))
                                 Photo unavailable in PDF. <a href="{{ $row['proof_url'] }}">View original photo</a>

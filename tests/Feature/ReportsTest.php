@@ -10,6 +10,30 @@ class ReportsTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_preview_and_print_use_photo_urls_without_reading_image_bytes(): void
+    {
+        $area = Subdivision::create(['subdivision_name' => 'North', 'status' => 'Active']);
+        $user = User::factory()->create(['role' => 'staff', 'subdivision_id' => $area->getKey()]);
+        $path = 'uploads/incidents/large-proof.jpg';
+        Incident::create([
+            'subdivision_id' => $area->getKey(), 'reported_by' => $user->getKey(),
+            'location' => 'Gate', 'status' => 'Resolved', 'incident_date' => now(),
+            'reported_at' => now(), 'proof_photo_path' => $path,
+        ]);
+        \Illuminate\Support\Facades\Storage::fake('public');
+        \Illuminate\Support\Facades\Storage::disk('public')->put($path, 'large image placeholder');
+        $absolutePath = \Illuminate\Support\Facades\Storage::disk('public')->path($path);
+        \Illuminate\Support\Facades\File::partialMock()->shouldReceive('mimeType')->with($absolutePath)->never();
+        \Illuminate\Support\Facades\File::shouldReceive('get')->with($absolutePath)->never();
+        $url = route('incidents.photos.show', ['path' => $path]);
+        foreach ([['preview' => 1, 'embed' => 1], ['autoprint' => 1]] as $options) {
+            $this->actingAs($user)->get(route('incidents.print', $options + ['report' => 1, 'view' => 'all']))
+                ->assertOk()->assertSee('src="'.$url.'"', false)
+                ->assertDontSee('data:image')
+                ->assertViewHas('reportRows', fn ($rows) => count($rows) === 1 && $rows[0]['proof_data_uri'] === null);
+        }
+    }
+
     public function test_large_reports_download_in_bounded_non_overlapping_parts(): void
     {
         $subdivision = Subdivision::create(['subdivision_name' => 'North', 'status' => 'Active']);
