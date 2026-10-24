@@ -14,11 +14,23 @@ class ExpectedVisitController extends Controller
 {
     public function index(Request $request)
     {
+        $sortOptions = [
+            'name_asc' => ['name', 'asc'], 'name_desc' => ['name', 'desc'],
+            'newest' => ['created_at', 'desc'], 'oldest' => ['created_at', 'asc'],
+        ];
+        $sort = (string) $request->query('sort', 'name_asc');
+        if (! isset($sortOptions[$sort])) $sort = 'name_asc';
+        [$column, $direction] = $sortOptions[$sort];
+        $orderColumn = $column === 'name'
+            ? VisitorProfile::select('full_name')->whereColumn('profile_id', 'expected_visits.visitor_profile_id')->limit(1)
+            : 'expected_visits.created_at';
+
         $visits = ExpectedVisit::with(['profile', 'resident.house', 'recorder'])
             ->when(! $request->user()->isAdmin(), fn ($q) => $q->where('subdivision_id', $request->user()->allowedSubdivisionId()))
-            ->where('status', 'Expected')->orderBy('expected_at')->paginate(15);
+            ->where('status', 'Expected')->orderBy($orderColumn, $direction)
+            ->orderBy('expected_visits.id', $direction)->paginate(15)->withQueryString();
 
-        return view('expected-visits.index', compact('visits'));
+        return view('expected-visits.index', compact('visits', 'sort'));
     }
 
     public function create(Request $request, VisitorProfile $profile)
