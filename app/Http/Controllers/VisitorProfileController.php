@@ -100,7 +100,9 @@ class VisitorProfileController extends Controller
         $this->authorizeProfile($request, $profile);
         abort_unless($profile->id_photo_path && Storage::disk('public')->exists($profile->id_photo_path), 404);
 
-        return response()->file(Storage::disk('public')->path($profile->id_photo_path));
+        return response()->file(Storage::disk('public')->path($profile->id_photo_path), [
+            'Cache-Control' => 'private, no-store, max-age=0',
+        ])->setPrivate();
     }
 
     private function query(Request $request)

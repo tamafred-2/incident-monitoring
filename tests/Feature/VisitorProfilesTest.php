@@ -74,6 +74,34 @@ class VisitorProfilesTest extends TestCase
         $this->assertDatabaseCount('visitor_profiles', 1);
     }
 
+    public function test_replacing_a_photo_changes_its_url_and_serves_the_latest_file_without_caching(): void
+    {
+        $this->setupGate();
+        $profile = $this->register();
+        $oldPath = $profile->id_photo_path;
+        $oldUrl = route('visitor-profiles.photo', ['profile' => $profile, 'v' => hash('sha256', $oldPath)]);
+        $this->get(route('visitor-profiles.show', $profile))->assertSee($oldUrl);
+
+        $this->post(route('visitor-profiles.update', $profile), [
+            '_method' => 'PUT',
+            'first_name' => $profile->first_name, 'surname' => $profile->surname, 'phone' => $profile->phone,
+            'id_photo' => UploadedFile::fake()->create('replacement.jpg', 12, 'image/jpeg'),
+        ])->assertSessionHasNoErrors()->assertRedirect(route('visitor-profiles.show', $profile));
+
+        $profile->refresh();
+        $this->assertNotSame($oldPath, $profile->id_photo_path);
+        $newUrl = route('visitor-profiles.photo', ['profile' => $profile, 'v' => hash('sha256', $profile->id_photo_path)]);
+        $this->get(route('visitor-profiles.show', $profile))->assertSee($newUrl)->assertDontSee($oldUrl);
+        $response = $this->get($newUrl)->assertOk();
+        $this->assertSame(Storage::disk('public')->path($profile->id_photo_path), $response->baseResponse->getFile()->getPathname());
+        $this->assertTrue($response->headers->hasCacheControlDirective('private'));
+        $this->assertTrue($response->headers->hasCacheControlDirective('no-store'));
+        $this->assertFalse($response->headers->hasCacheControlDirective('public'));
+
+        $staff = User::factory()->create(['role' => 'staff', 'subdivision_id' => $profile->subdivision_id]);
+        $this->actingAs($staff)->get($newUrl)->assertRedirect(route('dashboard'));
+    }
+
     public function test_exact_full_name_is_rejected_even_with_a_different_phone(): void
     {
         $this->setupGate();
@@ -118,7 +146,9 @@ class VisitorProfilesTest extends TestCase
         ])->assertSessionHasNoErrors();
         $first = Visitor::sole();
         $this->assertSame($profile->id_photo_path, $first->id_photo_path);
-        $this->get(route('visitors.photo', $first))->assertOk();
+        $photo = $this->get(route('visitors.photo', $first))->assertOk();
+        $this->assertTrue($photo->headers->hasCacheControlDirective('private'));
+        $this->assertTrue($photo->headers->hasCacheControlDirective('no-store'));
         $this->post(route('visitors.store'), $payload)->assertSessionHasErrors('visitor_profile_id');
         $this->assertDatabaseCount('visitors', 1);
         $this->travel(90)->minutes();

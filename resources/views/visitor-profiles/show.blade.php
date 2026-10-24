@@ -27,7 +27,7 @@
                         </div>
                         <p class="mt-1 text-sm text-slate-500">{{ $profile->full_name }}</p>
                         <template x-if="show">
-                            <img src="{{ route('visitor-profiles.photo', $profile) }}" alt="ID photo of {{ $profile->full_name }}" class="mx-auto mt-5 max-h-[70dvh] w-full rounded-xl object-contain">
+                            <img src="{{ route('visitor-profiles.photo', ['profile' => $profile, 'v' => hash('sha256', $profile->id_photo_path)]) }}" alt="ID photo of {{ $profile->full_name }}" class="mx-auto mt-5 max-h-[70dvh] w-full rounded-xl object-contain">
                         </template>
                     </div>
                 </x-modal>

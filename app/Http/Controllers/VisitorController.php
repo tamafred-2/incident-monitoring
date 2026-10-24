@@ -324,7 +324,9 @@ class VisitorController extends Controller
         $absolutePath = $this->visitorPhotoAbsolutePath($visitor->id_photo_path);
         abort_unless($absolutePath !== null, 404);
 
-        return response()->file($absolutePath);
+        return response()->file($absolutePath, [
+            'Cache-Control' => 'private, no-store, max-age=0',
+        ])->setPrivate();
     }
 
     public function store(Request $request): RedirectResponse
