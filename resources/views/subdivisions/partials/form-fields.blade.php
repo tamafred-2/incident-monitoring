@@ -29,7 +29,7 @@
             <div class="space-y-3">
                 <div>
                     <label class="block text-sm font-medium text-slate-700">Subdivision Logo</label>
-                    <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp"
+                    <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp" data-photo-upload data-max-mb="2"
                            class="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     <p class="mt-1 text-xs text-slate-500">JPG, PNG, or WEBP. Max 2 MB.</p>
                     @error('logo') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror

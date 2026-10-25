@@ -457,12 +457,12 @@
                                         type="file"
                                         name="id_photo"
                                         accept=".jpg,.jpeg,.png,image/jpeg,image/png"
-                                        @change="const file = $el.files[0]; $el.setCustomValidity(file && (!['image/jpeg', 'image/png'].includes(file.type) || !/\.(jpe?g|png)$/i.test(file.name)) ? 'Please select a JPG/JPEG or PNG photo. Videos are not allowed.' : file && file.size > 5 * 1024 * 1024 ? 'This photo exceeds the maximum size of 5 MB. Please choose a smaller photo.' : ''); $el.reportValidity()"
+                                        data-photo-upload data-max-mb="{{ \App\Support\PhotoUpload::MAX_MB }}"
                                         :required="selectedProfile && !selectedProfile.has_photo"
                                         :disabled="!selectedProfile || selectedProfile.has_photo"
                                         class="w-full mt-1 text-sm shadow-sm rounded-xl border-slate-300 focus:border-brand-500 focus:ring-brand-500"
                                     >
-                                    <p class="mt-1 text-xs text-slate-500">Photos only: JPG/JPEG or PNG (maximum 5 MB). Videos are not allowed.</p>
+                                    <p class="mt-1 text-xs text-slate-500">Photos only: JPG/JPEG or PNG (maximum {{ \App\Support\PhotoUpload::MAX_MB }} MB). Videos are not allowed.</p>
                                 </div>
                             </div>
                         </div>

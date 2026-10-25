@@ -4,6 +4,7 @@ import './date-time-picker';
 import './phone-validation';
 import './bootstrap';
 import './form-submission';
+import './photo-upload';
 import './visitor-check-in';
 import './dashboard-tables';
 import './record-lists';

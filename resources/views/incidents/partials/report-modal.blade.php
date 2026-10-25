@@ -148,8 +148,8 @@
                     </div>
                     <div>
                         <label for="report-resolution-photos" class="block text-sm font-medium text-slate-700">Resolution Photos</label>
-                        <input id="report-resolution-photos" type="file" name="proof_photos[]" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onchange="this.setCustomValidity(Array.from(this.files).some(file => !/\.(png|jpe?g)$/i.test(file.name) || !['image/png', 'image/jpeg'].includes(file.type)) ? 'Only PNG and JPEG images are allowed.' : (Array.from(this.files).some(file => file.size > 5 * 1024 * 1024) ? 'Each image must be 5 MB or smaller.' : (this.files.length > 10 ? 'Select at most 10 images.' : ''))); this.reportValidity();" multiple :disabled="!['Resolved', 'Closed'].includes(reportStatus)" class="mt-1 block w-full text-sm text-slate-600">
-                        <p class="mt-1 text-xs text-slate-500">Attach available photos showing the completed work. Up to 10 images, 5 MB each.</p>
+                        <input id="report-resolution-photos" type="file" name="proof_photos[]" accept="image/jpeg,image/png,.jpg,.jpeg,.png" data-photo-upload data-max-mb="{{ \App\Support\PhotoUpload::MAX_MB }}" data-max-files="{{ \App\Support\PhotoUpload::MAX_FILES }}" multiple :disabled="!['Resolved', 'Closed'].includes(reportStatus)" class="mt-1 block w-full text-sm text-slate-600">
+                        <p class="mt-1 text-xs text-slate-500">Attach available photos showing the completed work. Up to {{ \App\Support\PhotoUpload::MAX_FILES }} images, {{ \App\Support\PhotoUpload::MAX_MB }} MB each.</p>
                         <x-input-error class="mt-1" :messages="array_merge($errors->get('proof_photos'), collect($errors->get('proof_photos.*'))->flatten()->all())" />
                         @include('incidents.partials.stage-descriptions', ['descriptionStage' => 'resolution'])
                     </div>

@@ -183,9 +183,9 @@
                     @if (!$isResolvedIncident)
                         <div class="md:col-span-2 rounded-2xl border border-slate-200 p-5">
                             <label for="investigation-photos" class="font-semibold text-slate-700">Investigation proof — Before</label>
-                            <input id="investigation-photos" type="file" name="investigation_photos[]" multiple accept="image/jpeg,image/png,.jpg,.jpeg,.png" onchange="this.setCustomValidity(Array.from(this.files).some(file => !/\.(png|jpe?g)$/i.test(file.name) || !['image/png', 'image/jpeg'].includes(file.type)) ? 'Only PNG and JPEG images are allowed.' : (Array.from(this.files).some(file => file.size > 5 * 1024 * 1024) ? 'Each image must be 5 MB or smaller.' : (this.files.length > 10 ? 'Select at most 10 images.' : ''))); this.reportValidity();" class="mt-3 block w-full text-sm">
+                            <input id="investigation-photos" type="file" name="investigation_photos[]" multiple accept="image/jpeg,image/png,.jpg,.jpeg,.png" data-photo-upload data-max-mb="{{ \App\Support\PhotoUpload::MAX_MB }}" data-max-files="{{ \App\Support\PhotoUpload::MAX_FILES }}" class="mt-3 block w-full text-sm">
                             <x-input-error class="mt-2" :messages="array_merge($errors->get('investigation_photos'), collect($errors->get('investigation_photos.*'))->flatten()->all())" />
-                            <p class="mt-2 text-xs text-slate-500">PNG or JPEG only. Maximum 5 MB per image, 10 images per upload. Click Save Changes to upload.</p>
+                            <p class="mt-2 text-xs text-slate-500">PNG or JPEG only. Maximum {{ \App\Support\PhotoUpload::MAX_MB }} MB per image, {{ \App\Support\PhotoUpload::MAX_FILES }} images per upload. Click Save Changes to upload.</p>
                             <p class="mt-2 text-sm text-slate-500">Save these photos first. This records the investigation step before a later resolution. Upload times are recorded automatically.</p>
                             @include('incidents.partials.stage-descriptions', ['descriptionStage' => 'investigation'])
                         </div>
@@ -203,13 +203,13 @@
                         <input
                             type="file"
                             name="proof_photos[]"
-                            accept="image/jpeg,image/png,.jpg,.jpeg,.png" onchange="this.setCustomValidity(Array.from(this.files).some(file => !/\.(png|jpe?g)$/i.test(file.name) || !['image/png', 'image/jpeg'].includes(file.type)) ? 'Only PNG and JPEG images are allowed.' : (Array.from(this.files).some(file => file.size > 5 * 1024 * 1024) ? 'Each image must be 5 MB or smaller.' : (this.files.length > 10 ? 'Select at most 10 images.' : ''))); this.reportValidity();"
+                            accept="image/jpeg,image/png,.jpg,.jpeg,.png" data-photo-upload data-max-mb="{{ \App\Support\PhotoUpload::MAX_MB }}" data-max-files="{{ \App\Support\PhotoUpload::MAX_FILES }}"
                             multiple
                             class="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm"
                             data-proof-input
                         >
                         <x-input-error class="mt-2" :messages="array_merge($errors->get('proof_photos'), collect($errors->get('proof_photos.*'))->flatten()->all())" />
-                        <p class="mt-2 text-xs text-slate-500">PNG or JPEG only. Maximum 5 MB per image. Click Save Changes to upload.</p>
+                        <p class="mt-2 text-xs text-slate-500">PNG or JPEG only. Maximum {{ \App\Support\PhotoUpload::MAX_MB }} MB per image. Click Save Changes to upload.</p>
                         <p class="mt-2 text-xs text-slate-500" data-proof-help>Upload separate after-resolution images here. Up to 10 files per upload.</p>
                         <div class="mt-4 hidden grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-proof-preview-list></div>
                         @include('incidents.partials.stage-descriptions', ['descriptionStage' => 'resolution'])
