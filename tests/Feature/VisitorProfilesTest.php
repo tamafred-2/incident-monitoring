@@ -150,6 +150,18 @@ class VisitorProfilesTest extends TestCase
         $this->assertNotSame($originalPath, $profile->fresh()->id_photo_path);
     }
 
+    public function test_requests_over_the_server_upload_limit_get_a_clear_response_instead_of_a_crash(): void
+    {
+        $this->setupGate();
+        $oversized = ['CONTENT_LENGTH' => PHP_INT_MAX, 'CONTENT_TYPE' => 'multipart/form-data; boundary=x'];
+
+        $this->call('POST', route('visitors.store'), [], [], [], $oversized + ['HTTP_ACCEPT' => 'application/json'])
+            ->assertStatus(413)->assertJsonPath('errors.upload.0', 'The selected photos are too large to upload at once. Choose smaller or fewer photos, then try again.');
+        $this->call('POST', route('visitor-profiles.store'), [], [], [], $oversized)
+            ->assertStatus(413)->assertSee('too large to upload at once')->assertSee('Go back');
+        $this->assertDatabaseCount('visitor_profiles', 0);
+    }
+
     public function test_exact_full_name_is_rejected_even_with_a_different_phone(): void
     {
         $this->setupGate();
