@@ -542,6 +542,12 @@ class IncidentManagementTest extends TestCase
 
         $this->put(route('incidents.update', $incident->incident_id), [
             'status' => 'Under Investigation',
+            'investigation_photos' => [UploadedFile::fake()->create('before.jpg', 10 * 1024 + 1, 'image/jpeg')],
+        ])->assertSessionHasErrors(['investigation_photos.0' => 'Each photo must be 10 MB or smaller. Please choose a smaller photo.']);
+        $this->assertSame(0, $incident->proofPhotos()->count());
+
+        $this->put(route('incidents.update', $incident->incident_id), [
+            'status' => 'Under Investigation',
             'investigation_photos' => [UploadedFile::fake()->create('before.jpg', 128, 'image/jpeg')],
         ])->assertSessionHasNoErrors();
         $before = $incident->proofPhotos()->where('stage', 'investigation')->firstOrFail();

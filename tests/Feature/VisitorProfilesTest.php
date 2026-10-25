@@ -132,6 +132,24 @@ class VisitorProfilesTest extends TestCase
         $this->assertCount(1, Storage::disk('public')->allFiles());
     }
 
+    public function test_id_photos_up_to_ten_megabytes_are_accepted_and_larger_ones_are_rejected(): void
+    {
+        $this->setupGate();
+        $profile = $this->register();
+        $originalPath = $profile->id_photo_path;
+        $payload = ['first_name' => $profile->first_name, 'surname' => $profile->surname, 'phone' => $profile->phone];
+
+        $this->put(route('visitor-profiles.update', $profile), $payload + [
+            'id_photo' => UploadedFile::fake()->create('large.jpg', 10 * 1024 + 1, 'image/jpeg'),
+        ])->assertSessionHasErrors(['id_photo' => 'The photo must be 10 MB or smaller. Please choose a smaller photo.']);
+        $this->assertSame($originalPath, $profile->fresh()->id_photo_path);
+
+        $this->put(route('visitor-profiles.update', $profile), $payload + [
+            'id_photo' => UploadedFile::fake()->create('limit.jpg', 10 * 1024, 'image/jpeg'),
+        ])->assertSessionHasNoErrors();
+        $this->assertNotSame($originalPath, $profile->fresh()->id_photo_path);
+    }
+
     public function test_exact_full_name_is_rejected_even_with_a_different_phone(): void
     {
         $this->setupGate();

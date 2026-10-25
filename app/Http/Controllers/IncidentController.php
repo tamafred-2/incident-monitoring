@@ -11,6 +11,7 @@ use App\Models\IncidentPhoto;
 use App\Models\Subdivision;
 use App\Models\User;
 use App\Notifications\IncidentUpdatedNotification;
+use App\Support\PhotoUpload;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -210,7 +211,7 @@ class IncidentController extends Controller
         $rules = $this->incidentValidationRules();
         unset($rules['reported_at']);
         $rules['resolved_at'] = ['required_if:status,Resolved,Closed', 'nullable', 'date', 'after_or_equal:incident_date', 'before_or_equal:now'];
-        $data = $request->validate($rules);
+        $data = $request->validate($rules, $this->incidentPhotoMessages());
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
         if (! $subdivisionId) {
@@ -285,7 +286,8 @@ class IncidentController extends Controller
         $previousStatus = $incident->status;
         $data = $request->validate($isFullEditor
             ? $this->incidentValidationRules()
-            : $this->incidentStatusValidationRules()
+            : $this->incidentStatusValidationRules(),
+            $this->incidentPhotoMessages()
         );
         $status = $this->mapIncidentStatusForStorage((string) $data['status']);
         $investigationPaths = $incident->proofPhotos()->where('stage', 'investigation')->pluck('photo_path')->all();
@@ -474,10 +476,10 @@ class IncidentController extends Controller
             'assigned_to' => ['nullable', 'integer', 'exists:users,user_id'],
             'investigation_description' => ['nullable', 'string', 'max:5000'],
             'resolution_description' => ['nullable', 'string', 'max:5000'],
-            'investigation_photos' => ['nullable', 'array', 'max:10'],
-            'investigation_photos.*' => ['file', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
-            'proof_photos' => ['nullable', 'array', 'max:10'],
-            'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
+            'investigation_photos' => ['nullable', 'array', 'max:'.PhotoUpload::MAX_FILES],
+            'investigation_photos.*' => PhotoUpload::rules(),
+            'proof_photos' => ['nullable', 'array', 'max:'.PhotoUpload::MAX_FILES],
+            'proof_photos.*' => PhotoUpload::rules(),
             'remove_proof_photos' => ['nullable', 'array'],
             'remove_proof_photos.*' => ['string'],
         ];
@@ -489,6 +491,11 @@ class IncidentController extends Controller
         return $rules;
     }
 
+    private function incidentPhotoMessages(): array
+    {
+        return PhotoUpload::messages('investigation_photos.*') + PhotoUpload::messages('proof_photos.*');
+    }
+
     private function incidentStatusValidationRules(): array
     {
         return [
@@ -496,10 +503,10 @@ class IncidentController extends Controller
             'resolved_at' => ['nullable', 'date'],
             'investigation_description' => ['nullable', 'string', 'max:5000'],
             'resolution_description' => ['nullable', 'string', 'max:5000'],
-            'investigation_photos' => ['nullable', 'array', 'max:10'],
-            'investigation_photos.*' => ['file', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
-            'proof_photos' => ['nullable', 'array', 'max:10'],
-            'proof_photos.*' => ['file', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
+            'investigation_photos' => ['nullable', 'array', 'max:'.PhotoUpload::MAX_FILES],
+            'investigation_photos.*' => PhotoUpload::rules(),
+            'proof_photos' => ['nullable', 'array', 'max:'.PhotoUpload::MAX_FILES],
+            'proof_photos.*' => PhotoUpload::rules(),
             'remove_proof_photos' => ['nullable', 'array'],
             'remove_proof_photos.*' => ['string'],
         ];

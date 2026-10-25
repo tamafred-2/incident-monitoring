@@ -8,6 +8,7 @@ use App\Models\Subdivision;
 use App\Models\Visitor;
 use App\Models\VisitorProfile;
 use App\Rules\PersonName;
+use App\Support\PhotoUpload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -140,8 +141,8 @@ class VisitorProfileController extends Controller
             'extension' => ['nullable', 'string', 'max:20', new PersonName],
             'phone' => ['required', 'string', 'digits:11'],
             'advance_registration' => ['nullable', 'boolean'],
-            'id_photo' => [$editing || $request->boolean('advance_registration') ? 'nullable' : 'required', 'image', 'mimes:jpg,jpeg,png', 'extensions:jpg,jpeg,png', 'max:5120'],
-        ]);
+            'id_photo' => [$editing || $request->boolean('advance_registration') ? 'nullable' : 'required', ...PhotoUpload::rules()],
+        ], PhotoUpload::messages('id_photo'));
         foreach (['first_name', 'middle_initials', 'surname', 'extension'] as $field) {
             if (isset($data[$field])) {
                 $data[$field] = preg_replace('/\s+/u', ' ', trim($data[$field]));
