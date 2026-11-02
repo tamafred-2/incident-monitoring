@@ -38,7 +38,7 @@
                         x-on:click="$dispatch('open-modal', 'edit-house-{{ $house->house_id }}')"
                         class="inline-flex items-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
                     >
-                        Edit
+                        Update
                     </button>
                     @if ($house->canDelete())
 <button

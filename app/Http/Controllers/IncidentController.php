@@ -165,10 +165,11 @@ class IncidentController extends Controller
 
         return response()->streamDownload(function () use ($reportRows) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Category', 'Location', 'Status', 'Reporter', 'Date Reported', 'Date Resolved', 'Proof Image URL', 'Investigation Description', 'Resolution Description']);
+            fputcsv($handle, ['Type', 'Category', 'Location', 'Status', 'Reporter', 'Date Reported', 'Date Resolved', 'Proof Image URL', 'Investigation Description', 'Resolution Description']);
 
             foreach ($reportRows as $row) {
                 fputcsv($handle, [
+                    $row['type'],
                     $row['category'],
                     $row['location'],
                     $row['status'],
@@ -210,7 +211,12 @@ class IncidentController extends Controller
     {
         $rules = $this->incidentValidationRules();
         unset($rules['reported_at']);
+        // New reports start as Pending; only staff/admin may record an already-resolved incident.
+        $rules['status'] = ['nullable', Rule::in(['Open', ...IncidentStatus::resolvedValues()])];
         $rules['resolved_at'] = ['required_if:status,Resolved,Closed', 'nullable', 'date', 'after_or_equal:incident_date', 'before_or_equal:now'];
+        if ($request->user()->isSecurity()) {
+            $request->merge(['status' => IncidentStatus::Open->value]);
+        }
         $data = $request->validate($rules, $this->incidentPhotoMessages());
 
         $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
@@ -226,7 +232,7 @@ class IncidentController extends Controller
         }
 
         $reportedAt = now()->toDateTimeString();
-        $status = $this->mapIncidentStatusForStorage((string) $data['status']);
+        $status = $this->mapIncidentStatusForStorage((string) ($data['status'] ?? IncidentStatus::Open->value));
 
         $proofPhotoPaths = $this->storeProofPhotos($request);
 
@@ -284,11 +290,12 @@ class IncidentController extends Controller
         $this->authorizeIncidentEdit($request, $incident);
         $isFullEditor = $request->user()->isAdmin();
         $previousStatus = $incident->status;
-        $data = $request->validate($isFullEditor
-            ? $this->incidentValidationRules()
-            : $this->incidentStatusValidationRules(),
-            $this->incidentPhotoMessages()
-        );
+        $rules = $isFullEditor ? $this->incidentValidationRules() : $this->incidentStatusValidationRules();
+        // The reported date is a system record of when the report was filed; it never changes.
+        unset($rules['reported_at']);
+        $rules['resolved_at'] = ['nullable', 'date'];
+        $data = $request->validate($rules, $this->incidentPhotoMessages());
+        $reportedAt = optional($incident->reported_at ?? $incident->created_at)->format('Y-m-d H:i:s');
         $status = $this->mapIncidentStatusForStorage((string) $data['status']);
         $investigationPaths = $incident->proofPhotos()->where('stage', 'investigation')->pluck('photo_path')->all();
         if ($this->requiresProofPhotoForStatus($status) && ! $this->requiresProofPhotoForStatus($previousStatus)) {
@@ -322,7 +329,7 @@ class IncidentController extends Controller
             throw ValidationException::withMessages(['proof_photos' => 'Keep at least one resolution proof image.']);
         }
 
-        return DB::transaction(function () use ($request, $incident, $data, $status, $previousStatus, $isFullEditor, $existingProofPhotoPaths, $proofPhotosToRemove) {
+        return DB::transaction(function () use ($request, $incident, $data, $status, $previousStatus, $isFullEditor, $existingProofPhotoPaths, $proofPhotosToRemove, $reportedAt) {
             if ($isFullEditor) {
                 $subdivisionId = $this->resolveSubmittedSubdivisionId($request);
                 if (! $subdivisionId) {
@@ -349,8 +356,7 @@ class IncidentController extends Controller
                     'category' => $this->resolveCategory($data),
                     'location' => $this->resolveLocation($data),
                     'incident_date' => $data['incident_date'],
-                    'reported_at' => $data['reported_at'],
-                    'resolved_at' => $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $data['reported_at']], $incident),
+                    'resolved_at' => $this->resolveResolvedAt(['status' => $status, 'resolved_at' => $data['resolved_at'] ?? null, 'reported_at' => $reportedAt], $incident),
                     'status' => $status,
                     'assigned_to' => $assignedTo,
                 ]);
@@ -362,7 +368,7 @@ class IncidentController extends Controller
                     'resolved_at' => $this->resolveResolvedAt([
                         'status' => $status,
                         'resolved_at' => $data['resolved_at'] ?? null,
-                        'reported_at' => optional($incident->reported_at)->format('Y-m-d H:i:s'),
+                        'reported_at' => $reportedAt,
                     ], $incident),
                     'status' => $status,
                 ]);
@@ -954,18 +960,7 @@ class IncidentController extends Controller
 
     private function incidentCategories(): array
     {
-        return [
-            'Security',
-            'Safety',
-            'Property Damage',
-            'Theft',
-            'Vandalism',
-            'Noise Complaint',
-            'Parking',
-            'Suspicious Activity',
-            'Medical',
-            'Other',
-        ];
+        return \App\Support\IncidentCategories::all();
     }
 
     private function resolveCategory(array $data): ?string
@@ -1204,6 +1199,7 @@ class IncidentController extends Controller
             }
 
             return [
+                'type' => \App\Support\IncidentCategories::typeOf($incident->category) ?? '-',
                 'category' => $incident->category ?: '-',
                 'location' => $incident->location ?: '-',
                 'status' => IncidentStatus::displayLabel($incident->status),

@@ -44,7 +44,7 @@
                         x-on:click="$dispatch('open-modal', 'edit-resident-{{ $resident->resident_id }}')"
                         class="inline-flex items-center rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-100 hover:text-brand-800"
                     >
-                        Edit
+                        Update
                     </button>
                 @endif
 

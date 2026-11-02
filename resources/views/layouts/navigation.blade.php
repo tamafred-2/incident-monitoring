@@ -1,4 +1,5 @@
 @php
+    use App\Models\GuardDevice;
     use App\Models\PasswordResetRequest;
     use App\Models\Subdivision;
     use Illuminate\Support\Str;
@@ -16,6 +17,10 @@
             })
             ->count();
     }
+
+    $pendingGuardDevices = ($user?->isAdmin() ?? false) && Schema::hasTable('guard_devices')
+        ? GuardDevice::where('status', GuardDevice::STATUS_PENDING)->count()
+        : 0;
 
     if (Schema::hasTable('subdivisions')) {
         $brandingSubdivision = $user?->subdivision_id
@@ -52,13 +57,19 @@
                     'label' => 'Users',
                     'href' => route('users.index'),
                     'active' => 'users.*',
-                    'badge' => $pendingPasswordResets,
+                    'badge' => $pendingPasswordResets + $pendingGuardDevices,
                     'children' => [
                         [
                             'label' => 'Password Resets',
                             'href' => route('admin.password-resets.index'),
                             'active' => 'admin.password-resets.*',
                             'badge' => $pendingPasswordResets,
+                        ],
+                        [
+                            'label' => 'Guard Devices',
+                            'href' => route('admin.guard-devices.index'),
+                            'active' => 'admin.guard-devices.*',
+                            'badge' => $pendingGuardDevices,
                         ],
                     ],
                 ] : null,
@@ -72,7 +83,7 @@
                 $user->hasRole(['staff', 'security']) ? ['label' => 'Residents', 'href' => route('residents.index'), 'active' => 'residents.*'] : null,
                 $user->hasRole(['staff', 'security']) ? ['label' => 'Visitors', 'href' => route('visitor-profiles.index'), 'active' => 'visitor-profiles.*'] : null,
                 ($isSecurityUser || $isAdminUser) ? ['label' => 'Gate', 'href' => route('visitors.index'), 'active' => 'visitors.*'] : null,
-                ($isStaffUser || $isAdminUser) ? ['label' => 'Reports', 'href' => route('reports.index'), 'active' => 'reports.*'] : null,
+                ($isStaffUser || $isAdminUser || $isSecurityUser) ? ['label' => 'Reports', 'href' => route('reports.index'), 'active' => 'reports.*'] : null,
             ])),
         ],
     ];

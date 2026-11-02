@@ -57,7 +57,7 @@
                         href="{{ route('visitors.edit', array_merge(['visitor' => $visitor->visitor_id], request()->only(['tab', 'q', 'subdivision_id', 'history_per_page', 'check_out_per_page']))) }}"
                         class="px-3 py-2 text-xs font-semibold border rounded-lg border-brand-300 text-brand-700 hover:bg-brand-50"
                     >
-                        Edit
+                        Update
                     </a>
                 @endif
             </div>

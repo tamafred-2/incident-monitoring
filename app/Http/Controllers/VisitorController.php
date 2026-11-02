@@ -289,14 +289,9 @@ class VisitorController extends Controller
             'purpose' => ['nullable', 'string'],
             'host_employee' => ['nullable', 'string', 'max:150', new PersonName],
             'house_address_or_unit' => ['nullable', 'string', 'max:120'],
-            'check_in' => ['required', 'date'],
-            'check_out' => ['nullable', 'date', 'after_or_equal:check_in'],
-            'status' => ['required', Rule::enum(VisitorStatus::class)],
         ]);
 
-        if ($data['status'] === VisitorStatus::Inside->value) {
-            $data['check_out'] = null;
-        }
+        // Status and check-in/check-out times are gate records and stay as logged.
 
         $visitor->update([
             'surname' => $data['surname'],
@@ -307,9 +302,6 @@ class VisitorController extends Controller
             'purpose' => $data['purpose'] ?? null,
             'host_employee' => filled($data['host_employee'] ?? null) ? trim((string) $data['host_employee']) : null,
             'house_address_or_unit' => filled($data['house_address_or_unit'] ?? null) ? trim((string) $data['house_address_or_unit']) : null,
-            'check_in' => $data['check_in'],
-            'check_out' => $data['check_out'] ?? null,
-            'status' => $data['status'],
         ]);
 
         return redirect()->route('visitors.index', $this->visitorRouteContext($request, $visitor->subdivision_id))

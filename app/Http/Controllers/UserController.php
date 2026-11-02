@@ -121,7 +121,7 @@ class UserController extends Controller
                 'first_name' => ['required', 'string', 'max:100', new PersonName],
                 'middle_name' => ['nullable', 'string', 'max:100', new PersonName],
                 'extension' => ['nullable', 'string', 'max:20', new PersonName],
-                'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->user_id, 'user_id')],
+                // The login email is fixed after creation, so it is not accepted here.
                 'role' => ['required', Rule::in(UserRole::manageableValues())],
                 'is_active' => ['nullable', 'boolean'],
                 'subdivision_id' => ['nullable', 'integer', 'exists:subdivisions,subdivision_id'],

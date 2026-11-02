@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsureGuardAccess;
 use App\Http\Middleware\EnsurePasswordChange;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureSubdivisionAccess;
@@ -18,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->web(append: [EnsureActiveAccount::class, PreventDuplicateCreation::class]);
+        $middleware->web(append: [EnsureActiveAccount::class, EnsureGuardAccess::class, PreventDuplicateCreation::class]);
         $middleware->alias([
             'role' => EnsureRole::class,
             'subdivision' => EnsureSubdivisionAccess::class,

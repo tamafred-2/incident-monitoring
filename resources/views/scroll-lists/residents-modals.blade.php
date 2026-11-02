@@ -8,7 +8,7 @@
                         >
                             <div class="flex items-start justify-between gap-4">
                                 <div>
-                                    <h3 class="text-lg font-semibold text-slate-900">Edit Resident</h3>
+                                    <h3 class="text-lg font-semibold text-slate-900">Update Resident</h3>
                                     <p class="mt-1 text-sm text-slate-500">Update {{ $resident->full_name }} and the assigned housing record.</p>
                                 </div>
                                 <button

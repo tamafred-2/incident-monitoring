@@ -26,8 +26,15 @@
 </div>
 <div>
     <label class="block text-sm font-medium text-slate-700">Email</label>
-    <input type="email" name="email" required autocomplete="new-password" value="{{ old('email', $user?->email ?? '') }}"
-           class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+    @if ($user)
+        {{-- The email is the account's login and stays fixed once created. --}}
+        <input type="email" value="{{ $user->email }}" readonly
+               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm">
+        <p class="mt-1 text-xs text-slate-500">The login email cannot be changed.</p>
+    @else
+        <input type="email" name="email" required autocomplete="new-password" value="{{ old('email', '') }}"
+               class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+    @endif
 </div>
 @php
     $activeValue = old('is_active', $user?->is_active ?? true);

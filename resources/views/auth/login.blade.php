@@ -12,13 +12,15 @@
     </div>
 
     <x-popup-alert type="success" title="Request Sent" :message="session('status')" />
+    <x-popup-alert type="error" title="Access Restricted" :message="session('error')" />
 
     @isset($quickLoginUser)
         <div class="mb-6 rounded-xl border border-brand-100 bg-brand-50/60 p-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">Welcome back</p>
 
-            <form method="POST" action="{{ route('quick-login') }}" class="mt-4">
+            <form method="POST" action="{{ route('quick-login') }}" class="mt-4" @if ($premisesCheck) data-guard-location @endif>
                 @csrf
+                @include('auth.partials.location-fields')
                 <x-primary-button class="w-full justify-center">
                     {{ __('Continue as :name', ['name' => $quickLoginUser->full_name ?: $quickLoginUser->email]) }}
                 </x-primary-button>
@@ -35,8 +37,9 @@
             </form>
         </div>
     @else
-    <form method="POST" action="{{ route('login') }}" class="space-y-5">
+    <form method="POST" action="{{ route('login') }}" class="space-y-5" @if ($premisesCheck) data-guard-location @endif>
         @csrf
+        @include('auth.partials.location-fields')
 
         <div>
             <x-input-label for="email" :value="__('Email')" />
@@ -101,6 +104,10 @@
     </form>
     @endisset
 
+    @if ($premisesCheck)
+        <p class="mt-6 text-xs leading-5 text-slate-500">Security guards must allow location access to confirm they are inside the subdivision premises.</p>
+    @endif
+
     <script>
         (function () {
             const emailInput = document.getElementById('email');
@@ -122,5 +129,28 @@
             emailInput.addEventListener('input', syncForgotLink);
             syncForgotLink();
         })();
+
+        // Attach the device location before signing in, for the guard premises check.
+        document.querySelectorAll('form[data-guard-location]').forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (form.dataset.locationReady === 'true' || !navigator.geolocation) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                var submit = function () {
+                    form.dataset.locationReady = 'true';
+                    form.requestSubmit ? form.requestSubmit() : form.submit();
+                };
+
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    form.querySelector('[name="latitude"]').value = position.coords.latitude;
+                    form.querySelector('[name="longitude"]').value = position.coords.longitude;
+                    form.querySelector('[name="accuracy"]').value = position.coords.accuracy;
+                    submit();
+                }, submit, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+            });
+        });
     </script>
 </x-guest-layout>

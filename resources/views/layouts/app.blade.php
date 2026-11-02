@@ -119,5 +119,6 @@
                 @endif
             </div>
         </div>
+        @include('partials.guard-location-heartbeat')
     </body>
 </html>

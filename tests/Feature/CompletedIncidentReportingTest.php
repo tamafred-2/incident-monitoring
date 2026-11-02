@@ -38,7 +38,7 @@ class CompletedIncidentReportingTest extends TestCase
         $admin = User::factory()->create();
         User::factory()->create(['role' => 'staff', 'subdivision_id' => $payload['subdivision_id']]);
         $this->actingAs($admin)->get(route('incidents.index'))->assertOk()
-            ->assertSee('id="report-status"', false)->assertSee('Date Resolved');
+            ->assertSee('Already resolved (record for history)')->assertSee('Date Resolved');
         $this->post(route('incidents.store'), $payload)->assertSessionHasNoErrors()
             ->assertSessionHas('success', 'Completed incident saved to history.')->assertRedirectContains('view=history');
         $incident = Incident::sole();
@@ -90,6 +90,28 @@ class CompletedIncidentReportingTest extends TestCase
         $this->assertSame(now()->toDateTimeString(), $incident->reported_at->toDateTimeString());
         $this->assertSame($payload['incident_date'], $incident->incident_date->toDateTimeString());
         $this->assertNull($incident->resolved_at);
+    }
+
+    public function test_guard_reports_always_start_as_pending(): void
+    {
+        $payload = $this->reportPayload();
+        $guard = User::factory()->create(['role' => 'security', 'subdivision_id' => $payload['subdivision_id']]);
+        $this->actingAs($guard)->get(route('incidents.index'))->assertOk()
+            ->assertDontSee('Already resolved (record for history)');
+        $this->post(route('incidents.store'), $payload)->assertSessionHasNoErrors();
+        $incident = Incident::sole();
+        $this->assertSame('Open', $incident->status);
+        $this->assertNull($incident->resolved_at);
+    }
+
+    public function test_new_reports_default_to_pending_and_cannot_skip_to_investigation(): void
+    {
+        $payload = $this->reportPayload();
+        unset($payload['status'], $payload['resolved_at']);
+        $staff = User::factory()->create(['role' => 'staff', 'subdivision_id' => $payload['subdivision_id']]);
+        $this->actingAs($staff)->post(route('incidents.store'), $payload)->assertSessionHasNoErrors();
+        $this->assertSame('Open', Incident::sole()->status);
+        $this->post(route('incidents.store'), $payload + ['status' => 'Under Investigation'])->assertSessionHasErrors('status');
     }
 
 }

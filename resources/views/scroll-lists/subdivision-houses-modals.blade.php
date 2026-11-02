@@ -4,7 +4,7 @@
                 <div class="p-6 bg-white sm:p-8">
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900">Edit House</h3>
+                            <h3 class="text-lg font-semibold text-slate-900">Update House</h3>
                             <p class="mt-1 text-sm text-slate-500">Update {{ $house->display_address }}.</p>
                         </div>
                         <button type="button" x-on:click="$dispatch('close')" class="p-2 transition border rounded-xl border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700" aria-label="Close">

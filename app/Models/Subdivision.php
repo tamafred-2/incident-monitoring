@@ -26,6 +26,7 @@ class Subdivision extends Model
         'zip',
         'latitude',
         'longitude',
+        'premises_radius_m',
         'contact_person',
         'contact_number',
         'email',
@@ -38,6 +39,7 @@ class Subdivision extends Model
     protected $casts = [
         'latitude'  => 'float',
         'longitude' => 'float',
+        'premises_radius_m' => 'integer',
         'status'    => ActiveStatus::class,
     ];
 

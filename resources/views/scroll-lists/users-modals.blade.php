@@ -34,7 +34,7 @@
                     <div class="bg-white p-6 sm:p-8">
                         <div class="flex items-start justify-between gap-4">
                             <div>
-                                <h3 class="text-lg font-semibold text-slate-900">Edit User</h3>
+                                <h3 class="text-lg font-semibold text-slate-900">Update User</h3>
                                 <p class="mt-1 text-sm text-slate-500">Update account details for {{ $user->full_name }}.</p>
                             </div>
                             <button

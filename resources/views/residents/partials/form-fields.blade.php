@@ -180,6 +180,13 @@
         <div class="grid gap-4 md:grid-cols-2">
             <input type="hidden" name="subdivision_id" value="{{ $selectedSubdivision !== '' ? $selectedSubdivision : $subdivisions->first()?->subdivision_id }}">
             <div>
+                @if ($resident?->house_id)
+                {{-- Once assigned, the house stays fixed; ownership changes go through Transfer Ownership. --}}
+                <label for="{{ $fieldPrefix }}-house-locked" class="block text-sm font-medium text-slate-700">Assigned House</label>
+                <input type="hidden" name="house_id" value="{{ $resident->house_id }}">
+                <input id="{{ $fieldPrefix }}-house-locked" type="text" value="{{ $resident->house?->display_address ?? 'Assigned house' }}" readonly class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm">
+                <p class="mt-1 text-xs text-slate-500">The assigned house cannot be changed.</p>
+                @else
                 @php
                     $houseOptions = $houses->map(fn ($house) => ['id' => (string) $house->house_id, 'label' => $house->display_address])->values();
                 @endphp
@@ -248,6 +255,7 @@
                         <p x-show="choices.length === 0" class="px-3 py-2 text-sm text-slate-500">No matching houses.</p>
                     </div>
                 </div>
+                @endif
                 @if ($formErrors->has('house_id'))
                     <p id="{{ $fieldPrefix }}-house_id-error" data-validation-error class="mt-1 text-xs text-rose-600">{{ $formErrors->first('house_id') }}</p>
                 @endif

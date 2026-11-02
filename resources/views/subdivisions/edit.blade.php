@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <x-page-header title="Edit Subdivision" :subtitle="'Update details for ' . $subdivision->subdivision_name . '.'" />
+            <x-page-header title="Update Subdivision" :subtitle="'Update details for ' . $subdivision->subdivision_name . '.'" />
             <a href="{{ route('subdivisions.show', $subdivision) }}"
                class="px-4 py-2 text-sm font-semibold transition border rounded-xl border-slate-300 text-slate-700 hover:bg-slate-50">
                 Cancel

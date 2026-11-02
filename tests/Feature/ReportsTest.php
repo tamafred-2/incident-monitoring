@@ -10,22 +10,27 @@ class ReportsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_security_cannot_access_report_pages_previews_or_downloads(): void
+    public function test_security_can_generate_incident_and_visitor_reports(): void
     {
         $area = Subdivision::create(['subdivision_name' => 'North', 'status' => 'Active']);
         $this->actingAs(User::factory()->create(['role' => 'security', 'subdivision_id' => $area->getKey()]));
-        foreach (['reports.index', 'incidents.print', 'visitors.print'] as $route) {
-            $this->get(route($route))->assertRedirect(route('dashboard'));
+        foreach (['incidents', 'visitors'] as $type) {
+            $this->withoutVite()->get(route('reports.index', ['type' => $type]))->assertOk()->assertViewHas('type', $type);
+            $this->get(route($type.'.print'))->assertOk();
+            $this->get(route($type.'.export', ['format' => 'excel']))->assertOk();
         }
-        foreach (['incidents.export', 'visitors.export'] as $route) {
-            foreach (['excel', 'pdf'] as $format) {
-                $this->get(route($route, ['format' => $format]))->assertRedirect(route('dashboard'));
-            }
-        }
-        foreach (['incidents.index', 'visitors.index'] as $route) {
+        foreach (['incidents.index' => 'incidents', 'visitors.index' => 'visitors'] as $route => $type) {
             $this->withoutVite()->get(route($route))->assertOk()
-                ->assertDontSee(route('reports.index'), false);
+                ->assertSee(route('reports.index', ['type' => $type]), false);
         }
+    }
+
+    public function test_staff_cannot_access_visitor_reports(): void
+    {
+        $area = Subdivision::create(['subdivision_name' => 'North', 'status' => 'Active']);
+        $this->actingAs(User::factory()->create(['role' => 'staff', 'subdivision_id' => $area->getKey()]));
+        $this->get(route('reports.index', ['type' => 'visitors']))->assertForbidden();
+        $this->get(route('visitors.print'))->assertRedirect(route('dashboard'));
     }
 
     public function test_preview_and_print_use_photo_urls_without_reading_image_bytes(): void

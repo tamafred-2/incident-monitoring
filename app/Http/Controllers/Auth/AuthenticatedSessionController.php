@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
+use App\Support\GuardAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +32,7 @@ class AuthenticatedSessionController extends Controller
     {
         return view('auth.login', [
             'quickLoginUser' => $this->resolveQuickLoginUser($request),
+            'premisesCheck' => GuardAccess::premisesCheckEnabled(),
         ]);
     }
 
@@ -49,6 +51,10 @@ class AuthenticatedSessionController extends Controller
         Auth::login($user, remember: true);
 
         $request->session()->regenerate();
+
+        if ($denial = GuardAccess::loginDenial($request, $user)) {
+            return $this->refuseGuard($request, $denial);
+        }
 
         // Refresh the cookie lifetime on each successful quick login.
         Cookie::queue(self::QUICK_LOGIN_COOKIE, (string) $user->getKey(), self::REMEMBER_MINUTES);
@@ -96,6 +102,9 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if ($denial = GuardAccess::loginDenial($request, $request->user())) {
+            return $this->refuseGuard($request, $denial)->withInput($request->only('email', 'remember'));
+        }
 
         if ($request->boolean('remember')) {
             Cookie::queue('remembered_email', $request->string('email')->toString(), self::REMEMBER_MINUTES);
@@ -111,6 +120,20 @@ class AuthenticatedSessionController extends Controller
         }
 
         return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    /**
+     * Sign a guard straight back out when their device or location is refused.
+     */
+    private function refuseGuard(Request $request, string $denial): RedirectResponse
+    {
+        Auth::guard('web')->logout();
+
+        $request->session()->invalidate();
+
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')->with('error', $denial);
     }
 
     /**

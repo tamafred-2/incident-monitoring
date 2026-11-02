@@ -16,7 +16,7 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4 md:grid-cols-2" x-data="{ reportStatus: @js(old('status', 'Open')) }">
+        <form method="POST" action="{{ route('incidents.store') }}" enctype="multipart/form-data" class="mt-6 grid gap-4 md:grid-cols-2" x-data="{ reportStatus: @js(in_array(old('status'), ['Resolved', 'Closed'], true) ? 'Resolved' : 'Open') }">
             @csrf
             <input type="hidden" name="_submission_token" value="{{ bin2hex(random_bytes(16)) }}">
             @php
@@ -57,8 +57,12 @@
                 <label class="block text-sm font-medium text-slate-700">Category</label>
                 <select name="category" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500" data-category-select>
                     <option value="">Select category</option>
-                    @foreach ($incidentCategories as $category)
-                        <option value="{{ $category }}" @selected($selectedCategory === $category)>{{ $category }}</option>
+                    @foreach (\App\Support\IncidentCategories::GROUPS as $categoryType => $categories)
+                        <optgroup label="{{ $categoryType }}">
+                            @foreach ($categories as $category)
+                                <option value="{{ $category }}" @selected($selectedCategory === $category)>{{ $category }}</option>
+                            @endforeach
+                        </optgroup>
                     @endforeach
                 </select>
                 <div class="@if ($selectedCategory !== 'Other') hidden @endif mt-3" data-category-other-wrapper>
@@ -131,13 +135,16 @@
                 <x-input-error class="mt-1" :messages="$errors->get('incident_date')" />
             </div>
                 <div>
-                    <label for="report-status" class="block text-sm font-medium text-slate-700">Status</label>
-                    <select id="report-status" name="status" x-model="reportStatus" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
-                        <option value="Open" @selected(old('status', 'Open') === 'Open')>Pending</option>
-                        <option value="Under Investigation" @selected(old('status') === 'Under Investigation')>Investigation</option>
-                        <option value="Resolved" @selected(in_array(old('status'), ['Resolved', 'Closed'], true))>Resolved</option>
-                    </select>
-                    <p class="mt-1 text-xs text-slate-500">Choose Resolved if the incident is already done. It will be saved to History.</p>
+                    <span class="block text-sm font-medium text-slate-700">Status</span>
+                    <input type="hidden" name="status" :value="reportStatus">
+                    <p class="mt-1 flex h-10 items-center rounded-xl border border-slate-200 bg-slate-100 px-3 text-sm text-slate-600" x-text="['Resolved', 'Closed'].includes(reportStatus) ? 'Resolved' : 'Pending'">Pending</p>
+                    @unless (auth()->user()->isSecurity())
+                        <label class="mt-2 inline-flex items-center gap-2 text-sm text-slate-700">
+                            <input type="checkbox" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500" :checked="['Resolved', 'Closed'].includes(reportStatus)" x-on:change="reportStatus = $event.target.checked ? 'Resolved' : 'Open'">
+                            Already resolved (record for history)
+                        </label>
+                    @endunless
+                    <p class="mt-1 text-xs text-slate-500">New reports start as Pending. Staff update the status as the incident is handled.</p>
                     <x-input-error class="mt-1" :messages="$errors->get('status')" />
                 </div>
                 <div class="md:col-span-2 space-y-4" x-cloak x-show="['Resolved', 'Closed'].includes(reportStatus)">

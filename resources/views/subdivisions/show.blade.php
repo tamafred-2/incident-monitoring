@@ -114,7 +114,7 @@
             </div>
         </x-modal>
 
-        {{-- Edit/Delete House Modals --}}
+        {{-- Update/Delete House Modals --}}
         <div id="subdivision-house-modals">
         @include('scroll-lists.subdivision-houses-modals')
         </div>{{-- /#subdivision-house-modals --}}

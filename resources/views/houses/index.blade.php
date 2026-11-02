@@ -110,7 +110,7 @@
                 </div>
             </x-modal>
 
-            {{-- Edit & Delete modals --}}
+            {{-- Update & Delete modals --}}
             <div id="houses-scroll-modals">@include('scroll-lists.houses-modals')</div>
         </div>
     </div>

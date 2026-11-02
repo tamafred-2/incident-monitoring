@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <h2 class="page-title">Edit Incident</h2>
+                <h2 class="page-title">Update Incident</h2>
                 <p class="page-subtitle">Update incident information while keeping pending and resolved status tracking clear.</p>
             </div>
             <div class="flex flex-wrap gap-3">
@@ -44,6 +44,14 @@
 
                     <input type="hidden" name="subdivision_id" value="{{ $incident->subdivision_id }}">
 
+                    @if (!$isFullEditor)
+                        <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600">
+                            The original report details are locked. You can update the status, investigation and resolution notes, and evidence.
+                        </div>
+                    @endif
+
+                    {{-- Report details are editable by the admin only. --}}
+                    <fieldset class="contents" @disabled(!$isFullEditor)>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">House</label>
                         <select name="house_id" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500" required data-house-select>
@@ -54,11 +62,6 @@
                         </select>
                     </div>
 
-                    @if (!$isFullEditor)
-                        <div class="md:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-600">
-                            Security mode: report details are shown for reference; saving here updates the incident status and resolved date.
-                        </div>
-                    @endif
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">Description</label>
                         <textarea name="description" rows="4" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">{{ old('description', $incident->description) }}</textarea>
@@ -89,8 +92,12 @@
                         <label class="block text-sm font-medium text-slate-700">Category</label>
                         <select name="category" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500" data-category-select>
                             <option value="">Select category</option>
-                            @foreach ($incidentCategories as $category)
-                                <option value="{{ $category }}" @selected($selectedCategory === $category)>{{ $category }}</option>
+                            @foreach (\App\Support\IncidentCategories::GROUPS as $categoryType => $categories)
+                                <optgroup label="{{ $categoryType }}">
+                                    @foreach ($categories as $category)
+                                        <option value="{{ $category }}" @selected($selectedCategory === $category)>{{ $category }}</option>
+                                    @endforeach
+                                </optgroup>
                             @endforeach
                         </select>
                         <div class="@if ($selectedCategory !== 'Other') hidden @endif mt-3" data-category-other-wrapper>
@@ -129,9 +136,11 @@
                         <label class="block text-sm font-medium text-slate-700">Incident Date & Time</label>
                         <input type="datetime-local" name="incident_date" max="{{ now()->format('Y-m-d\TH:i') }}" value="{{ old('incident_date', optional($incident->incident_date)->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                     </div>
+                    </fieldset>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700">Date Reported</label>
-                        <input type="datetime-local" name="reported_at" value="{{ old('reported_at', optional($incident->reported_at)->format('Y-m-d\TH:i') ?? optional($incident->created_at)->format('Y-m-d\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                        <label for="incident-reported-at" class="block text-sm font-medium text-slate-700">Date Reported</label>
+                        <input id="incident-reported-at" type="text" value="{{ ($incident->reported_at ?? $incident->created_at)?->format('M j, Y h:i A') }}{{ $incident->reporter ? ' by '.$incident->reporter->full_name : '' }}" readonly class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm">
+                        <p class="mt-1 text-xs text-slate-500">Recorded by the system when the report was filed.</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>

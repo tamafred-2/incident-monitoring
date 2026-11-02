@@ -91,7 +91,7 @@
                         ])) }}"
                         class="px-3 py-2 text-xs font-semibold border rounded-lg border-brand-200 text-brand-700 hover:bg-brand-50"
                     >
-                        Edit
+                        Update
                     </a>
                 @endif
             </div>

@@ -135,7 +135,7 @@ class HouseController extends Controller
 
         if (! $house->canDelete()) {
             return redirect($redirect ?? route('houses.index', $this->indexContext($request)))
-                ->with('error', 'This house cannot be deleted because it has linked residents or incident records. Use Edit to update the house instead.');
+                ->with('error', 'This house cannot be deleted because it has linked residents or incident records. Use Update to change the house details instead.');
         }
 
         $house->delete();

@@ -10,7 +10,7 @@
         <section class="rounded-2xl border border-slate-200 bg-white p-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <h3 class="text-lg font-semibold text-slate-900">Visitor Information</h3>
-                @if (auth()->user()->hasRole('security'))<button type="button" x-data @click="$dispatch('open-modal', 'edit-visitor-profile')" class="inline-flex items-center rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-100 hover:text-brand-800">Edit Profile</button>@endif
+                @if (auth()->user()->hasRole('security'))<button type="button" x-data @click="$dispatch('open-modal', 'edit-visitor-profile')" class="inline-flex items-center rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700 transition hover:border-brand-300 hover:bg-brand-100 hover:text-brand-800">Update Profile</button>@endif
             </div>
             <dl class="mt-5 grid gap-5 sm:grid-cols-3">
                 <div><dt class="text-sm text-slate-500">Name</dt><dd class="mt-1 font-medium text-slate-900">{{ $profile->full_name }}</dd></div>
@@ -100,7 +100,7 @@
                     @csrf @method('PUT')
                     <div class="flex items-start justify-between gap-4">
                         <div>
-                            <h3 class="text-lg font-semibold text-slate-900">Edit Visitor Profile</h3>
+                            <h3 class="text-lg font-semibold text-slate-900">Update Visitor Profile</h3>
                             <p class="mt-1 text-sm text-slate-500">Update the visitor's identity, contact details, and ID photo.</p>
                         </div>
                         <button type="button" @click="$dispatch('close')" aria-label="Close edit visitor profile modal" class="rounded-xl border border-slate-200 p-2 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700">

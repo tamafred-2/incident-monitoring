@@ -177,6 +177,10 @@ class ResidentController extends Controller
         DB::transaction(function () use ($request, $resident): void {
             House::whereKey($resident->house_id)->lockForUpdate()->first();
             $resident = Resident::whereKey($resident->getKey())->lockForUpdate()->firstOrFail();
+            // An assigned house stays fixed on update.
+            if ($resident->house_id) {
+                $request->merge(['house_id' => $resident->house_id]);
+            }
             $data = $this->validateResident($request, $resident);
             $transition = $resident->relation_to_owner === 'Owner' && $data['is_deceased'];
             if ($transition) {

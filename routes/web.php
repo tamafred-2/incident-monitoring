@@ -4,6 +4,8 @@ use App\Http\Controllers\AdminVisitorNotificationController;
 use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\BrandingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GuardDeviceController;
+use App\Http\Controllers\GuardLocationController;
 use App\Http\Controllers\HouseController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\IncidentNotificationController;
@@ -36,7 +38,7 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     });
     Route::get('/dashboard/records/{table}', [DashboardController::class, 'records'])
         ->whereIn('table', ['incidents', 'visitors'])->name('dashboard.records');
-    Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('role:admin,staff')->name('reports.index');
+    Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'index'])->middleware('role:admin,staff,security')->name('reports.index');
     Route::get('/analytics', [AnalyticsController::class, 'index'])->middleware('role:admin,staff')->name('analytics.index');
     Route::get('/analytics/records', [AnalyticsController::class, 'records'])->middleware('role:admin,staff')->name('analytics.records');
 
@@ -52,6 +54,13 @@ Route::middleware(['auth', 'password.change'])->group(function () {
         Route::post('/{passwordResetRequest}/resolve', [PasswordResetRequestController::class, 'resolve'])->name('resolve');
         Route::delete('/{passwordResetRequest}', [PasswordResetRequestController::class, 'destroy'])->name('destroy');
     });
+    Route::prefix('/admin/guard-devices')->middleware('role:admin')->name('admin.guard-devices.')->group(function () {
+        Route::get('/', [GuardDeviceController::class, 'index'])->name('index');
+        Route::put('/premises', [GuardDeviceController::class, 'updatePremises'])->name('premises');
+        Route::post('/{guardDevice}/approve', [GuardDeviceController::class, 'approve'])->name('approve');
+        Route::delete('/{guardDevice}', [GuardDeviceController::class, 'destroy'])->name('destroy');
+    });
+    Route::post('/guard/location', [GuardLocationController::class, 'update'])->middleware('role:security')->name('guard.location');
     Route::redirect('/subdivisions', '/house-management');
     Route::redirect('/subdivisions/{subdivision}', '/house-management/{subdivision}');
     Route::redirect('/subdivisions/{subdivision}/edit', '/house-management/{subdivision}/edit');
@@ -73,8 +82,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::patch('/users/{user}/status', [UserController::class, 'setStatus'])->middleware('role:admin')->name('users.status');
 
     Route::get('/incidents', [IncidentController::class, 'index'])->name('incidents.index');
-    Route::get('/incidents/export', [IncidentController::class, 'export'])->middleware('role:admin,staff')->name('incidents.export');
-    Route::get('/incidents/print', [IncidentController::class, 'print'])->middleware('role:admin,staff')->name('incidents.print');
+    Route::get('/incidents/export', [IncidentController::class, 'export'])->middleware('role:admin,staff,security')->name('incidents.export');
+    Route::get('/incidents/print', [IncidentController::class, 'print'])->middleware('role:admin,staff,security')->name('incidents.print');
     Route::get('/incidents/create', [IncidentController::class, 'create'])->middleware('role:admin,staff,security')->name('incidents.create');
     Route::post('/incidents', [IncidentController::class, 'store'])->middleware('role:admin,staff,security')->name('incidents.store');
     Route::get('/incident-photos/{path}', [IncidentController::class, 'photo'])
@@ -101,8 +110,8 @@ Route::middleware(['auth', 'password.change'])->group(function () {
     Route::post('/visitor-profiles/{profile}/expected-visits', [\App\Http\Controllers\ExpectedVisitController::class, 'store'])->middleware('role:security')->name('expected-visits.store');
     Route::post('/expected-visits/{expectedVisit}/cancel', [\App\Http\Controllers\ExpectedVisitController::class, 'cancel'])->middleware('role:security')->name('expected-visits.cancel');
     Route::get('/visitors', [VisitorController::class, 'index'])->middleware('role:security,staff')->name('visitors.index');
-    Route::get('/visitors/export', [VisitorController::class, 'export'])->middleware('role:admin')->name('visitors.export');
-    Route::get('/visitors/print', [VisitorController::class, 'print'])->middleware('role:admin')->name('visitors.print');
+    Route::get('/visitors/export', [VisitorController::class, 'export'])->middleware('role:admin,security')->name('visitors.export');
+    Route::get('/visitors/print', [VisitorController::class, 'print'])->middleware('role:admin,security')->name('visitors.print');
     Route::get('/visitors/{visitor}/id-photo', [VisitorController::class, 'idPhoto'])->middleware(['role:security', 'subdivision'])->name('visitors.photo');
     Route::get('/visitors/{visitor}', [VisitorController::class, 'show'])->middleware(['role:security,staff', 'subdivision'])->name('visitors.show');
     Route::get('/visitors/{visitor}/edit', [VisitorController::class, 'edit'])->middleware(['role:admin', 'subdivision'])->name('visitors.edit');

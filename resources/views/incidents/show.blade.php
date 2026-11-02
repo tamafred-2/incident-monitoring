@@ -14,7 +14,7 @@
                         href="{{ route('incidents.edit', array_merge(['incidentId' => $incident->incident_id], $indexContext)) }}"
                         class="px-4 py-2 text-sm font-semibold text-white transition rounded-xl bg-brand-600 hover:bg-brand-700"
                     >
-                        Edit Incident
+                        Update Incident
                     </a>
                 @endif
             </div>
@@ -66,7 +66,7 @@
                     <section class="p-5 border rounded-2xl border-slate-200 bg-slate-50/70">
                         <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-slate-700">Report Summary</h4>
                         <dl class="mt-4 space-y-4 text-sm">
-                            @foreach (['Category' => $incident->category, 'Location' => ($incident->location ?: $incident->house?->display_address), 'Created By' => $incident->reporter?->full_name] as $label => $value)
+                            @foreach (['Type' => \App\Support\IncidentCategories::typeOf($incident->category), 'Category' => $incident->category, 'Location' => ($incident->location ?: $incident->house?->display_address), 'Created By' => $incident->reporter?->full_name] as $label => $value)
                                 <div class="flex items-start justify-between gap-4">
                                     <dt class="text-slate-500">{{ $label }}</dt>
                                     <dd class="max-w-[18rem] font-medium text-right text-slate-900 break-words">{{ $value ?: '-' }}</dd>

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <x-page-header title="Edit Visitor History" subtitle="Admin-only update for visitor history details." />
+            <x-page-header title="Update Visitor History" subtitle="Admin-only update for visitor history details." />
             <a
                 href="{{ route('visitors.index', $indexContext) }}"
                 class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -42,10 +42,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Status</label>
-                        <select name="status" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
-                            <option value="Inside" @selected(old('status', $visitor->status?->value) === 'Inside')>Inside</option>
-                            <option value="Checked Out" @selected(old('status', $visitor->status?->value) === 'Checked Out')>Checked Out</option>
-                        </select>
+                        <input type="text" value="{{ $visitor->status?->value ?? '-' }}" readonly class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm">
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700">Purpose</label>
@@ -61,12 +58,13 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Check In</label>
-                        <input type="datetime-local" name="check_in" value="{{ old('check_in', optional($visitor->check_in)->format('Y-m-d\\TH:i')) }}" required class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                        <input type="text" value="{{ $visitor->check_in?->format('M j, Y h:i A') ?? '-' }}" readonly class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700">Check Out</label>
-                        <input type="datetime-local" name="check_out" value="{{ old('check_out', optional($visitor->check_out)->format('Y-m-d\\TH:i')) }}" class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                        <input type="text" value="{{ $visitor->check_out?->format('M j, Y h:i A') ?? 'Still inside' }}" readonly class="mt-1 w-full rounded-xl border-slate-300 text-sm shadow-sm">
                     </div>
+                    <p class="md:col-span-2 text-xs text-slate-500">Status and check-in/check-out times are recorded at the gate and cannot be changed.</p>
 
                     <div class="md:col-span-2 flex flex-wrap justify-end gap-3">
                         <a href="{{ route('visitors.index', $indexContext) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</a>

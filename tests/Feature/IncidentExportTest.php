@@ -58,8 +58,8 @@ class IncidentExportTest extends TestCase
         $csv = $this->get(route('incidents.export', $query + ['format' => 'excel']))->assertOk()->assertDownload();
         $rows = array_map('str_getcsv', explode("\n", trim($csv->streamedContent())));
         $this->assertCount(101, $rows);
-        $this->assertSame('Location104', $rows[1][1]);
-        $this->assertSame('Location5', $rows[100][1]);
+        $this->assertSame('Location104', $rows[1][2]);
+        $this->assertSame('Location5', $rows[100][2]);
 
         $pdf = \Mockery::mock(\Barryvdh\DomPDF\PDF::class);
         $pdf->shouldReceive('setPaper')->with('a4', 'landscape')->once()->andReturnSelf();

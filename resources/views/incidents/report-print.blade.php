@@ -35,6 +35,7 @@
         <table>
             <thead>
                 <tr>
+                    <th>Type</th>
                     <th>Category</th>
                     <th>Location</th>
                     <th>Status</th>
@@ -47,6 +48,7 @@
             <tbody>
                 @forelse (($reportRows ?? []) as $row)
                     <tr>
+                        <td>{{ $row['type'] }}</td>
                         <td>{{ $row['category'] }}</td>
                         <td>{{ $row['location'] }}<p><strong>Investigation:</strong> {{ $row['investigation_description'] }}</p><p><strong>Resolution:</strong> {{ $row['resolution_description'] }}</p></td>
                         <td>{{ $row['status'] }}</td>
@@ -67,7 +69,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7">No incident records found for current filters.</td>
+                        <td colspan="8">No incident records found for current filters.</td>
                     </tr>
                 @endforelse
             </tbody>

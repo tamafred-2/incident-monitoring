@@ -14,6 +14,14 @@
         display: none;
     }
 
+    /* Locked fields: shown for reference but not changeable. */
+    input:disabled:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    select:disabled,
+    textarea:disabled,
+    input[readonly]:not([type="hidden"]) {
+        @apply cursor-not-allowed bg-slate-100 text-slate-500;
+    }
+
     :root {
         --shell-sidebar: #0d1726;
         --shell-sidebar-strong: #0a1321;
